@@ -88,7 +88,7 @@ titleNode
  crux title
  javascript
   compile() {
-   return `<h1 class="scrollShowcaseComponent"><a href="${this.getRootNode().permalink}.html">${this.getContent()}</a></h1>`
+   return `<h1 class="scrollTitleComponent"><a href="${this.getRootNode().permalink}.html">${this.getContent()}</a></h1>`
   }
 dateNode
  catchAllCellType dateCell
