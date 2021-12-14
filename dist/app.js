@@ -178,7 +178,7 @@ window.CodeEditorComponent = CodeEditorComponent
 // prettier-ignore
 
 class githubTriangleComponent extends AbstractTreeComponent {
-  githubLink = `https://github.com/publicdomaincompany/tryscroll`
+  githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
     return `.AbstractGithubTriangleComponent
  display block
@@ -327,7 +327,7 @@ SIZES.BOTTOM_BAR_HEIGHT = 40
 SIZES.CHROME_HEIGHT = SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
 SIZES.TITLE_HEIGHT = 20
 
-SIZES.EDITOR_WIDTH = 350
+SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
 EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
