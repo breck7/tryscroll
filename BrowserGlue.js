@@ -3,6 +3,38 @@ const { jtree } = require("jtree")
 const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
+const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
+
+paragraph
+ Scroll is an extensible alternative to Markdown.
+
+quote
+ Scroll aims to help you structure your thoughts.
+
+chat
+ What can I do with Scrolldown?
+ You can invent your own node types.
+ What's an example?
+ This chat node.
+aboveAsCode
+
+question What's the benefit for using today?
+
+aftertext
+ A simple plain text format that keeps your thoughts and data clean that is ready to grow with you.
+ italics grow with you.
+
+question What might this become?
+
+paragraph
+ Who knows. Perhaps a large ontology of types of thought?
+
+spaceTable
+ Format NodeTypes
+ HTML ~142
+ Markdown ~192
+ Scrolldown 1,000,000's`
+
 class BrowserGlue extends AbstractTreeComponent {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
     const code = await this.fetchText(url)
@@ -31,8 +63,7 @@ class BrowserGlue extends AbstractTreeComponent {
     const localStorageCode = this.getFromLocalStorage()
     if (localStorageCode) return localStorageCode
 
-    return `paragraph
- Hello world. This is Scrolldown.`
+    return DEFAULT_PROGRAM
   }
 
   async fetchSimGrammarAndExamplesAndInit() {
