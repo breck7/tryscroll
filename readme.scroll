@@ -1,0 +1,30 @@
+title TryScroll: Scroll Demo Page
+
+question Can you show me a screenshot?
+
+image screenshot.png
+
+question What is this tool?
+
+aftertext
+ This folders contains a Scroll web app. You can type Scrolldown and see the rendered HTML. You can try Scroll without downloading the command line app.
+ https://scroll.pub Scroll
+ 
+section Maintenance Notes
+
+question How do I run the tests?
+
+code
+ npm install .
+ npm test
+
+question How do I update this app to the latest version of Scroll?
+
+paragraph
+ Currently a 2 step process:
+
+code
+ # Step 1: update the grammar
+ cp ~/scroll/scrolldown.grammar .
+ # Step 2: update scrollStyle.css (currently by manually copying/pasting the CSS from scroll.pub)
+

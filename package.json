@@ -1,0 +1,31 @@
+{
+  "name": "tryscroll",
+  "version": "1.0.0",
+  "description": "Try Scrolldown",
+  "main": "components/EditorApp.js",
+  "prettier": {
+    "printWidth": 120,
+    "semi": false
+  },
+  "dependencies": {
+    "jquery": "^3.6.0",
+    "jtree": "^53.0.0"
+  },
+  "devDependencies": {
+    "tap": "^15.0.9"
+  },
+  "scripts": {
+    "buildCoverageReport": "tap testAll.js",
+    "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
+    "test": "node testAll.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/breck7/tryscroll.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/breck7/tryscroll/issues"
+  },
+  "homepage": "https://github.com/breck7/tryscroll"
+}

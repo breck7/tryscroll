@@ -1,0 +1,6 @@
+node_modules
+readme.html
+ignore/
+coverage/
+.nyc_output/
+.DS_Store

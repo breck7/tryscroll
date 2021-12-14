@@ -1,0 +1,527 @@
+tooling A function generates this Scrolldown grammar by combining all files in the grammars folder.
+dateCell
+ highlightScope string
+integerCell
+ highlightScope constant.numeric
+permalinkCell
+ highlightScope string
+anyCell
+urlCell
+ highlightScope constant.language
+keywordCell
+ highlightScope keyword
+textCell
+ highlightScope string
+blankCell
+codeCell
+ highlightScope comment
+commentCell
+ highlightScope comment
+bulletPointCell
+ highlightScope keyword
+aftertextTextNode
+ catchAllCellType textCell
+abstractScrollNode
+ abstract
+ cells keywordCell
+aftertextNode
+ description Text followed by markup commands.
+ extends abstractScrollNode
+ catchAllNodeType aftertextTextNode
+ inScope abstractMarkupNode
+ crux aftertext
+ example
+  aftertext
+   Hello brave new world
+   link home.com new
+   bold brave new
+   underline new world
+   strikethrough wor
+ javascript
+  get markupInserts() {
+   const { originalText } = this
+   return this.filter(node => node.isMarkupNode)
+    .map(node => node.getInserts(originalText))
+    .filter(i => i)
+    .flat()
+  }
+  get originalText() {
+   return this.filter(node => !node.isMarkupNode)
+    .map(node => node.toString())
+    .join("\n")
+  }
+  get text() {
+   const { originalText, markupInserts } = this
+   let adjustment = 0
+   let newText = originalText
+   markupInserts.sort((a, b) => a.index - b.index)
+   markupInserts.forEach(insertion => {
+    insertion.index += adjustment
+    newText = newText.slice(0, insertion.index) + insertion.string + newText.slice(insertion.index)
+    adjustment += insertion.string.length
+   })
+   return newText
+  }
+  compile() {
+   return `<p class="scrollParagraphComponent">${this.text}</p>`
+  }
+abstractTopLevelSingleMetaNode
+ abstract
+ description Use these keywords once per file.
+ extends abstractScrollNode
+ cells keywordCell
+ compiler
+  stringTemplate 
+permalinkNode
+ description When compiling, Scroll will save this article to {permalink}.html
+ crux permalink
+ extends abstractTopLevelSingleMetaNode
+ cells keywordCell permalinkCell
+skipIndexPageNode
+ description Add this tag if you want to build a page but not include it in the index page.
+ crux skipIndexPage
+ extends abstractTopLevelSingleMetaNode
+titleNode
+ catchAllCellType textCell
+ description Title of the article.
+ extends abstractTopLevelSingleMetaNode
+ crux title
+ javascript
+  compile() {
+   return `<h1 class="scrollShowcaseComponent"><a href="${this.getRootNode().permalink}.html">${this.getContent()}</a></h1>`
+  }
+dateNode
+ catchAllCellType dateCell
+ description Date the article was first published.
+ extends abstractTopLevelSingleMetaNode
+ crux date
+maxColumnsNode
+ catchAllCellType integerCell
+ description Set your own max column count for the generated HTML.
+ extends abstractTopLevelSingleMetaNode
+ crux maxColumns
+columnWidthNode
+ catchAllCellType integerCell
+ description Set your own column width, in ch units, for the generated HTML.
+ extends abstractTopLevelSingleMetaNode
+ crux columnWidth
+chatNode
+ description A dialogue between two people.
+ catchAllNodeType chatLineNode
+ crux chat
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return this.map((line, index) => `<div class="scrollDialogueComponent ${index % 2 ? "scrollDialogueComponentRight" : "scrollDialogueComponentLeft"}"><span>${line.toString()}</span></div>`).join("")
+  }
+codeNode
+ description A code block.
+ catchAllNodeType lineOfCodeNode
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return `<code class="scrollCodeBlockComponent">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
+  }
+ crux code
+codeWithLanguageNode
+ description Use this to specify the language of the code block, such as csvCode or rustCode.
+ extends codeNode
+ pattern ^[a-zA-Z0-9_]+Code$
+belowAsCodeNode
+ description Print the Scroll code of the next node.
+ extends abstractScrollNode
+ crux belowAsCode
+ javascript
+  get target() {
+   return this.getNext()
+  }
+  compile() {
+   return `<code class="scrollCodeBlockComponent">${this.target.toString().replace(/\</g, "&lt;")}</code>`
+  }
+aboveAsCodeNode
+ description Print the Scroll code for the previous node.
+ extends belowAsCodeNode
+ crux aboveAsCode
+ javascript
+  get target() {
+   return this.getPrevious()
+  }
+commentNode
+ description Will not appear in the compiled HTML.
+ catchAllCellType commentCell
+ extends abstractScrollNode
+ crux comment
+ javascript
+  compile() {
+   return ``
+  }
+ catchAllNodeType commentLineNode
+abstractHeaderNode
+ catchAllCellType textCell
+ extends abstractScrollNode
+ catchAllNodeType multilineTitleNode
+ javascript
+  compile() {
+   const children = this.childrenToString() ? " " + this.childrenToString() : ""
+   return `<${this.tag} class="${this.className}">${this.getContent() + children}</${this.tag}>`
+  }
+sectionNode
+ description Compiles to an h3 tag.
+ extends abstractHeaderNode
+ crux section
+ javascript
+  tag = "h3"
+  className = "scrollSectionComponent"
+subsectionNode
+ description Compiles to an h4 tag.
+ extends abstractHeaderNode
+ crux subsection
+ javascript
+  tag = "h4"
+  className = "scrollSubsectionComponent"
+questionNode
+ description Use for pages like FAQs.
+ extends abstractHeaderNode
+ crux question
+ javascript
+  tag = "h4"
+  className = "scrollQuestionComponent"
+htmlNode
+ description A catch all block to drop in any loose html.
+ crux html
+ extends abstractScrollNode
+ catchAllNodeType htmlLineNode
+ javascript
+  compile() {
+   return `${this.childrenToString()}`
+  }
+imageNode
+ description An img tag.
+ cells keywordCell urlCell
+ extends abstractScrollNode
+ crux image
+ inScope imageCaptionNode
+ javascript
+  compile() {
+   const src = this.getWord(1)
+   let imgTag = ""
+   try {
+    const sizeOf = require("image-size")
+    const dimensions = sizeOf(src)
+    const width = dimensions.width
+    const height = dimensions.height
+    imgTag = `<img src="${src}" width="${width}" height="${height}" loading="lazy"/>`
+   } catch (err) {
+    console.error(err)
+    imgTag = `<img src="${src}">`
+   }
+   const caption = this.get("caption")
+   const captionFig = caption ? `<figcaption>${caption}</figcaption>` : ""
+   return `<figure class="scrollImageComponent"><a href="${src}" target="_blank">${imgTag}</a>${captionFig}</figure>`
+  }
+customHeaderNode
+ extends abstractScrollNode
+ description Define a header for a certain page. Setting to blank will also remove the header on a page.
+ crux header
+ catchAllNodeType stumpNode
+ javascript
+  compile() {
+   return ""
+  }
+customFooterNode
+ extends abstractScrollNode
+ description Define a footer for a certain page. Setting to blank will also remove the footer on a page.
+ crux footer
+ catchAllNodeType stumpNode
+ javascript
+  compile() {
+   return ""
+  }
+listNode
+ description An unordered list.
+ catchAllNodeType listItemNode
+ crux list
+ extends abstractScrollNode
+ compiler
+  stringTemplate 
+  openChildren <ul class="scrollUnorderedListComponent">
+  closeChildren </ul>
+orderedListNode
+ description An ordered list.
+ extends listNode
+ crux orderedList
+ compiler
+  stringTemplate 
+  openChildren <ol class="scrollOrderedListComponent">
+  closeChildren </ol>
+paragraphNode
+ description Prose content.
+ catchAllNodeType paragraphContentNode
+ extends abstractScrollNode
+ crux paragraph
+ javascript
+  get dateHtml() {
+   const rootNode = this.getParent()
+   const isFirst = rootNode.indexOf("paragraph") === this.getIndex()
+   if (!isFirst) return ""
+   const day = rootNode.get("date")
+   if (!day) return ""
+   try {
+    const dayjs = require("dayjs")
+    return `<span class="scrollArticleDateComponent">${dayjs(day).format(`MMMM D, YYYY`)} — </span>`
+   } catch (err) {
+    console.error(err)
+    return ""
+   }
+  }
+  get paragraphContent() {
+   return this.childrenToString()
+  }
+  compile() {
+   return `<p class="scrollParagraphComponent">${this.dateHtml}${this.getRootNode().compileATags(this.paragraphContent)}</p>`
+  }
+quoteNode
+ description A blockquote.
+ catchAllNodeType quoteLineNode
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return `<blockquote class="scrollQuoteComponent">${this.childrenToString()}</blockquote>`
+  }
+ crux quote
+abstractTableNode
+ catchAllNodeType rowNode
+ extends abstractScrollNode
+ javascript
+  _delimiter = " "
+  get tableHeader() {
+   const header = this.nodeAt(0)
+   return header
+    ? header
+      .getLine()
+      .split(this._delimiter)
+      .map(word => `<th>${word}</th>\n`)
+    : []
+  }
+  getTableBody(columnCount) {
+   const delimiter = this._delimiter
+   return this.getTopDownArray()
+    .slice(1)
+    .map(node => `<tr>${node.toRow(columnCount, delimiter)}</tr>`)
+    .join("\n")
+  }
+  compile() {
+   const tableHeader = this.tableHeader
+   return `<table class="scrollTableComponent"><thead><tr>${tableHeader.join("\n")}</tr></thead>\n<tbody>${this.getTableBody(tableHeader.length)}</tbody></table>`
+  }
+commaTableNode
+ crux commaTable
+ description Comma separated values table.
+ extends abstractTableNode
+ javascript
+  _delimiter = ","
+pipeTableNode
+ crux pipeTable
+ description Pipie separated values table.
+ extends abstractTableNode
+ javascript
+  _delimiter = "|"
+tabTableNode
+ crux tabTable
+ description Tab separated values table.
+ extends abstractTableNode
+ javascript
+  _delimiter = "\t"
+spaceTableNode
+ description Space separated values table. Last column is a catch all.
+ extends abstractTableNode
+ crux spaceTable
+abstractMarkupNode
+ cells keywordCell
+ catchAllCellType textCell
+ javascript
+  isMarkupNode = true
+  get pattern() {
+   return this.getWordsFrom(1).join(" ")
+  }
+  getInserts(text) {
+   const { pattern } = this
+   const start = text.indexOf(pattern)
+   if (start === -1) return false
+   return [
+    { index: start, string: `<${this.openTag}>` },
+    { index: start + pattern.length, string: `</${this.closeTag}>` }
+   ]
+  }
+  get openTag() {
+   return this.tag
+  }
+  get closeTag() {
+   return this.tag
+  }
+boldNode
+ crux bold
+ extends abstractMarkupNode
+ javascript
+  tag = "b"
+italicsNode
+ crux italics
+ extends abstractMarkupNode
+ javascript
+  tag = "i"
+underlineNode
+ crux underline
+ extends abstractMarkupNode
+ javascript
+  tag = "u"
+aftertextCodeNode
+ crux code
+ extends abstractMarkupNode
+ javascript
+  tag = "code"
+linkNode
+ extends abstractMarkupNode
+ cells keywordCell urlCell
+ crux link
+ javascript
+  tag = "a"
+  get link() {
+   return this.getWord(1)
+  }
+  get openTag() {
+   return `a href="${this.link}"`
+  }
+  get pattern() {
+   return this.getWordsFrom(2).join(" ")
+  }
+emailLinkNode
+ description A mailto link
+ crux email
+ extends linkNode
+ javascript
+  get openTag() {
+   return `a href="mailto:${this.link}"`
+  }
+quickLinkNode
+ pattern ^https\:
+ extends linkNode
+ cells urlCell
+ javascript
+  get link() {
+   return this.getWord(0)
+  }
+  get pattern() {
+   return this.getWordsFrom(1).join(" ")
+  }
+strikethroughNode
+ crux strikethrough
+ extends abstractMarkupNode
+ javascript
+  tag = "s"
+errorNode
+ baseNodeType errorNode
+scrolldownNode
+ extensions scroll
+ description A simple language for structurable thought. An extensible alternative to Markdown. Compiles to HTML.
+ root
+ inScope abstractScrollNode blankLineNode
+ catchAllNodeType quickParagraphNode
+ compilesTo html
+ javascript
+  get permalink() {
+   return this.get("permalink") || this._permalink || ""
+  }
+  setPermalink(permalink) {
+   this._permalink = permalink
+   return this
+  }
+  compileATags(text) {
+   // todo: a better place for these util functions? I stick them in here so the
+   // grammar is all in one file for ease of use in TreeLanguageDesigner
+   const linkReplacer = (match, p1, p2, p3, offset, str) => {
+    let suffix = ""
+    if (p3.endsWith(",")) suffix = "," + suffix
+    if (p3.endsWith(".")) suffix = "." + suffix
+    p3 = p3.replace(/(,|\.)$/, "")
+    let prefix = "https://"
+    const isRelativeLink = p3.startsWith("./")
+    if (isRelativeLink) {
+     prefix = ""
+     p3 = p3.substr(2)
+    }
+    if (p3.startsWith("https://") || p3.startsWith("http://")) prefix = ""
+    return `${p1}<a href="${prefix}${p3}">${p2}</a>${suffix}`
+   }
+   return text.replace(/(^|\s)(\S+)🔗(\S+)(?=(\s|$))/g, linkReplacer)
+  }
+ example
+  title Hello world
+  section This is Scrolldown
+  
+  paragraph
+   It compiles to HTML. Blank lines get turned into brs.
+  
+  code
+   // You can add code as well.
+   print("Hello world")
+blankLineNode
+ description Blank lines compile to nothing in the HTML.
+ cells blankCell
+ compiler
+  stringTemplate 
+ pattern ^$
+ tags doNotSynthesize
+quickParagraphNode
+ description A catch all block. This may be removed in future versions.
+ catchAllCellType textCell
+ baseNodeType errorNode
+ compiler
+  stringTemplate <p class="scrollParagraphComponent">{textCell}</p>
+chatLineNode
+ catchAllCellType anyCell
+ catchAllNodeType chatLineNode
+lineOfCodeNode
+ catchAllCellType codeCell
+ catchAllNodeType lineOfCodeNode
+commentLineNode
+ catchAllCellType commentCell
+multilineTitleNode
+ catchAllCellType textCell
+htmlLineNode
+ catchAllCellType anyCell
+ catchAllNodeType htmlLineNode
+imageCaptionNode
+ description An optional caption to accompany the image.
+ crux caption
+ cells keywordCell
+ catchAllCellType textCell
+stumpNode
+ description Stump is a Tree Language that compiles to HTML.
+ catchAllCellType anyCell
+ catchAllNodeType stumpNode
+listItemNode
+ cells bulletPointCell
+ catchAllCellType textCell
+ javascript
+  compile() {
+   return `<li>${this.getRootNode().compileATags(this.getContent() || "")}</li>`
+  }
+paragraphContentNode
+ catchAllCellType textCell
+quoteLineNode
+ catchAllCellType anyCell
+ catchAllNodeType quoteLineNode
+rowNode
+ catchAllCellType textCell
+ javascript
+  toRow(columnCount, delimiter) {
+   const words = this.getLine().split(delimiter)
+   let str = ""
+   let column = 0
+   while (column < columnCount) {
+    column++
+    const content = columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]
+    str += `<td>${this.getRootNode().compileATags(content ?? "")}</td>\n`
+   }
+   return str
+  }

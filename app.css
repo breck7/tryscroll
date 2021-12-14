@@ -1,0 +1,128 @@
+html {
+	height: 100%;
+	width: 100%;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+
+*,
+*:before,
+*:after {
+	box-sizing: inherit;
+}
+
+body {
+	box-sizing: border-box;
+	padding: 0;
+	margin: 0;
+	height: 100%;
+	width: 100%;
+	font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+:root {
+	--rightBarWidth: 30px;
+	--topBarHeight: 28px;
+	--titleHeight: 20px;
+	--bottomBarHeight: 40px;
+	--chromeColor: rgb(47, 47, 51);
+}
+
+.EditorApp {
+	height: 100%;
+	width: 100%;
+}
+
+.EditorHandleComponent {
+	width: 10px;
+	position: absolute;
+	top: var(--topBarHeight);
+	bottom: var(--bottomBarHeight);
+	cursor: ew-resize;
+}
+
+.CodeEditorComponent {
+	position: absolute;
+	top: var(--topBarHeight);
+	bottom: var(--bottomBarHeight);
+	border: 0;
+	left: 0;
+}
+
+.TopBarComponent {
+	background-color: var(--chromeColor);
+	color: white;
+	font-size: 14px;
+	line-height: var(--topBarHeight);
+	height: var(--topBarHeight);
+	white-space: nowrap;
+}
+.ShareComponent {
+	display: inline;
+}
+.ShareComponent input {
+	background: rgb(79, 79, 79);
+	padding: 3px;
+	border-radius: 5px;
+	color: white;
+	border: 0;
+	width: 230px;
+}
+
+.BottomBarComponent {
+	position: absolute;
+	line-height: var(--bottomBarHeight);
+	height: var(--bottomBarHeight);
+	padding-left: 5px;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: var(--chromeColor);
+	color: white;
+	font-size: 34px;
+	text-align: center;
+	padding-right: var(--rightBarWidth);
+}
+
+#codeErrorsConsole {
+	font-size: 10px;
+	color: #999;
+	text-align: center;
+}
+
+.BottomButton:hover {
+	background-color: rgba(255, 255, 255, 0.2);
+	opacity: 1;
+}
+
+.BottomButton:active {
+	background-color: rgba(255, 255, 255, 0.3);
+	opacity: 1;
+}
+
+.RightBarComponent {
+	position: absolute;
+	width: var(--rightBarWidth);
+	top: var(--topBarHeight);
+	bottom: var(--bottomBarHeight);
+	right: 0;
+	padding-top: 20px;
+	background-color: var(--chromeColor);
+	color: white;
+	font-size: 12px;
+	z-index: 1;
+	overflow: hidden;
+}
+
+.ShowcaseComponent {
+	position: absolute;
+	top: var(--topBarHeight);
+	right: var(--rightBarWidth);
+	bottom: var(--bottomBarHeight);
+}
+
+.ShowcaseComponent iframe {
+	height: 100%;
+	width: 100%;
+	border: 0;
+}
