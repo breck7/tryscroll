@@ -6,7 +6,6 @@ const { jtree } = require("jtree")
 const { TopBarComponent } = require("./TopBar.js")
 const { CodeEditorComponent } = require("./CodeEditor.js")
 const { BottomBarComponent } = require("./BottomBar.js")
-const { RightBarComponent } = require("./RightBar.js")
 const { ShareComponent } = require("./Share.js")
 const { EditorHandleComponent } = require("./EditorHandle.js")
 const { ShowcaseComponent } = require("./Showcase.js")
@@ -61,7 +60,6 @@ class EditorApp extends AbstractTreeComponent {
       CodeEditorComponent,
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
-      RightBarComponent,
       EditorHandleComponent,
       ShowcaseComponent
     })
@@ -177,7 +175,6 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
 ${TopBarComponent.name}
  ${ShareComponent.name}
 ${BottomBarComponent.name}
-${RightBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
   ${simojiCode.replace(/\n/g, "\n  ")}

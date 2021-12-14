@@ -174,7 +174,6 @@ window.CodeEditorComponent = CodeEditorComponent
 
 
 
-
 // prettier-ignore
 
 class githubTriangleComponent extends AbstractTreeComponent {
@@ -223,7 +222,6 @@ class EditorApp extends AbstractTreeComponent {
       CodeEditorComponent,
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
-      RightBarComponent,
       EditorHandleComponent,
       ShowcaseComponent
     })
@@ -339,7 +337,6 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
 ${TopBarComponent.name}
  ${ShareComponent.name}
 ${BottomBarComponent.name}
-${RightBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
   ${simojiCode.replace(/\n/g, "\n  ")}
@@ -398,18 +395,6 @@ class EditorHandleComponent extends AbstractTreeComponent {
 }
 
 window.EditorHandleComponent = EditorHandleComponent
-
-
-
-
-
-class RightBarComponent extends AbstractTreeComponent {
-	createParser() {
-		return new jtree.TreeNode.Parser(undefined, {})
-	}
-}
-
-window.RightBarComponent = RightBarComponent
 
 
 
