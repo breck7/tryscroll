@@ -18,6 +18,7 @@ figure {
 	border-spacing: 0;
 }
 html {
+	background-color: rgb(244, 244, 244);
 	font-family: Exchange, Georgia, serif;
 	color: #000;
 	font-size: 14px;
@@ -118,6 +119,12 @@ html {
 	text-align: left;
 	margin-top: 2em;
 }
+code {
+	font-size: 90%;
+	background-color: rgba(204, 204, 204, 0.5);
+	padding: 2px 4px;
+	border-radius: 4px;
+}
 .scrollCodeBlockComponent {
 	overflow: auto;
 	font-size: 80%;
@@ -128,7 +135,7 @@ html {
 	display: block;
 	margin: 0.5em 0;
 	padding: 0.5em;
-	background: rgba(204, 204, 204, 0.5);
+	border-radius: 0;
 }
 .scrollTableComponent {
 	table-layout: fixed;
