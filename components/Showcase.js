@@ -2,7 +2,7 @@ const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework
 
 class ShowcaseComponent extends AbstractTreeComponent {
   get html() {
-    return `<link rel="stylesheet" type="text/css" href="scrollStyle.css" />` + this.app.mainExperiment.compile() ?? ""
+    return this.app.completeHtml
   }
 
   get app() {

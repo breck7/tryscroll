@@ -7,6 +7,7 @@ const { TopBarComponent } = require("./TopBar.js")
 const { CodeEditorComponent } = require("./CodeEditor.js")
 const { BottomBarComponent } = require("./BottomBar.js")
 const { ShareComponent } = require("./Share.js")
+const { ExportComponent } = require("./Export.js")
 const { EditorHandleComponent } = require("./EditorHandle.js")
 const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
@@ -63,6 +64,16 @@ class EditorApp extends AbstractTreeComponent {
       EditorHandleComponent,
       ShowcaseComponent
     })
+  }
+
+  style = ""
+
+  get styleTag() {
+    return `\n<style>${this.style}</style>`
+  }
+
+  get completeHtml() {
+    return this.mainExperiment.compile() + this.styleTag
   }
 
   verbose = true
@@ -166,7 +177,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, styleCode = "") => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
@@ -174,6 +185,7 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
   const startState = new jtree.TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
  ${ShareComponent.name}
+ ${ExportComponent.name}
 ${BottomBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
@@ -184,6 +196,7 @@ ${ShowcaseComponent.name}`)
   const app = new EditorApp(startState.toString())
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
+  app.style = styleCode
   return app
 }
 

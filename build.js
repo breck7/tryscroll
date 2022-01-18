@@ -37,7 +37,8 @@ const appCode = ourPaths
 Disk.write(__dirname + "/dist/app.js", appCode)
 
 const AppConstants = {
-	grammar: Disk.read(__dirname + "/scrolldown.grammar")
+	grammar: Disk.read(__dirname + "/scrolldown.grammar"),
+	style: Disk.read(__dirname + "/scrollStyle.css")
 }
 
 Disk.write(__dirname + "/dist/constants.js", `const AppConstants = ` + JSON.stringify(AppConstants))

@@ -110,3 +110,12 @@ body {
 	width: 100%;
 	border: 0;
 }
+
+.ExportComponent {
+	display: inline;
+}
+
+.ExportComponent a:hover {
+	text-decoration: underline;
+	cursor: pointer;
+}

@@ -174,6 +174,7 @@ window.CodeEditorComponent = CodeEditorComponent
 
 
 
+
 // prettier-ignore
 
 class githubTriangleComponent extends AbstractTreeComponent {
@@ -225,6 +226,16 @@ class EditorApp extends AbstractTreeComponent {
       EditorHandleComponent,
       ShowcaseComponent
     })
+  }
+
+  style = ""
+
+  get styleTag() {
+    return `\n<style>${this.style}</style>`
+  }
+
+  get completeHtml() {
+    return this.mainExperiment.compile() + this.styleTag
   }
 
   verbose = true
@@ -328,7 +339,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, styleCode = "") => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
@@ -336,6 +347,7 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
   const startState = new jtree.TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
  ${ShareComponent.name}
+ ${ExportComponent.name}
 ${BottomBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
@@ -346,6 +358,7 @@ ${ShowcaseComponent.name}`)
   const app = new EditorApp(startState.toString())
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
+  app.style = styleCode
   return app
 }
 
@@ -399,6 +412,39 @@ window.EditorHandleComponent = EditorHandleComponent
 
 
 
+class ExportComponent extends AbstractTreeComponent {
+  toStumpCode() {
+    return `div
+ class ExportComponent
+ a Copy HTML
+  clickCommand copyHtmlToClipboardCommand
+ span  | 
+ a Download HTML
+  clickCommand downloadHtmlCommand`
+  }
+
+  copyHtmlToClipboardCommand() {
+    this.app.willowBrowser.copyTextToClipboard(this.app.completeHtml)
+  }
+
+  downloadHtmlCommand() {
+    // todo: figure this out. use the browsers filename? tile title? id?
+    let extension = "html"
+    let type = "text/html"
+    let str = this.app.completeHtml
+    this.app.willowBrowser.downloadFile(str, "scrollOutput.html", type)
+  }
+
+  get app() {
+    return this.getRootNode()
+  }
+}
+
+window.ExportComponent = ExportComponent
+
+
+
+
 class ShareComponent extends AbstractTreeComponent {
   toStumpCode() {
     return `div
@@ -427,7 +473,7 @@ window.ShareComponent = ShareComponent
 
 class ShowcaseComponent extends AbstractTreeComponent {
   get html() {
-    return `<link rel="stylesheet" type="text/css" href="scrollStyle.css" />` + this.app.mainExperiment.compile() ?? ""
+    return this.app.completeHtml
   }
 
   get app() {
@@ -459,10 +505,12 @@ window.ShowcaseComponent = ShowcaseComponent
 
 
 
+
 class TopBarComponent extends AbstractTreeComponent {
   createParser() {
     return new jtree.TreeNode.Parser(undefined, {
-      ShareComponent
+      ShareComponent,
+      ExportComponent
     })
   }
 }
@@ -560,11 +608,11 @@ class BrowserGlue extends AbstractTreeComponent {
     return this.init(grammarCode)
   }
 
-  async init(grammarCode) {
+  async init(grammarCode, styleCode) {
     window.programCompiler = new jtree.HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
     const simCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight)
+    window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight, styleCode)
     window.app.start()
     return window.app
   }

@@ -73,11 +73,11 @@ class BrowserGlue extends AbstractTreeComponent {
     return this.init(grammarCode)
   }
 
-  async init(grammarCode) {
+  async init(grammarCode, styleCode) {
     window.programCompiler = new jtree.HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
     const simCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight)
+    window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight, styleCode)
     window.app.start()
     return window.app
   }
