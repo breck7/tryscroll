@@ -207,3 +207,7 @@ code {
 .scrollImageComponent figcaption {
 	font-style: italic;
 }
+.scrollCaveat {
+	text-decoration: underline dashed 1px rgba(0, 0, 0, 0.1);
+	cursor: default;
+}
