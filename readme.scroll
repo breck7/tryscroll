@@ -29,3 +29,5 @@ code
  # Step 2: update scrollStyle.css (currently by manually copying/pasting the CSS from scroll.pub)
  # Step 3: run the build script
  ./build.js
+ # Step 4: verify it works
+ open index.html
