@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "jtree": "^53.5.1"
+    "jtree": "^53.6.0"
   },
   "devDependencies": {
     "tap": "^15.0.9"
