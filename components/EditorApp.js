@@ -13,7 +13,7 @@ const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const programCompiler = jtree.compileGrammarFileAtPathAndReturnRootConstructor(   __dirname + "/../scrolldown.grammar")
+/*NODE_JS_ONLY*/ const programCompiler = require("scroll-cli").DefaultScrollScriptCompiler
 
 class githubTriangleComponent extends AbstractTreeComponent {
   githubLink = `https://github.com/breck7/tryscroll`
@@ -32,7 +32,7 @@ class githubTriangleComponent extends AbstractTreeComponent {
  target _blank
  img
   height 40px
-  src github-fork.svg`
+  src public/github-fork.svg`
   }
 }
 

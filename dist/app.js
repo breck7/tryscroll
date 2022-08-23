@@ -194,7 +194,7 @@ class githubTriangleComponent extends AbstractTreeComponent {
  target _blank
  img
   height 40px
-  src github-fork.svg`
+  src public/github-fork.svg`
   }
 }
 
@@ -533,7 +533,6 @@ window.LocalStorageKeys = LocalStorageKeys
 window.UrlKeys = UrlKeys
 
 
-const DEFAULT_SIM = "fire"
 
 
 
@@ -547,7 +546,7 @@ quote
  Scroll aims to help you structure your thoughts.
 
 chat
- What can I do with Scrolldown?
+ What can I do with ScrollScript?
  You can invent your own node types.
  What's an example?
  This chat node.
@@ -568,7 +567,7 @@ spaceTable
  Format NodeTypes
  HTML ~142
  Markdown ~192
- Scrolldown 1,000,000's`
+ ScrollScript 1,000,000's`
 
 class BrowserGlue extends AbstractTreeComponent {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
@@ -599,13 +598,6 @@ class BrowserGlue extends AbstractTreeComponent {
     if (localStorageCode) return localStorageCode
 
     return DEFAULT_PROGRAM
-  }
-
-  async fetchSimGrammarAndExamplesAndInit() {
-    const grammar = await fetch("scrolldown.grammar")
-    const grammarCode = await grammar.text()
-
-    return this.init(grammarCode)
   }
 
   async init(grammarCode, styleCode) {

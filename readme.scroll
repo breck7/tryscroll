@@ -2,13 +2,13 @@ title TryScroll: Scroll Demo Page
 
 question Can you show me a screenshot?
 
-image screenshot.png
+image public/screenshot.png
 
 question What is this tool?
 
 aftertext
- This folders contains a Scroll web app. You can type Scrolldown and see the rendered HTML. You can try Scroll without downloading the command line app.
- https://scroll.pub Scroll
+ This folders contains a ScrollScript web app. You can type ScrollScript and see the rendered HTML. You can try ScrollScript without downloading the Scroll command line app.
+ https://scroll.pub Scroll command line app
  
 section Maintenance Notes
 
@@ -24,10 +24,13 @@ paragraph
  Currently a 2 step process:
 
 code
- # Step 1: update the grammar
- cp ~/scroll/scrolldown.grammar .
- # Step 2: update scrollStyle.css (currently by manually copying/pasting the CSS from scroll.pub)
- # Step 3: run the build script
+ # Step 1: update scroll
+ npm install scroll-cli
+ # Step 2: run the build script
  ./build.js
- # Step 4: verify it works
+ # Step 3: verify it works
  open index.html
+ # Step 4: commit and push
+ git add .
+ git commit -m "Updated Scroll"
+ git push

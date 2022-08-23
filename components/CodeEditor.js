@@ -2,7 +2,7 @@ const { jtree } = require("jtree")
 const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const programCompiler = jtree.compileGrammarFileAtPathAndReturnRootConstructor(   __dirname + "/../scrolldown.grammar")
+/*NODE_JS_ONLY*/ const programCompiler = require("scroll-cli").DefaultScrollScriptCompiler
 
 class CodeMirrorShim {
   setSize() {}

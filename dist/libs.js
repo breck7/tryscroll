@@ -11215,7 +11215,9 @@ class TreeNode extends AbstractNode {
     return this._getIndentLevel(relativeTo)
   }
   getIndentation(relativeTo) {
-    return this.getEdgeSymbol().repeat(this._getIndentLevel(relativeTo) - 1)
+    const indentLevel = this._getIndentLevel(relativeTo) - 1
+    if (indentLevel < 0) return ""
+    return this.getEdgeSymbol().repeat(indentLevel)
   }
   _getTopDownArray(arr) {
     this.forEach(child => {
@@ -11503,6 +11505,7 @@ class TreeNode extends AbstractNode {
     })
     return spots[charIndex]
   }
+  // Note: This currently does not return any errors resulting from "required" or "single"
   getAllErrors(lineStartsAt = 1) {
     const errors = []
     for (let node of this.getTopDownArray()) {
@@ -13524,7 +13527,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "53.6.0"
+TreeNode.getVersion = () => "53.8.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13804,11 +13807,10 @@ class GrammarBackedNode extends TreeNode {
     )
     return this
   }
-  _getRequiredNodeErrors(errors = []) {
+  get requiredNodeErrors() {
+    const errors = []
     Object.values(this.getDefinition().getFirstWordMapWithDefinitions()).forEach(def => {
-      if (def.isRequired()) {
-        if (!this.getChildren().some(node => node.getDefinition() === def)) errors.push(new MissingRequiredNodeTypeError(this, def.getNodeTypeIdFromDefinition()))
-      }
+      if (def.isRequired()) if (!this.getChildren().some(node => node.getDefinition() === def)) errors.push(new MissingRequiredNodeTypeError(this, def.getNodeTypeIdFromDefinition()))
     })
     return errors
   }
@@ -14018,18 +14020,30 @@ class GrammarBackedNode extends TreeNode {
   getWordTypes() {
     return this._getParsedCells().filter(cell => cell.getWord() !== undefined)
   }
-  getErrors() {
-    const errors = this._getParsedCells()
+  get cellErrors() {
+    return this._getParsedCells()
       .map(check => check.getErrorIfAny())
       .filter(identity => identity)
-    const firstWord = this.getFirstWord()
-    if (this.getDefinition().has(GrammarConstants.single))
-      this.getParent()
-        .findNodes(firstWord)
-        .forEach((node, index) => {
-          if (index) errors.push(new NodeTypeUsedMultipleTimesError(node))
-        })
-    return this._getRequiredNodeErrors(errors)
+  }
+  get singleNodeUsedTwiceErrors() {
+    const errors = []
+    const parent = this.getParent()
+    const hits = parent.getChildInstancesOfNodeTypeId(this.getDefinition().id)
+    if (hits.length > 1)
+      hits.forEach((node, index) => {
+        if (node === this) errors.push(new NodeTypeUsedMultipleTimesError(node))
+      })
+    return errors
+  }
+  get scopeErrors() {
+    let errors = []
+    if (this.getDefinition().isSingle) errors = errors.concat(this.singleNodeUsedTwiceErrors)
+    const { requiredNodeErrors } = this
+    if (requiredNodeErrors.length) errors = errors.concat(requiredNodeErrors)
+    return errors
+  }
+  getErrors() {
+    return this.cellErrors.concat(this.scopeErrors)
   }
   _getParsedCells() {
     return this.getDefinition()
@@ -14069,7 +14083,7 @@ class GrammarBackedNode extends TreeNode {
     const fields = {}
     this.forEach(node => {
       const def = node.getDefinition()
-      if (def.isRequired() || def.has(GrammarConstants.single)) fields[node.getWord(0)] = node.getContent()
+      if (def.isRequired() || def.isSingle) fields[node.getWord(0)] = node.getContent()
     })
     return fields
   }
@@ -14988,6 +15002,9 @@ ${properties.join("\n")}
   _getId() {
     return this.getWord(0)
   }
+  get id() {
+    return this._getId()
+  }
   _getIdWithoutSuffix() {
     return this._getId().replace(HandGrammarProgram.nodeTypeSuffixRegex, "")
   }
@@ -15118,6 +15135,10 @@ ${properties.join("\n")}
     const ids = this._getMyInScopeNodeTypeIds()
     const parentDef = this._getExtendedParent()
     return parentDef ? ids.concat(parentDef._getInScopeNodeTypeIds()) : ids
+  }
+  // Should only one of these node types be present in the parent node?
+  get isSingle() {
+    return this._hasFromExtended(GrammarConstants.single)
   }
   isRequired() {
     return this._hasFromExtended(GrammarConstants.required)
@@ -15398,10 +15419,12 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
     map[GrammarConstants.todoComment] = TreeNode
     return new TreeNode.Parser(UnknownNodeTypeNode, map, [{ regex: HandGrammarProgram.nodeTypeFullRegex, nodeConstructor: nodeTypeDefinitionNode }, { regex: HandGrammarProgram.cellTypeFullRegex, nodeConstructor: cellTypeDefinitionNode }])
   }
+  // Note: this is some so far unavoidable tricky code. We need to eval the transpiled JS, in a NodeJS or browser environment.
   _compileAndEvalGrammar() {
     if (!this.isNodeJs()) this._cache_compiledLoadedNodeTypes = TreeUtils.appendCodeAndReturnValueOnWindow(this.toBrowserJavascript(), this.getRootNodeTypeId()).getNodeTypeMap()
     else {
-      const code = this.toNodeJsJavascript(__dirname + "/../index.js")
+      const path = require("path")
+      const code = this.toNodeJsJavascript(path.join(__dirname, "..", "index.js"))
       try {
         const rootNode = this._requireInVmNodeJsRootNodeTypeConstructor(code)
         this._cache_compiledLoadedNodeTypes = rootNode.getNodeTypeMap()
@@ -15483,9 +15506,11 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
   }
   _requireInVmNodeJsRootNodeTypeConstructor(code) {
     const vm = require("vm")
+    const path = require("path")
+    const jtreePath = path.join(__dirname, "..", "index.js")
     // todo: cleanup up
     try {
-      global.jtree = require(__dirname + "/../index.js")
+      global.jtree = require(jtreePath)
       global.require = require
       global.__dirname = this._dirName
       global.module = {}
@@ -15494,6 +15519,7 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
       // todo: figure out best error pattern here for debugging
       console.log(`Error in compiled grammar code for language "${this.getGrammarName()}"`)
       // console.log(new TreeNode(code).toStringWithLineNumbers())
+      console.log(`jtreePath: "${jtreePath}"`)
       console.log(err)
       throw err
     }
@@ -15711,8 +15737,8 @@ ${testCode}`
           .join(",")
       : this.getExtensionName()
   }
-  toNodeJsJavascript(jtreePath = "jtree") {
-    return this._rootNodeDefToJavascriptClass(jtreePath, true).trim()
+  toNodeJsJavascript(normalizedJtreePath = "jtree") {
+    return this._rootNodeDefToJavascriptClass(normalizedJtreePath, true).trim()
   }
   toBrowserJavascript() {
     return this._rootNodeDefToJavascriptClass("", false).trim()
@@ -15720,7 +15746,7 @@ ${testCode}`
   _getProperName() {
     return TreeUtils.ucfirst(this.getExtensionName())
   }
-  _rootNodeDefToJavascriptClass(jtreePath, forNodeJs = true) {
+  _rootNodeDefToJavascriptClass(normalizedJtreePath, forNodeJs = true) {
     const defs = this.getValidConcreteAndAbstractNodeTypeDefinitions()
     // todo: throw if there is no root node defined
     const nodeTypeClasses = defs.map(def => def._nodeDefToJavascriptClass()).join("\n\n")
@@ -15737,7 +15763,7 @@ ${rootName}`
     }
     // todo: we can expose the previous "constants" export, if needed, via the grammar, which we preserve.
     return `{
-${forNodeJs ? `const {jtree} = require("${jtreePath}")` : ""}
+${forNodeJs ? `const {jtree} = require("${normalizedJtreePath.replace(/\\/g, "\\\\")}")` : ""}
 ${rootNodeJsHeader ? rootNodeJsHeader : ""}
 ${nodeTypeClasses}
 
@@ -16447,9 +16473,7 @@ window.jtree = jtree
     _getHtmlJoinByCharacter() {
       return ""
     }
-    getHandGrammarProgram() {
-      if (!this._cachedHandGrammarProgramRoot)
-        this._cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(`tooling onsave jtree build produceLang stump
+    static cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(`tooling onsave jtree build produceLang stump
 anyCell
 keywordCell
 emptyCell
@@ -16716,7 +16740,8 @@ bernNode
   }
   getTextContent() {return ""}
  cells bernKeywordCell`)
-      return this._cachedHandGrammarProgramRoot
+    getHandGrammarProgram() {
+      return this.constructor.cachedHandGrammarProgramRoot
     }
     static getNodeTypeMap() {
       return {
@@ -17312,9 +17337,7 @@ bernNode
         .map(child => child.compile())
         .join("")
     }
-    getHandGrammarProgram() {
-      if (!this._cachedHandGrammarProgramRoot)
-        this._cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(`tooling onsave jtree build produceLang hakon
+    static cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(`tooling onsave jtree build produceLang hakon
 anyCell
 keywordCell
 commentKeywordCell
@@ -17415,7 +17438,8 @@ selectorNode
   }\\n\`
   }
  cells selectorCell`)
-      return this._cachedHandGrammarProgramRoot
+    getHandGrammarProgram() {
+      return this.constructor.cachedHandGrammarProgramRoot
     }
     static getNodeTypeMap() {
       return {

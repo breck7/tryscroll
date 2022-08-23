@@ -1,4 +1,3 @@
-const DEFAULT_SIM = "fire"
 const { jtree } = require("jtree")
 const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
@@ -12,7 +11,7 @@ quote
  Scroll aims to help you structure your thoughts.
 
 chat
- What can I do with Scrolldown?
+ What can I do with ScrollScript?
  You can invent your own node types.
  What's an example?
  This chat node.
@@ -33,7 +32,7 @@ spaceTable
  Format NodeTypes
  HTML ~142
  Markdown ~192
- Scrolldown 1,000,000's`
+ ScrollScript 1,000,000's`
 
 class BrowserGlue extends AbstractTreeComponent {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
@@ -64,13 +63,6 @@ class BrowserGlue extends AbstractTreeComponent {
     if (localStorageCode) return localStorageCode
 
     return DEFAULT_PROGRAM
-  }
-
-  async fetchSimGrammarAndExamplesAndInit() {
-    const grammar = await fetch("scrolldown.grammar")
-    const grammarCode = await grammar.text()
-
-    return this.init(grammarCode)
   }
 
   async init(grammarCode, styleCode) {
