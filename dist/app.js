@@ -539,8 +539,9 @@ window.UrlKeys = UrlKeys
 
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 
-paragraph
+aftertext
  Scroll is an extensible alternative to Markdown.
+ https://scroll.pub Scroll
 
 quote
  Scroll aims to help you structure your thoughts.

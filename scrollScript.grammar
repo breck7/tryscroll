@@ -2,6 +2,31 @@ tooling
  Related work
  CSS is great for text selector ideas: https://www.w3schools.com/cssref/css_selectors.asp
  Roff has a lot of related markup ideas: https://www.systutorials.com/docs/linux/man/7-groff_man/
+anyCell
+urlCell
+ highlightScope constant.language
+keywordCell
+ highlightScope keyword
+stringCell
+ highlightScope string
+idCell
+ highlightScope constant.language
+dateCell
+ highlightScope string
+integerCell
+ highlightScope constant.numeric
+permalinkCell
+ highlightScope string
+commentCell
+ highlightScope comment
+blankCell
+codeCell
+ highlightScope comment
+bulletPointCell
+ description Any token used as a bullet point such as "-" or "1." or ">"
+ highlightScope keyword
+emailAddressCell
+ extends stringCell
 tagOrUrlCell
  description An HTML tag or a url.
  highlightScope constant.language
@@ -14,28 +39,13 @@ classNameCell
  highlightScope constant
 htmlIdCell
  extends idCell
-dateCell
- highlightScope string
-integerCell
- highlightScope constant.numeric
-permalinkCell
- highlightScope string
-codeCell
- highlightScope comment
-commentCell
- highlightScope comment
-bulletPointCell
- highlightScope keyword
-anyCell
-urlCell
- highlightScope constant.language
-keywordCell
- highlightScope keyword
-stringCell
- highlightScope string
-idCell
- highlightScope constant.language
-blankCell
+filePathCell
+ extends stringCell
+groupNameCell
+ extends stringCell
+templateEnumCell
+ enum group snippets file blank
+ extends stringCell
 aftertextTextNode
  catchAllCellType stringCell
  boolean isTextNode true
@@ -113,42 +123,39 @@ abstractTopLevelSingleMetaNode
    return ""
   }
 permalinkNode
- description When compiling, Scroll will save this article to {permalink}.html
+ description When compiling, Scroll will save this file to {permalink}
  extends abstractTopLevelSingleMetaNode
  cells keywordCell permalinkCell
-skipIndexPageNode
- description Add this tag if you want to build a page but not include it in the index page.
+groupsNode
+ description Add this file to zero or more groups.
+ cruxFromId
+ example
+  groups index.html
  extends abstractTopLevelSingleMetaNode
+ cells keywordCell
+ catchAllCellType permalinkCell
 titleNode
  catchAllCellType stringCell
- description Title of the article.
+ description Title of the file.
  extends abstractTopLevelSingleMetaNode
  javascript
   compile() {
-   return `<h1 class="scrollTitleComponent"><a href="${this.getRootNode().permalink}.html">${this.getContent()}</a></h1>`
+   return `<h1 class="scrollTitleComponent"><a href="${this.getRootNode().permalink}">${this.getContent()}</a></h1>`
   }
 htmlTitleNode
  catchAllCellType stringCell
  description Use this to override the automatic HTML <title> generation.
  extends abstractTopLevelSingleMetaNode
-sourceLinkNode
+viewSourceUrlNode
  catchAllCellType urlCell
  description Use this to override the link to the source code for a scroll file.
  extends abstractTopLevelSingleMetaNode
 dateNode
  catchAllCellType dateCell
- description Date the article was first published.
- extends abstractTopLevelSingleMetaNode
-maxColumnsNode
- catchAllCellType integerCell
- description Set your own max column count for a single article's generated HTML.
- extends abstractTopLevelSingleMetaNode
-columnWidthNode
- catchAllCellType integerCell
- description Set your own column width, in ch units, for the generated HTML.
+ description Date this file was first published.
  extends abstractTopLevelSingleMetaNode
 endSnippetNode
- description Insert one of these where you want to cut the article for the snippets.html page.
+ description Insert one of these where you want to cut the file for a snippet.
  extends abstractTopLevelSingleMetaNode
 chatNode
  description A dialogue between two people.
@@ -209,7 +216,18 @@ cssNode
   compile() {
    return `<style>${this.childrenToString()}</style>`
   }
+scrollNodeTypeDefinitionNode
+ extends abstractScrollNode
+ todo Figure out best pattern for integrating Scroll and Grammar?
+ pattern ^[a-zA-Z0-9_]+Node$
+ description Define your own nodeTypes in the Grammar language for using in your Scroll files.
+ baseNodeType blobNode
+ javascript
+  compile() {
+   return ""
+  }
 abstractHeaderNode
+ abstract
  cruxFromId
  catchAllCellType stringCell
  extends abstractScrollNode
@@ -254,13 +272,14 @@ imageNode
  inScope imageCaptionNode
  javascript
   compile() {
-   const dirPath = this.getParent().folder
+   const file = this.getRootNode().file
+   const folder = file.folder.folder
    const src = this.getWord(1)
    let imgTag = ""
    try {
     const sizeOf = require("image-size")
     const path = require("path")
-    const dimensions = sizeOf(path.join(dirPath, src))
+    const dimensions = sizeOf(path.join(folder, src))
     const width = dimensions.width
     const height = dimensions.height
     imgTag = `<img src="${src}" width="${width}" height="${height}" loading="lazy"/>`
@@ -272,24 +291,133 @@ imageNode
    const captionFig = caption ? `<figcaption>${caption}</figcaption>` : ""
    return `<figure class="scrollImageComponent"><a href="${src}" target="_blank">${imgTag}</a>${captionFig}</figure>`
   }
-customHeaderNode
+importNode
+ description Import one file into another.
+ cruxFromId
  extends abstractScrollNode
+ catchAllCellType filePathCell
+ javascript
+  compile() {
+   return ""
+  }
+ example
+  import settings.scroll
+importOnlyNode
+ description Mark a file as not one to build. This line will be not be imported into the importing file.
+ cruxFromId
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return ""
+  }
+keyboardNavNode
+ description Makes left go to previous file and right go to next file.
+ extends abstractScrollNode
+ cruxFromId
+ catchAllCellType urlCell
+ javascript
+  compile() {
+   const file = this.getRootNode().file
+   const linkToPrevious = this.getWord(1) ?? file.linkToPrevious
+   const linkToNext = this.getWord(2) ?? file.linkToNext
+   const script = `<script>document.addEventListener('keydown', function(event) {
+    if (document.activeElement !== document.body) return
+    const getLinks = () => document.getElementsByClassName("scrollKeyboardNav")[0].getElementsByTagName("a")
+    if (event.key === "ArrowLeft")
+      getLinks()[0].click()
+    else if (event.key === "ArrowRight")
+      getLinks()[1].click()
+   });</script>`
+   return `<div class="scrollKeyboardNav"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
+  }
+templateNode
+ extends abstractScrollNode
+ cruxFromId
+ cells keywordCell templateEnumCell
+ catchAllCellType stringCell
+ description Defaults to "file".
+ javascript
+  compile() {
+   return ""
+  }
+abstractSiteSettingNode
+ extends abstractScrollNode
+ abstract
+ cells keywordCell
+ javascript
+  compile() {
+   return ""
+  }
+abstractIntSettingNode
+ abstract
+ cruxFromId
+ extends abstractSiteSettingNode
+ cells keywordCell integerCell
+maxColumnsNode
+ extends abstractIntSettingNode
+ description Set your own max column count for a single file's generated HTML.
+columnWidthNode
+ extends abstractIntSettingNode
+ description Set your own column width, in ch units, for the generated HTML.
+scrollCssNode
+ extends abstractSiteSettingNode
+ cruxFromId
+ cells keywordCell permalinkCell
+ description If not present Scroll style CSS will be included on each page.
+scrollHeaderNode
+ extends abstractSiteSettingNode
  description Define a header for a certain page. Setting to blank will also remove the header on a page.
- crux header
+ cruxFromId
  catchAllNodeType stumpNode
  javascript
   compile() {
    return ""
   }
-customFooterNode
- extends abstractScrollNode
+scrollFooterNode
+ extends abstractSiteSettingNode
  description Define a footer for a certain page. Setting to blank will also remove the footer on a page.
- crux footer
+ cruxFromId
  catchAllNodeType stumpNode
  javascript
   compile() {
    return ""
   }
+abstractUrlSettingNode
+ abstract
+ extends abstractSiteSettingNode
+ cells keywordCell urlCell
+ cruxFromId
+rssFeedUrlNode
+ description URL for RSS feed, if any.
+ extends abstractUrlSettingNode
+baseUrlNode
+ description Root url of the published site. Needed for og tags and RSS feeds.
+ extends abstractUrlSettingNode
+viewSourceBaseUrlNode
+ description The base link to be used to generate the "View source" link.
+ extends abstractUrlSettingNode
+githubNode
+ description A link to the GitHub project or profile page.
+ extends abstractUrlSettingNode
+twitterNode
+ description A link to the blog or author's Twitter account.
+ extends abstractUrlSettingNode
+abstractSiteStringSettingNode
+ abstract
+ extends abstractSiteSettingNode
+ catchAllCellType stringCell
+ cruxFromId
+siteTitleNode
+ description Title of the site.
+ extends abstractSiteStringSettingNode
+siteDescriptionNode
+ description Description of the site.
+ extends abstractSiteStringSettingNode
+emailNode
+ description Email address for the site owner.
+ extends abstractSiteSettingNode
+ cruxFromId
+ cells keywordCell emailAddressCell
 listNode
  description An unordered list.
  catchAllNodeType listItemNode
@@ -328,7 +456,60 @@ quoteNode
   compile() {
    return `<blockquote class="scrollQuoteComponent">${this.childrenToString()}</blockquote>`
   }
+replaceNode
+ description Define a variable token and replacement that will be applied to all lines following this one.
+ extends abstractScrollNode
+ cruxFromId
+ catchAllCellType stringCell
+ example
+  replace YEAR 2022
+ javascript
+  compile() {
+   return ""
+  }
+replaceDefaultNode
+ description Define the default value for a replacement. Useful if you want to import a file and set a replacement later.
+ extends abstractScrollNode
+ catchAllCellType stringCell
+ example
+  replaceDefault YEAR 2021
+ cruxFromId
+ javascript
+  compile() {
+   return ""
+  }
+printFeedNode
+ description Prints out the RSS feed for a group.
+ extends abstractScrollNode
+ cruxFromId
+ cells keywordCell groupNameCell
+ javascript
+  compile() {
+   const file = this.getRootNode().file
+   const folder = file.folder
+   const files = folder.getGroup(this.getWord(1))
+   const { siteTitle, baseUrl, siteDescription } = file.object
+   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
+  <rss version="0.91">
+  <channel>
+   <title>${siteTitle}</title>
+   <link>${baseUrl}</link>
+   <description>${siteDescription}</description>
+   <language>en-us</language>
+  ${files.map(file => file.toRss()).join("\n")}
+  </channel>
+  </rss>`
+  }
+printScrollCSSNode
+ description Prints out the default Scroll theme CSS.
+ extends abstractScrollNode
+ cruxFromId
+ javascript
+  compile() {
+   return this.getRootNode().file.SCROLL_CSS
+  }
 abstractTableNode
+ abstract
  cruxFromId
  catchAllNodeType rowNode
  extends abstractScrollNode
@@ -622,7 +803,7 @@ datelineNode
    } catch (err) {
     console.error(err)
    }
-   return [{ index: 0, string: `<span class="scrollArticleDateComponent">${day} — </span>` }]
+   return [{ index: 0, string: `<span class="scrollDateComponent">${day} — </span>` }]
   }
 abstractMarkupParameterNode
  cells keywordCell
@@ -666,6 +847,8 @@ catchAllParagraphNode
   compile() {
    return `<p class="scrollParagraphComponent">${this.getLine()}</p>`
   }
+errorNode
+ baseNodeType errorNode
 chatLineNode
  catchAllCellType anyCell
  catchAllNodeType chatLineNode
@@ -700,8 +883,9 @@ listItemNode
   }
 paragraphContentNode
  catchAllCellType stringCell
-errorNode
- baseNodeType errorNode
+quoteLineNode
+ catchAllCellType anyCell
+ catchAllNodeType quoteLineNode
 blankLineNode
  description Blank lines compile to nothing in the HTML.
  cells blankCell
@@ -711,9 +895,6 @@ blankLineNode
   }
  pattern ^$
  tags doNotSynthesize
-quoteLineNode
- catchAllCellType anyCell
- catchAllNodeType quoteLineNode
 scrollScriptNode
  extensions scroll
  description A simple language for structurable thought. An extensible alternative to Markdown. Compiles to HTML.
@@ -722,19 +903,13 @@ scrollScriptNode
  catchAllNodeType catchAllParagraphNode
  compilesTo html
  javascript
+  setFile(file) {
+   this.file = file
+   return this
+  }
+  file = {}
   get permalink() {
-   return this.get("permalink") || this._permalink || ""
-  }
-  setPermalink(permalink) {
-   this._permalink = permalink
-   return this
-  }
-  get folder() {
-   return this._folder || ""
-  }
-  setFolder(folder) {
-   this._folder = folder
-   return this
+   return this.get("permalink") || this.file.permalink || ""
   }
   compileATags(text) {
    // todo: a better place for these util functions? I stick them in here so the
@@ -757,7 +932,7 @@ scrollScriptNode
   }
  example
   title Hello world
-  section This is ScrollScript
+  section This is Scroll
   
   paragraph
    It compiles to HTML. Blank lines get turned into brs.

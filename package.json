@@ -10,7 +10,7 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "jtree": "^53.6.0",
-    "scroll-cli": "^26.1.0"
+    "scroll-cli": "^28.0.0"
   },
   "devDependencies": {
     "tap": "^15.0.9"
@@ -18,7 +18,8 @@
   "scripts": {
     "buildCoverageReport": "tap testAll.js",
     "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
-    "test": "node testAll.js"
+    "test": "node testAll.js",
+    "beta": "npm install ~/scroll"
   },
   "repository": {
     "type": "git",

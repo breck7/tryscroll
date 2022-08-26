@@ -5,7 +5,7 @@ const { Disk } = require("jtree/products/Disk.node.js")
 const grammarNode = require("jtree/products/grammar.nodejs.js")
 const { EditorApp } = require("./EditorApp.js")
 
-const programCompiler = require("scroll-cli").DefaultScrollScriptCompiler
+const programCompiler = require("scroll-cli").DefaultScrollCompiler
 const testTree = {}
 
 testTree.grammar = areEqual => {
