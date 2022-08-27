@@ -20,6 +20,8 @@ permalinkCell
 commentCell
  highlightScope comment
 blankCell
+personNameCell
+ extends stringCell
 codeCell
  highlightScope comment
 bulletPointCell
@@ -157,6 +159,23 @@ dateNode
 endSnippetNode
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractTopLevelSingleMetaNode
+authorNode
+ description Prints an author byline with a link to a page for the author.
+ extends abstractScrollNode
+ cruxFromId
+ cells keywordCell urlCell
+ catchAllCellType personNameCell
+ description The author of a post.
+ example
+  comment With Link:
+  author https://breckyunits.com Breck Yunits
+  comment No link:
+  author  Breck Yunits
+ javascript
+  compile() {
+   const link = this.getWord(1)
+   return `<div class="scrollAuthor">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
+  }
 chatNode
  description A dialogue between two people.
  catchAllNodeType chatLineNode
@@ -580,6 +599,31 @@ treeTableNode
     name Python
     example
      print "Hello world"
+kpiTableNode
+ description Display key statistics in a big font.
+ catchAllNodeType rowNode
+ cruxFromId
+ extends abstractScrollNode
+ example
+  kpiTable
+   #2 Popularity
+   30 Years Old
+   $456 Revenue
+ javascript
+  get tableBody() {
+   const items = this.getTopDownArray()
+   let str = ""
+   for (let i = 0; i < items.length; i = i + 3) {
+    str += this.makeRow(items.slice(i, i + 3))
+   }
+   return str
+  }
+  makeRow(items) {
+   return `<tr>` + items.map(node => `<td>${node.getWord(0)}<span>${node.getContent()}</span></td>`).join("\n") + `</tr>\n`
+  }
+  compile() {
+   return `<table class="scrollKpiTable">${this.tableBody}</table>`
+  }
 abstractAftertextAttributeNode
  cells keywordCell
  boolean isAttributeNode true
