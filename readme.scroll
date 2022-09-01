@@ -24,13 +24,9 @@ paragraph
  Currently a 2 step process:
 
 code
- # Step 1: update scroll
  npm install scroll-cli
- # Step 2: run the build script
  ./build.js
- # Step 3: verify it works
  open index.html
- # Step 4: commit and push
  git add .
  git commit -m "Updated Scroll"
  git push
