@@ -96,6 +96,21 @@ aftertextNode
     const attrs = this.filter(node => node.isAttributeNode)
     return attrs.length ? attrs.map(node => node.divAttributes).join(" ") + " " : ""
   }
+thoughtNode
+ todo Perhaps rewrite this from scratch and move out of aftertext.
+ extends aftertextNode
+ catchAllCellType stringCell
+ example
+  * I had a _new_ thought.
+ description An upgrade to the humble bullet point. The best of aftertext in a condensed form.
+ crux *
+ javascript
+  compile() {
+    // Hacky, I know. I will fix and upstream to scroll.
+    this.prependLine(this.getContent())
+    this.appendLine('wrapsOn')
+    return super.compile()
+  }
 loremIpsumNode
  extends aftertextNode
  description Generate dummy text.
@@ -380,6 +395,9 @@ abstractUrlSettingNode
  extends abstractSiteSettingNode
  cells keywordCell urlCell
  cruxFromId
+openGraphImageNode
+ description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ extends abstractUrlSettingNode
 rssFeedUrlNode
  description URL for RSS feed, if any.
  extends abstractUrlSettingNode
@@ -447,6 +465,19 @@ quoteNode
  javascript
   compile() {
    return `<blockquote class="scrollQuoteComponent">${this.childrenToString()}</blockquote>`
+  }
+readingListNode
+ extends abstractScrollNode
+ description Easily create a reading list with links, titles, and author names.
+ cells keywordCell
+ cruxFromId
+ catchAllNodeType readingListItemNode
+ example
+  readingList
+   https://example.com/similar by Author Name
+ javascript
+  compile() {
+    return `<br><ul>${this.map(child => child.compile()).join("\n")}</ul>`
   }
 replaceNode
  description Define a variable token and replacement that will be applied to all lines following this one.
@@ -756,6 +787,11 @@ caveatNode
   get caveatText() {
      return this.childrenToString().replace(/\n/g, " ")
   }
+footnoteNode
+ todo Improve this
+ description Provide a little more information to the interested reader, without diverting the main flow of the text.
+ extends caveatNode
+ crux footnote
 strikethroughNode
  cruxFromId
  extends abstractMarkupNode
@@ -896,6 +932,15 @@ paragraphContentNode
 quoteLineNode
  catchAllCellType anyCell
  catchAllNodeType quoteLineNode
+readingListItemNode
+ cells urlCell
+ catchAllCellType stringCell
+ javascript
+  compile() {
+    const url = this.getWord(0)
+    const [title, author] = this.getContent().split(" by ")
+    return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
+  }
 blankLineNode
  description Blank lines compile to nothing in the HTML.
  cells blankCell
