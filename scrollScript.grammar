@@ -89,8 +89,10 @@ aftertextNode
     });
    return newText
   }
+  tag = "p"
+  className = "scrollParagraphComponent"
   compile() {
-   return `<p ${this.divAttributes}class="scrollParagraphComponent">${this.text}</p>`
+   return `<${this.tag} ${this.divAttributes}class="${this.className}">${this.text}</${this.tag}>`
   }
   get divAttributes() {
     const attrs = this.filter(node => node.isAttributeNode)
@@ -111,6 +113,24 @@ thoughtNode
     this.appendLine('wrapsOn')
     return super.compile()
   }
+questionAftertextNode
+ extends thoughtNode
+ crux ?
+ javascript
+  tag = "h4"
+  className = "scrollQuestionComponent"
+h3AftertextNode
+ description Compiles to an h3 tag.
+ extends thoughtNode
+ crux #
+ javascript
+  tag = "h3"
+  className = "scrollSectionComponent"
+h4AftertextNode
+ extends h3AftertextNode
+ crux ##
+ javascript
+  tag = "h4"
 loremIpsumNode
  extends aftertextNode
  description Generate dummy text.
