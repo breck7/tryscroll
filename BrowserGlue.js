@@ -4,8 +4,7 @@ const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 
-aftertext
- Scroll is an extensible alternative to Markdown.
+* Scroll is an extensible alternative to Markdown.
  https://scroll.pub Scroll
 
 quote
@@ -18,16 +17,13 @@ chat
  This chat node.
 aboveAsCode
 
-question What's the benefit for using today?
+? What's the benefit for using today?
 
-aftertext
- A simple plain text format that keeps your thoughts and data clean that is ready to grow with you.
- italics grow with you.
+* A simple plain text format that keeps your thoughts and data clean that is ready to _grow with you_.
 
-question What might this become?
+? What might this become?
 
-paragraph
- Who knows. Perhaps a large ontology of types of thought?
+* Who knows. Perhaps a large ontology of types of thought?
 
 spaceTable
  Format NodeTypes
