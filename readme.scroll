@@ -1,27 +1,31 @@
 title TryScroll: Scroll Demo Page
 
-question Can you show me a screenshot?
+? What is Scroll?
+
+* A tool for thought. Visit the Scroll homepage.
+ https://scroll.pub/ Scroll homepage
+
+
+? Can you show me a screenshot?
 
 image public/screenshot.png
 
-question What is this tool?
+? What is this tool?
 
-aftertext
- This folders contains a ScrollScript web app. You can type ScrollScript and see the rendered HTML. You can try ScrollScript without downloading the Scroll command line app.
+* This folders contains web REPL for Scroll. You can write Scroll and see the rendered HTML in realtime. You can try Scroll without downloading the Scroll command line app.
  https://scroll.pub Scroll command line app
  
-section Maintenance Notes
+# Maintenance Notes
 
-question How do I run the tests?
+? How do I run the tests?
 
 code
  npm install .
  npm test
 
-question How do I update this app to the latest version of Scroll?
+? How do I update this app to the latest version of Scroll?
 
-paragraph
- Currently a 2 step process:
+* Currently a 2 step process:
 
 code
  npm install scroll-cli
