@@ -131,6 +131,21 @@ h4AftertextNode
  crux ##
  javascript
   tag = "h4"
+blinkNode
+ description Useful when you have a client that always needs to find 1 thing they would like you to change.
+ extends thoughtNode
+ crux blink
+ javascript
+  compile() {
+   return `<span class="scrollBlink">${super.compile()}</span>
+    <script>
+    setInterval(()=>{
+        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
+        el.style.color = el.style.color === "white" ? "black" : "white"
+        )
+    }, 2000)
+    </script>`
+  }
 loremIpsumNode
  extends aftertextNode
  description Generate dummy text.
