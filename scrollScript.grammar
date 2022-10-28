@@ -53,12 +53,11 @@ aftertextTextNode
  boolean isTextNode true
 abstractScrollNode
  cells keywordCell
-aftertextNode
+abstractAftertextNode
  description Text followed by markup commands.
  extends abstractScrollNode
  catchAllNodeType aftertextTextNode
  inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode
- cruxFromId
  example
   aftertext
    Hello brave new world
@@ -105,18 +104,21 @@ aftertextNode
   }
 thoughtNode
  todo Perhaps rewrite this from scratch and move out of aftertext.
- extends aftertextNode
+ extends abstractAftertextNode
  catchAllCellType stringCell
  example
   * I had a _new_ thought.
- description An upgrade to the humble bullet point. The best of aftertext in a condensed form.
+ description A thought.
  crux *
  javascript
   compile() {
    // Hacky, I know.
-   this.prependLine(this.getContent())
-   this.appendLine("wrapsOn")
-   return super.compile()
+   const newLine = this.prependLine(this.getContent())
+   const newLine2 = this.appendLine("wrapsOn")
+   const compiled = super.compile()
+   newLine.destroy()
+   newLine2.destroy()
+   return compiled
   }
 listAftertextNode
  extends thoughtNode
@@ -147,6 +149,7 @@ listAftertextNode
    return "ul" // todo: in the future add support for ol
   }
 questionAftertextNode
+ description A question.
  extends thoughtNode
  crux ?
  javascript
@@ -180,7 +183,7 @@ blinkNode
     </script>`
   }
 loremIpsumNode
- extends aftertextNode
+ extends abstractAftertextNode
  description Generate dummy text.
  cruxFromId
  catchAllCellType integerCell
@@ -314,34 +317,6 @@ scrollNodeTypeDefinitionNode
   compile() {
     return ""
   }
-abstractHeaderNode
- cruxFromId
- catchAllCellType stringCell
- extends abstractScrollNode
- catchAllNodeType multilineTitleNode
- javascript
-  compile() {
-   const children = this.childrenToString() ? " " + this.childrenToString() : ""
-   return `<${this.tag} class="${this.className}">${this.getContent() + children}</${this.tag}>`
-  }
-sectionNode
- description Compiles to an h3 tag.
- extends abstractHeaderNode
- javascript
-  tag = "h3"
-  className = "scrollSectionComponent"
-subsectionNode
- description Compiles to an h4 tag.
- extends abstractHeaderNode
- javascript
-  tag = "h4"
-  className = "scrollSubsectionComponent"
-questionNode
- description Use for pages like FAQs.
- extends abstractHeaderNode
- javascript
-  tag = "h4"
-  className = "scrollQuestionComponent"
 htmlNode
  description A catch all block to drop in any loose html.
  cruxFromId
@@ -496,35 +471,6 @@ emailNode
  extends abstractSiteSettingNode
  cruxFromId
  cells keywordCell emailAddressCell
-listNode
- description An unordered list.
- catchAllNodeType listItemNode
- cruxFromId
- extends abstractScrollNode
- compiler
-  stringTemplate 
-  openChildren <ul class="scrollUnorderedListComponent">
-  closeChildren </ul>
-orderedListNode
- description An ordered list.
- extends listNode
- cruxFromId
- compiler
-  stringTemplate 
-  openChildren <ol class="scrollOrderedListComponent">
-  closeChildren </ol>
-paragraphNode
- description Prose content.
- catchAllNodeType paragraphContentNode
- extends abstractScrollNode
- cruxFromId
- javascript
-  get paragraphContent() {
-    return this.childrenToString()
-  }
-  compile() {
-   return `<p class="scrollParagraphComponent">${this.getRootNode().compileATags(this.paragraphContent)}</p>`
-  }
 quoteNode
  cruxFromId
  description A blockquote.
@@ -814,8 +760,11 @@ linkNode
    if (title) attrs.push(`title="${title.childrenToString().replace(/\n/g, " ")}"`)
    return attrs
   }
+  patternStartsAtWord = 2
   get pattern() {
-   return this.getWordsFrom(2).join(" ")
+   // If no pattern is provided, make the *entire* line a link.
+   const words = this.getWordsFrom(this.patternStartsAtWord)
+   return words.length ? words.join(" ") : this.getParent().getContent()
   }
 emailLinkNode
  description A mailto link
@@ -833,9 +782,7 @@ quickLinkNode
   get link() {
    return this.getWord(0)
   }
-  get pattern() {
-   return this.getWordsFrom(1).join(" ")
-  }
+  patternStartsAtWord = 1
 classMarkupNode
  description Add a span with a class name around matching text.
  extends abstractMarkupNode
@@ -991,8 +938,6 @@ commentLineNode
 cssLineNode
  catchAllCellType anyCell
  catchAllNodeType cssLineNode
-multilineTitleNode
- catchAllCellType stringCell
 htmlLineNode
  catchAllCellType anyCell
  catchAllNodeType htmlLineNode
@@ -1005,15 +950,6 @@ stumpNode
  description Stump is a Tree Language that compiles to HTML.
  catchAllCellType anyCell
  catchAllNodeType stumpNode
-listItemNode
- cells bulletPointCell
- catchAllCellType stringCell
- javascript
-  compile() {
-   return `<li>${this.getRootNode().compileATags(this.getContent() || "")}</li>`
-  }
-paragraphContentNode
- catchAllCellType stringCell
 quoteLineNode
  catchAllCellType anyCell
  catchAllNodeType quoteLineNode
@@ -1049,25 +985,6 @@ scrollScriptNode
   get permalink() {
    return this.get("permalink") || this.file.permalink || ""
   }
-  compileATags(text) {
-   // todo: a better place for these util functions? I stick them in here so the
-   // grammar is all in one file for ease of use in TreeLanguageDesigner
-   const linkReplacer = (match, p1, p2, p3, offset, str) => {
-    let suffix = ""
-    if (p3.endsWith(",")) suffix = "," + suffix
-    if (p3.endsWith(".")) suffix = "." + suffix
-    p3 = p3.replace(/(,|\.)$/, "")
-    let prefix = "https://"
-    const isRelativeLink = p3.startsWith("./")
-    if (isRelativeLink) {
-     prefix = ""
-     p3 = p3.substr(2)
-    }
-    if (p3.startsWith("https://") || p3.startsWith("http://")) prefix = ""
-    return `${p1}<a href="${prefix}${p3}">${p2}</a>${suffix}`
-   }
-   return text.replace(/(^|\s)(\S+)🔗(\S+)(?=(\s|$))/g, linkReplacer)
-  }
  example
   title Hello world
   section This is Scroll
@@ -1095,8 +1012,6 @@ rowNode
     const link = words[col.linkIndex]
     if (col.linkIndex > -1 && link)
      tagged = `<a href="${link}">${content}</a>`
-    else
-     tagged = this.getRootNode().compileATags(content ?? "")
     str += `<td>${tagged}</td>\n`
    }
    return str
