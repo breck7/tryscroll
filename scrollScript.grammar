@@ -182,6 +182,10 @@ blinkNode
     }, 2000)
     </script>`
   }
+imageCaptionAftertextNode
+ description An optional caption to accompany the image.
+ crux caption
+ extends thoughtNode
 loremIpsumNode
  extends abstractAftertextNode
  description Generate dummy text.
@@ -331,7 +335,7 @@ imageNode
  cells keywordCell urlCell
  extends abstractScrollNode
  cruxFromId
- inScope imageCaptionNode
+ inScope imageCaptionAftertextNode
  javascript
   compile() {
    const file = this.getRootNode().file
@@ -349,8 +353,8 @@ imageNode
     console.error(err)
     imgTag = `<img src="${src}">`
    }
-    const caption = this.get("caption")
-    const captionFig = caption  ? `<figcaption>${caption}</figcaption>` : ""
+    const caption = this.getNode("caption")
+    const captionFig = caption  ? `<figcaption>${caption.compile()}</figcaption>` : ""
     return `<figure class="scrollImageComponent"><a href="${src}" target="_blank">${imgTag}</a>${captionFig}</figure>`
   }
 importNode
@@ -885,6 +889,17 @@ datelineNode
    }
    return [{ index: 0, string: `<span class="scrollDateComponent">${day} — </span>` }]
   }
+dayjsNode
+ description Advanced directive that evals some Javascript code in an environment including "dayjs".
+ cruxFromId
+ extends abstractAftertextDirectiveNode
+ javascript
+  getInserts() {
+    const dayjs = require("dayjs")
+    const days = eval(this.getContent())
+    const index = this.getParent().originalText.indexOf("days")
+    return [{ index, string: `${days} ` }]
+  }
 abstractMarkupParameterNode
  cells keywordCell
  cruxFromId
@@ -941,11 +956,6 @@ cssLineNode
 htmlLineNode
  catchAllCellType anyCell
  catchAllNodeType htmlLineNode
-imageCaptionNode
- description An optional caption to accompany the image.
- crux caption
- cells keywordCell
- catchAllCellType stringCell
 stumpNode
  description Stump is a Tree Language that compiles to HTML.
  catchAllCellType anyCell
