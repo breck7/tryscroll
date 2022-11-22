@@ -145,8 +145,9 @@ listAftertextNode
      .getLine()
      .startsWith("- ")
    const { listType } = this
-   return (isStartOfList ? `<${listType}>` : "") + `<li>${super.compile()}</li>` + (isEndOfList ? `</${listType}>` : "")
+   return (isStartOfList ? `<${listType}>` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
   }
+  tag = "li"
   get listType() {
    return "ul" // todo: in the future add support for ol
   }
@@ -781,7 +782,7 @@ emailLinkNode
    return [`href="mailto:${this.link}"`]
   }
 quickLinkNode
- pattern ^https\:
+ pattern ^https?\:
  extends linkNode
  cells urlCell
  javascript
