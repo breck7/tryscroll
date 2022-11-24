@@ -222,15 +222,16 @@ groupsNode
  catchAllCellType permalinkCell
 titleNode
  catchAllCellType stringCell
- description Title of the file.
+ description Title of the page.
  extends abstractTopLevelSingleMetaNode
+ inScope hideTitleNode
  javascript
   compile() {
-   return `<h1 class="scrollTitleComponent"><a href="${this.getRootNode().permalink}">${this.getContent()}</a></h1>`
+   return this.has("hidden") ? "" : `<h1 class="scrollTitleComponent"><a href="${this.getRootNode().permalink}">${this.getContent()}</a></h1>`
   }
-htmlTitleNode
+descriptionNode
  catchAllCellType stringCell
- description Use this to override the automatic HTML <title> generation.
+ description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
  extends abstractTopLevelSingleMetaNode
 viewSourceUrlNode
  catchAllCellType urlCell
@@ -243,6 +244,73 @@ dateNode
 endSnippetNode
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractTopLevelSingleMetaNode
+abstractSiteSettingNode
+ extends abstractScrollNode
+ cells keywordCell
+ javascript
+  compile() {
+    return ""
+  }
+abstractUrlSettingNode
+ extends abstractSiteSettingNode
+ cells keywordCell urlCell
+ cruxFromId
+openGraphImageNode
+ description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ extends abstractUrlSettingNode
+rssFeedUrlNode
+ description URL for RSS feed, if any.
+ extends abstractUrlSettingNode
+baseUrlNode
+ description Root url of the published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
+ extends abstractUrlSettingNode
+viewSourceBaseUrlNode
+ description The base link to be used to generate the "View source" link.
+ extends abstractUrlSettingNode
+githubNode
+ description A link to the GitHub project or profile page.
+ extends abstractUrlSettingNode
+twitterNode
+ description A link to the blog or author's Twitter account.
+ extends abstractUrlSettingNode
+abstractIntSettingNode
+ cruxFromId
+ extends abstractSiteSettingNode
+ cells keywordCell integerCell
+maxColumnsNode
+ extends abstractIntSettingNode
+ description Set your own max column count for a single file's generated HTML.
+columnWidthNode
+ extends abstractIntSettingNode
+ description Set your own column width, in ch units, for the generated HTML.
+scrollCssNode
+ extends abstractSiteSettingNode
+ cruxFromId
+ cells keywordCell permalinkCell
+ description If not present Scroll style CSS will be included on each page.
+scrollHeaderNode
+ extends abstractSiteSettingNode
+ description Define a header for a certain page. Setting to blank will also remove the header on a page.
+ cruxFromId
+ catchAllNodeType stumpNode
+ javascript
+  compile() { return ""}
+scrollFooterNode
+ extends abstractSiteSettingNode
+ description Define a footer for a certain page. Setting to blank will also remove the footer on a page.
+ cruxFromId
+ catchAllNodeType stumpNode
+ javascript
+  compile() { return ""}
+abstractSiteStringSettingNode
+ extends abstractSiteSettingNode
+ catchAllCellType stringCell
+ cruxFromId
+emailNode
+ description Email address for the site owner.
+ extends abstractSiteSettingNode
+ cruxFromId
+ cells keywordCell emailAddressCell
 authorNode
  description Prints an author byline with an optional link to a page for the author.
  extends abstractScrollNode
@@ -405,79 +473,6 @@ templateNode
   compile() {
     return ""
   }
-abstractSiteSettingNode
- extends abstractScrollNode
- cells keywordCell
- javascript
-  compile() {
-    return ""
-  }
-abstractIntSettingNode
- cruxFromId
- extends abstractSiteSettingNode
- cells keywordCell integerCell
-maxColumnsNode
- extends abstractIntSettingNode
- description Set your own max column count for a single file's generated HTML.
-columnWidthNode
- extends abstractIntSettingNode
- description Set your own column width, in ch units, for the generated HTML.
-scrollCssNode
- extends abstractSiteSettingNode
- cruxFromId
- cells keywordCell permalinkCell
- description If not present Scroll style CSS will be included on each page.
-scrollHeaderNode
- extends abstractSiteSettingNode
- description Define a header for a certain page. Setting to blank will also remove the header on a page.
- cruxFromId
- catchAllNodeType stumpNode
- javascript
-  compile() { return ""}
-scrollFooterNode
- extends abstractSiteSettingNode
- description Define a footer for a certain page. Setting to blank will also remove the footer on a page.
- cruxFromId
- catchAllNodeType stumpNode
- javascript
-  compile() { return ""}
-abstractUrlSettingNode
- extends abstractSiteSettingNode
- cells keywordCell urlCell
- cruxFromId
-openGraphImageNode
- description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
- extends abstractUrlSettingNode
-rssFeedUrlNode
- description URL for RSS feed, if any.
- extends abstractUrlSettingNode
-baseUrlNode
- description Root url of the published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
- extends abstractUrlSettingNode
-viewSourceBaseUrlNode
- description The base link to be used to generate the "View source" link.
- extends abstractUrlSettingNode
-githubNode
- description A link to the GitHub project or profile page.
- extends abstractUrlSettingNode
-twitterNode
- description A link to the blog or author's Twitter account.
- extends abstractUrlSettingNode
-abstractSiteStringSettingNode
- extends abstractSiteSettingNode
- catchAllCellType stringCell
- cruxFromId
-siteTitleNode
- description Title of the site.
- extends abstractSiteStringSettingNode
-siteDescriptionNode
- description Description of the site.
- extends abstractSiteStringSettingNode
-emailNode
- description Email address for the site owner.
- extends abstractSiteSettingNode
- cruxFromId
- cells keywordCell emailAddressCell
 quoteNode
  cruxFromId
  description A blockquote.
@@ -544,13 +539,13 @@ printFeedNode
   const file = this.getRootNode().file
   const folder = file.folder
   const files = folder.getGroup(this.getWord(1))
-  const { siteTitle, baseUrl, siteDescription } = file
+  const { title, baseUrl, description } = file
         return `<?xml version="1.0" encoding="ISO-8859-1" ?>
   <rss version="0.91">
   <channel>
-   <title>${siteTitle}</title>
+   <title>${title}</title>
    <link>${baseUrl}</link>
-   <description>${siteDescription}</description>
+   <description>${description}</description>
    <language>en-us</language>
   ${files.map(file => file.toRss()).join("\n")}
   </channel>
@@ -937,6 +932,10 @@ linkNoteNode
   compile() {
    return ""
   }
+hiddenTitleNode
+ description Set this to not print the title.
+ crux hidden
+ cells keywordCell
 catchAllParagraphNode
  description A catch all block. This may be removed in future versions.
  catchAllCellType stringCell
