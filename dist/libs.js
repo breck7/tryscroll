@@ -10785,17 +10785,17 @@ class TreeUtils {
 }
 TreeUtils.Timer = Timer
 //http://stackoverflow.com/questions/37684/how-to-replace-plain-urls-with-links#21925491
-TreeUtils.linkify = text => {
+TreeUtils.linkify = (text, target = "_blank") => {
   let replacedText
   let replacePattern1
   let replacePattern2
   let replacePattern3
   //URLs starting with http://, https://, or ftp://
-  replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim
-  replacedText = text.replace(replacePattern1, '<a href="$1" target="_blank">$1</a>')
+  replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z\(\)0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+\(\)&@#\/%=~_|])/gim
+  replacedText = text.replace(replacePattern1, `<a href="$1" target="${target}">$1</a>`)
   //URLs starting with "www." (without // before it, or it'd re-link the ones done above).
   replacePattern2 = /(^|[^\/])(www\.[\S]+(\b|$))/gim
-  replacedText = replacedText.replace(replacePattern2, '$1<a href="http://$2" target="_blank">$2</a>')
+  replacedText = replacedText.replace(replacePattern2, `$1<a href="http://$2" target="${target}">$2</a>`)
   //Change email addresses to mailto:: links.
   replacePattern3 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim
   replacedText = replacedText.replace(replacePattern3, '<a href="mailto:$1">$1</a>')
@@ -10876,10 +10876,10 @@ class TestRacerTestBlock {
         .map(failure => {
           const actualVal = failure[0] === undefined ? "undefined" : failure[0].toString()
           const expectedVal = failure[1] === undefined ? "undefined" : failure[1].toString()
-          const actual = new jtree.TreeNode(`actual\n${new jtree.TreeNode(actualVal).toString(1)}`)
-          const expected = new jtree.TreeNode(`expected\n${new jtree.TreeNode(expectedVal.toString()).toString(1)}`)
+          const actual = new TreeNode(`actual\n${new TreeNode(actualVal).toString(1)}`)
+          const expected = new TreeNode(`expected\n${new TreeNode(expectedVal.toString()).toString(1)}`)
           const comparison = actual.toComparison(expected)
-          return new jtree.TreeNode(` assertion ${failure[2]}\n${comparison.toSideBySide([actual, expected]).toString(2)}`)
+          return new TreeNode(` assertion ${failure[2]}\n${comparison.toSideBySide([actual, expected]).toString(2)}`)
         })
         .join("\n")
     )
@@ -13527,7 +13527,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "53.8.0"
+TreeNode.getVersion = () => "59.0.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13673,6 +13673,7 @@ var GrammarConstants
   GrammarConstants["nodeType"] = "nodeType"
   GrammarConstants["cellType"] = "cellType"
   GrammarConstants["grammarFileExtension"] = "grammar"
+  GrammarConstants["abstractNodeTypePrefix"] = "abstract"
   GrammarConstants["nodeTypeSuffix"] = "Node"
   GrammarConstants["cellTypeSuffix"] = "Cell"
   // error check time
@@ -13689,13 +13690,16 @@ var GrammarConstants
   GrammarConstants["errorNode"] = "errorNode"
   // parse time
   GrammarConstants["extends"] = "extends"
-  GrammarConstants["abstract"] = "abstract"
   GrammarConstants["root"] = "root"
   GrammarConstants["crux"] = "crux"
   GrammarConstants["cruxFromId"] = "cruxFromId"
   GrammarConstants["pattern"] = "pattern"
   GrammarConstants["inScope"] = "inScope"
   GrammarConstants["cells"] = "cells"
+  GrammarConstants["contentDelimiter"] = "contentDelimiter"
+  GrammarConstants["contentKey"] = "contentKey"
+  GrammarConstants["childrenKey"] = "childrenKey"
+  GrammarConstants["uniqueFirstWord"] = "uniqueFirstWord"
   GrammarConstants["catchAllCellType"] = "catchAllCellType"
   GrammarConstants["cellParser"] = "cellParser"
   GrammarConstants["catchAllNodeType"] = "catchAllNodeType"
@@ -13737,18 +13741,22 @@ class GrammarBackedNode extends TreeNode {
     const handGrammarProgram = this.getHandGrammarProgram()
     return this.isRoot() ? handGrammarProgram : handGrammarProgram.getNodeTypeDefinitionByNodeTypeId(this.constructor.name)
   }
-  toSQLiteInsertStatement(primaryKeyFunction = node => node.getWord(0)) {
+  toSQLiteInsertStatement(id) {
     const def = this.getDefinition()
-    const tableName = def.getTableNameIfAny() || def._getId()
+    const tableName = this.tableName || def.getTableNameIfAny() || def._getId()
     const columns = def.getSQLiteTableColumns()
     const hits = columns.filter(colDef => this.has(colDef.columnName))
     const values = hits.map(colDef => {
       const node = this.getNode(colDef.columnName)
-      const content = node.getContent()
-      return colDef.type === SQLiteTypes.text ? `"${content}"` : content
+      let content = node.getContent()
+      const hasChildren = node.length
+      const isText = colDef.type === SQLiteTypes.text
+      if (content && hasChildren) content = node.getContentWithChildren().replace(/\n/g, "\\n")
+      else if (hasChildren) content = node.childrenToString().replace(/\n/g, "\\n")
+      return isText || hasChildren ? `"${content}"` : content
     })
     hits.unshift({ columnName: "id", type: SQLiteTypes.text })
-    values.unshift(`"${primaryKeyFunction(this)}"`)
+    values.unshift(`"${id}"`)
     return `INSERT INTO ${tableName} (${hits.map(col => col.columnName).join(",")}) VALUES (${values.join(",")});`
   }
   getAutocompleteResults(partialWord, cellIndex) {
@@ -14093,6 +14101,71 @@ class GrammarBackedNode extends TreeNode {
     const str = compiler[GrammarConstantsCompiler.stringTemplate]
     return str !== undefined ? TreeUtils.formatStr(str, catchAllCellDelimiter, Object.assign(this._getFields(), this.cells)) : this.getLine()
   }
+  get contentDelimiter() {
+    return this.getDefinition()._getFromExtended(GrammarConstants.contentDelimiter)
+  }
+  get contentKey() {
+    return this.getDefinition()._getFromExtended(GrammarConstants.contentKey)
+  }
+  get childrenKey() {
+    return this.getDefinition()._getFromExtended(GrammarConstants.childrenKey)
+  }
+  get childrenAreTextBlob() {
+    return this.getDefinition()._isBlobNodeType()
+  }
+  get isArrayElement() {
+    return this.getDefinition()._hasFromExtended(GrammarConstants.uniqueFirstWord) ? false : !this.getDefinition().isSingle
+  }
+  get typedContent() {
+    const cells = this._getParsedCells()
+    // todo: probably a better way to do this, perhaps by defining a cellDelimiter at the node level
+    // todo: this currently parse anything other than string types
+    if (this.contentDelimiter) return this.getContent().split(this.contentDelimiter)
+    if (cells.length === 2) return cells[1].getParsed()
+    return this.getContent()
+  }
+  get typedTuple() {
+    const key = this.getFirstWord()
+    const { typedContent, contentKey, childrenKey } = this
+    const hasChildren = this.length > 0
+    const hasChildrenNoContent = typedContent === undefined && hasChildren
+    const hasChildrenAndContent = typedContent !== undefined && hasChildren
+    const shouldReturnValueAsObject = hasChildrenNoContent
+    if (contentKey || childrenKey) {
+      let obj = {}
+      if (childrenKey) obj[childrenKey] = this.childrenToString()
+      else obj = this.typedMap
+      if (contentKey) {
+        obj[contentKey] = typedContent
+      }
+      return [key, obj]
+    }
+    if (this.childrenAreTextBlob) return [key, this.childrenToString()]
+    if (shouldReturnValueAsObject) return [key, this.typedMap]
+    const shouldReturnValueAsContentPlusChildren = hasChildrenAndContent
+    // If the node has a content and a subtree return it as a string, as
+    // Javascript object values can't be both a leaf and a tree.
+    if (shouldReturnValueAsContentPlusChildren) return [key, this.getContentWithChildren()]
+    return [key, typedContent]
+  }
+  get _shouldSerialize() {
+    const should = this.shouldSerialize
+    return should === undefined ? true : should
+  }
+  get typedMap() {
+    const obj = {}
+    this.forEach(node => {
+      if (!node._shouldSerialize) return true
+      const tuple = node.typedTuple
+      if (!node.isArrayElement) obj[tuple[0]] = tuple[1]
+      else {
+        if (!obj[tuple[0]]) obj[tuple[0]] = []
+        obj[tuple[0]].push(tuple[1])
+      }
+    })
+    return obj
+  }
+  fromTypedMap() {}
   compile() {
     if (this.isRoot()) return super.compile()
     const def = this.getDefinition()
@@ -14334,6 +14407,9 @@ class GrammarBoolCell extends AbstractGrammarBackedCell {
     const word = this.getWord()
     const str = word.toLowerCase()
     return this._trues.has(str) || this._falses.has(str)
+  }
+  getSQLiteType() {
+    return SQLiteTypes.integer
   }
   _synthesizeCell() {
     return TreeUtils.getRandomString(1, ["1", "true", "t", "yes", "0", "false", "f", "no"])
@@ -14814,7 +14890,8 @@ class AbstractCellParser {
         cellTypeId = PreludeCellTypeIds.extraWordCell
         cellTypeDefinition = grammarProgram.getCellTypeDefinitionById(cellTypeId)
       }
-      cells[cellIndex] = new cellConstructor(node, cellIndex, cellTypeDefinition, cellTypeId, isCatchAll, def)
+      const anyCellConstructor = cellConstructor
+      cells[cellIndex] = new anyCellConstructor(node, cellIndex, cellTypeDefinition, cellTypeId, isCatchAll, def)
     }
     return cells
   }
@@ -14927,6 +15004,10 @@ class AbstractGrammarDefinitionNode extends AbstractExtendibleTreeNode {
       GrammarConstants.tags,
       GrammarConstants.crux,
       GrammarConstants.cruxFromId,
+      GrammarConstants.contentDelimiter,
+      GrammarConstants.contentKey,
+      GrammarConstants.childrenKey,
+      GrammarConstants.uniqueFirstWord,
       GrammarConstants.pattern,
       GrammarConstants.baseNodeType,
       GrammarConstants.required,
@@ -14935,7 +15016,6 @@ class AbstractGrammarDefinitionNode extends AbstractExtendibleTreeNode {
       GrammarConstants._rootNodeJsHeader,
       GrammarConstants.javascript,
       GrammarConstants.compilesTo,
-      GrammarConstants.abstract,
       GrammarConstants.javascript,
       GrammarConstants.single,
       GrammarConstants.todoComment
@@ -14983,11 +15063,13 @@ ${properties.join("\n")}
     return this.getFrom(`${GrammarConstantsConstantTypes.string} ${GrammarConstantsMisc.tableName}`)
   }
   getSQLiteTableColumns() {
-    return this._getConcreteNonErrorInScopeNodeDefinitions(this._getInScopeNodeTypeIds()).map(node => {
-      const firstNonKeywordCellType = node.getCellParser().getCellArray()[1]
-      const type = firstNonKeywordCellType ? firstNonKeywordCellType.getSQLiteType() : SQLiteTypes.text
+    return this._getConcreteNonErrorInScopeNodeDefinitions(this._getInScopeNodeTypeIds()).map(def => {
+      const firstNonKeywordCellType = def.getCellParser().getCellArray()[1]
+      let type = firstNonKeywordCellType ? firstNonKeywordCellType.getSQLiteType() : SQLiteTypes.text
+      // For now if it can have children serialize it as text in SQLite
+      if (!def.isTerminalNodeType()) type = SQLiteTypes.text
       return {
-        columnName: node._getIdWithoutSuffix(),
+        columnName: def._getIdWithoutSuffix(),
         type
       }
     })
@@ -15038,7 +15120,7 @@ ${properties.join("\n")}
     return !!this._getGeneratedClassName()
   }
   _isAbstract() {
-    return this.has(GrammarConstants.abstract)
+    return this.id.startsWith(GrammarConstants.abstractNodeTypePrefix)
   }
   _getConcreteDescendantDefinitions() {
     const defs = this._getProgramNodeTypeDefinitionCache()
@@ -15138,7 +15220,7 @@ ${properties.join("\n")}
   }
   // Should only one of these node types be present in the parent node?
   get isSingle() {
-    return this._hasFromExtended(GrammarConstants.single)
+    return this._hasFromExtended(GrammarConstants.single) && this._getFromExtended(GrammarConstants.single) !== "false"
   }
   isRequired() {
     return this._hasFromExtended(GrammarConstants.required)
@@ -15169,7 +15251,7 @@ ${properties.join("\n")}
   }
   _isBlobNodeType() {
     // Do not check extended classes. Only do once.
-    return this.get(GrammarConstants.baseNodeType) === GrammarConstants.blobNode
+    return this._getFromExtended(GrammarConstants.baseNodeType) === GrammarConstants.blobNode
   }
   _getErrorMethodToJavascript() {
     if (this._isBlobNodeType()) return "getErrors() { return [] }" // Skips parsing child nodes for perf gains.

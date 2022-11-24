@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "jtree": "^53.6.0",
+    "jtree": "^59.0.0",
     "scroll-cli": "^44.0.1"
   },
   "devDependencies": {
