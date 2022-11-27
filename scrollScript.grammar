@@ -45,14 +45,15 @@ filePathCell
  extends stringCell
 groupNameCell
  extends stringCell
-templateEnumCell
- enum group snippets file blank
- extends stringCell
 aftertextTextNode
  catchAllCellType stringCell
  boolean isTextNode true
 abstractScrollNode
  cells keywordCell
+ javascript
+  compileSnippet() {
+   return this.compile()
+  }
 abstractAftertextNode
  description Text followed by markup commands.
  extends abstractScrollNode
@@ -74,18 +75,18 @@ abstractAftertextNode
     .flat()
   }
   get originalTextPostLinkify() {
-    const originalText = this.filter(node => node.isTextNode)
+   const originalText = this.filter(node => node.isTextNode)
     .map(node => node.toString())
     .join("\n")
-    const shouldLinkify = originalText.includes("<a ") ? false : true
-    return shouldLinkify ? this.replaceNotes(jtree.Utils.linkify(originalText)) : originalText
+   const shouldLinkify = originalText.includes("<a ") ? false : true
+   return shouldLinkify ? this.replaceNotes(jtree.Utils.linkify(originalText)) : originalText
   }
   get notes() {
-    return this.getParent().filter(node => node.getLine().startsWith("^"))
+   return this.getParent().filter(node => node.getLine().startsWith("^"))
   }
   replaceNotes(originalText) {
-    this.notes.forEach((note, index) => originalText = originalText.replace(note.getWord(0), `<a href="#note${index + 1}" class="scrollNoteLink"><sup>${index + 1}</sup></a>`))
-    return originalText
+   this.notes.forEach((note, index) => (originalText = originalText.replace(note.getWord(0), `<a href="#note${index + 1}" class="scrollNoteLink"><sup>${index + 1}</sup></a>`)))
+   return originalText
   }
   get text() {
    const { originalTextPostLinkify, markupInserts } = this
@@ -170,16 +171,18 @@ noteDefinitionNode
  extends thoughtNode
  pattern ^\^.+$
  javascript
-  compile() { return ""}
+  compile() {
+   return ""
+  }
   get divAttributes() {
-    return super.divAttributes + ` id="note${this.noteIndex}" `
+   return super.divAttributes + ` id="note${this.noteIndex}" `
   }
   get text() {
-    return `${this.noteIndex}. ${super.text}`
+   return `${this.noteIndex}. ${super.text}`
   }
   compileNote(noteIndex) {
-    this.noteIndex = noteIndex
-    return super.compile()
+   this.noteIndex = noteIndex
+   return super.compile()
   }
 h3AftertextNode
  description Compiles to an h3 tag.
@@ -212,17 +215,133 @@ imageCaptionAftertextNode
  description An optional caption to accompany the image.
  crux caption
  extends thoughtNode
-loremIpsumNode
+abstractSnippetNode
  extends abstractAftertextNode
- description Generate dummy text.
  cruxFromId
- catchAllCellType integerCell
+scrollHeaderNode
+ extends abstractSnippetNode
+ description Define a header for a certain page. Setting to blank will also remove the header on a page.
  javascript
-  get originalTextPostLinkify() {
-   return `Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
+  compileSnippet() {
+   return ""
   }
   compile() {
-   return super.compile().repeat(this.getWord(1) ? parseInt(this.getWord(1)) : 1)
+   const file = this.getParent().file
+   const { SVGS, cssClasses, linkToPrevious, linkToNext } = file
+   return file.compileStumpCode(`div
+   class scrollHeaderComponent
+   a <
+    class ${cssClasses.scrollPrevPageLink}
+    href ${linkToPrevious}
+   a ${SVGS.home}
+    class scrollTopLeftBarComponent
+    href index.html
+   a ${SVGS.github}
+    class scrollTopRightBarComponent
+    href ${file.github}
+   a >
+    class ${cssClasses.scrollNextPageLink}
+    href ${linkToNext}`)
+  }
+scrollFooterNode
+ extends abstractSnippetNode
+ javascript
+  compileSnippet() {
+   return ""
+  }
+  compile() {
+   const file = this.getParent().file
+   const { SVGS, SCROLL_VERSION, viewSourceUrl, cssClasses } = file
+   const closeContainerTag = '</div>'
+   return closeContainerTag + file.compileStumpCode(`p
+   class ${cssClasses.scrollFileViewSourceUrlComponent}
+   a View source
+    href ${viewSourceUrl}
+  div
+   class scrollFooterComponent
+   a ${SVGS.email}
+    href mailto:${file.email}
+   a ${SVGS.twitter}
+    href ${this.twitter}
+   a ${SVGS.github}
+    href ${file.github}
+   a Built with Scroll v${SCROLL_VERSION}
+    href https://scroll.pub
+    class scrollCommunityLinkComponent`)
+  }
+snippetsNode
+ extends abstractSnippetNode
+ cells keywordCell groupNameCell
+ description Prints the snippets of all files in a folder that are in the named group.
+ example
+  snippets index
+ javascript
+  methodForGettingHtml = "htmlCodeForSnippetsPage"
+  makeSnippet(file) {
+  const { cssClasses } = file
+   const snippet = new jtree.TreeNode(`div
+   class ${cssClasses.scrollSnippetContainerComponent}`)
+   const div = snippet.getNode("div")
+   div.appendLineAndChildren("bern", file[this.methodForGettingHtml])
+   return snippet.toString().replace(/\n/g, "\n ")
+  }
+  compile() {
+   const groupName = this.getWord(1)
+   const file = this.getParent().file
+   const { cssClasses, folder } = file
+   const files = folder.getGroup(groupName)
+   const snippets = files.map(file => this.makeSnippet(file)).join("\n ")
+   const code = `div
+   class scrollColumnsComponent scrollColumnsComponentRuled
+   style column-width:35ch;
+   ${snippets}`
+   return file.compileStumpCode(code)
+  }
+fullSnippetsNode
+ extends snippetsNode
+ cruxFromId
+ description Prints the full contents of files in a folder that are in the named group.
+ javascript
+  methodForGettingHtml = "compiledSnippet"
+startColumnsNode
+ extends abstractSnippetNode
+ description Start a multicolumn grid.
+ javascript
+  compile() {
+   return '<div class="scrollColumnsComponent" style="column-width:35ch;">'
+  }
+startRuledColumnsNode
+ extends startColumnsNode
+ description Columns but with rules.
+ cruxFromId
+endColumnsNode
+ extends abstractSnippetNode
+ description End a multicolumn grid.
+ javascript
+  compile() {
+   return '</div>'
+  }
+scrollCssTagNode
+ extends abstractSnippetNode
+ description Prints the Scroll CSS in an <style> tag. To not print the style tag use `scrollCss`.
+ javascript
+  compile() {
+   return `<style>${this.getParent().file.SCROLL_CSS}</style>`
+  }
+scrollCssNode
+ extends scrollCssTagNode
+ javascript
+  compile() {
+   return this.getParent().file.SCROLL_CSS
+  }
+loremIpsumNode
+ extends abstractSnippetNode
+ description Generate dummy text.
+ catchAllCellType integerCell
+ javascript
+  compile() {
+   const text = `Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
+   return text.repeat(this.getWord(1) ? parseInt(this.getWord(1)) : 1)
   }
 notesNode
  extends abstractScrollNode
@@ -230,7 +349,7 @@ notesNode
  cruxFromId
  javascript
   get notes() {
-    return this.getParent().filter(node => node.getLine().startsWith("^"))
+   return this.getParent().filter(node => node.getLine().startsWith("^"))
   }
   compile() {
    return this.notes.map((note, noteIndex) => note.compileNote(noteIndex + 1)).join("\n")
@@ -241,7 +360,9 @@ abstractTopLevelSingleMetaNode
  cruxFromId
  cells keywordCell
  javascript
-  compile() { return ""}
+  compile() {
+   return ""
+  }
 permalinkNode
  description When compiling, Scroll will save this file to {permalink}
  extends abstractTopLevelSingleMetaNode
@@ -261,7 +382,8 @@ titleNode
  inScope hiddenTitleNode
  javascript
   compile() {
-   return this.has("hidden") ? "" : `<h1 class="scrollTitleComponent"><a href="${this.getRootNode().permalink}">${this.getContent()}</a></h1>`
+   const { file } = this.getParent()
+   return this.has("hidden") ? "" : `<h1 class="scrollTitleComponent"><a href="${file.permalink}">${this.getContent()}</a></h1>`
   }
 descriptionNode
  catchAllCellType stringCell
@@ -283,7 +405,7 @@ abstractSiteSettingNode
  cells keywordCell
  javascript
   compile() {
-    return ""
+   return ""
   }
 abstractUrlSettingNode
  extends abstractSiteSettingNode
@@ -307,35 +429,6 @@ githubNode
 twitterNode
  description A link to the blog or author's Twitter account.
  extends abstractUrlSettingNode
-abstractIntSettingNode
- cruxFromId
- extends abstractSiteSettingNode
- cells keywordCell integerCell
-maxColumnsNode
- extends abstractIntSettingNode
- description Set your own max column count for a single file's generated HTML.
-columnWidthNode
- extends abstractIntSettingNode
- description Set your own column width, in ch units, for the generated HTML.
-scrollCssNode
- extends abstractSiteSettingNode
- cruxFromId
- cells keywordCell permalinkCell
- description If not present Scroll style CSS will be included on each page.
-scrollHeaderNode
- extends abstractSiteSettingNode
- description Define a header for a certain page. Setting to blank will also remove the header on a page.
- cruxFromId
- catchAllNodeType stumpNode
- javascript
-  compile() { return ""}
-scrollFooterNode
- extends abstractSiteSettingNode
- description Define a footer for a certain page. Setting to blank will also remove the footer on a page.
- cruxFromId
- catchAllNodeType stumpNode
- javascript
-  compile() { return ""}
 abstractSiteStringSettingNode
  extends abstractSiteSettingNode
  catchAllCellType stringCell
@@ -388,7 +481,9 @@ belowAsCodeNode
  extends abstractScrollNode
  cruxFromId
  javascript
-  get target() { return this.getNext()}
+  get target() {
+   return this.getNext()
+  }
   compile() {
    return `<code class="scrollCodeBlockComponent">${this.target.toString().replace(/\</g, "&lt;")}</code>`
   }
@@ -396,7 +491,9 @@ aboveAsCodeNode
  description Print the Scroll code for the previous node.
  extends belowAsCodeNode
  javascript
-  get target() { return this.getPrevious()}
+  get target() {
+   return this.getPrevious()
+  }
 commentNode
  description Will not appear in the compiled HTML.
  catchAllCellType commentCell
@@ -424,7 +521,7 @@ scrollNodeTypeDefinitionNode
  baseNodeType blobNode
  javascript
   compile() {
-    return ""
+   return ""
   }
 htmlNode
  description A catch all block to drop in any loose html.
@@ -434,6 +531,16 @@ htmlNode
  javascript
   compile() {
    return `${this.childrenToString()}`
+  }
+stumpNode
+ cruxFromId
+ extends abstractScrollNode
+ description Stump is a Tree Language that compiles to HTML.
+ catchAllNodeType stumpContentNode
+ javascript
+  compile() {
+    const file = this.getParent().file
+    return file.compileStumpCode(this.childrenToString())
   }
 imageNode
  description An img tag.
@@ -458,9 +565,9 @@ imageNode
     console.error(err)
     imgTag = `<img src="${src}">`
    }
-    const caption = this.getNode("caption")
-    const captionFig = caption  ? `<figcaption>${caption.compile()}</figcaption>` : ""
-    return `<figure class="scrollImageComponent"><a href="${src}" target="_blank">${imgTag}</a>${captionFig}</figure>`
+   const caption = this.getNode("caption")
+   const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
+   return `<figure class="scrollImageComponent"><a href="${src}" target="_blank">${imgTag}</a>${captionFig}</figure>`
   }
 importNode
  description Import one file into another.
@@ -468,21 +575,28 @@ importNode
  extends abstractScrollNode
  catchAllCellType filePathCell
  javascript
-  compile() { return ""}
+  compile() {
+   return ""
+  }
  example
-  import settings.scroll
+  import header.scroll
 importOnlyNode
  description Mark a file as not one to build. This line will be not be imported into the importing file.
  cruxFromId
  extends abstractScrollNode
  javascript
-  compile() { return ""}
+  compile() {
+   return ""
+  }
 keyboardNavNode
  description Makes left go to previous file and right go to next file.
  extends abstractScrollNode
  cruxFromId
  catchAllCellType urlCell
  javascript
+  compileSnippet() {
+   return ""
+  }
   compile() {
    const file = this.getRootNode().file
    const linkToPrevious = this.getWord(1) ?? file.linkToPrevious
@@ -496,16 +610,6 @@ keyboardNavNode
       getLinks()[1].click()
    });</script>`
    return `<div class="scrollKeyboardNav"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
-  }
-templateNode
- extends abstractScrollNode
- cruxFromId
- cells keywordCell templateEnumCell
- catchAllCellType stringCell
- description Defaults to "file".
- javascript
-  compile() {
-    return ""
   }
 quoteNode
  cruxFromId
@@ -527,7 +631,7 @@ readingListNode
    https://example.com/similar by Author Name
  javascript
   compile() {
-    return `<br><ul>${this.map(child => child.compile()).join("\n")}</ul>`
+   return `<br><ul>${this.map(child => child.compile()).join("\n")}</ul>`
   }
 redirectToNode
  description Prints an HTML redirect tag. In the future might also emit nginx config.
@@ -570,11 +674,11 @@ printFeedNode
  cells keywordCell groupNameCell
  javascript
   compile() {
-  const file = this.getRootNode().file
-  const folder = file.folder
-  const files = folder.getGroup(this.getWord(1))
-  const { title, baseUrl, description } = file
-        return `<?xml version="1.0" encoding="ISO-8859-1" ?>
+   const file = this.getRootNode().file
+   const folder = file.folder
+   const files = folder.getGroup(this.getWord(1))
+   const { title, baseUrl, description } = file
+   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
   <rss version="0.91">
   <channel>
    <title>${title}</title>
@@ -585,14 +689,6 @@ printFeedNode
   </channel>
   </rss>`
   }
-printScrollCSSNode
- description Prints out the default Scroll theme CSS.
- extends abstractScrollNode
- cruxFromId
- javascript
-  compile() {
-   return this.getRootNode().file.SCROLL_CSS
-  }
 abstractTableNode
  cruxFromId
  catchAllNodeType rowNode
@@ -602,27 +698,23 @@ abstractTableNode
    return this.columns.filter(col => !col.isLink).map(column => `<th>${column.name}</th>\n`)
   }
   get columnNames() {
-    const header = this.nodeAt(0)
-    return header
-    ? header
-      .getLine()
-      .split(this.delimiter)
-    : []  
+   const header = this.nodeAt(0)
+   return header ? header.getLine().split(this.delimiter) : []
   }
   get columns() {
-    const cols = this.columnNames
-    return cols.map((name, index) => {
-      const isLink = name.endsWith("Link")
-      const linkIndex = cols.indexOf(name + "Link")
-      return {
-        name,
-        isLink,
-        linkIndex
-      }
-    })
+   const cols = this.columnNames
+   return cols.map((name, index) => {
+    const isLink = name.endsWith("Link")
+    const linkIndex = cols.indexOf(name + "Link")
+    return {
+     name,
+     isLink,
+     linkIndex
+    }
+   })
   }
   get tableBody() {
-   const {delimiter} = this
+   const { delimiter } = this
    return this.getTopDownArray()
     .slice(1)
     .map(node => `<tr>${node.toRow(this.columns, delimiter)}</tr>`)
@@ -653,12 +745,10 @@ treeTableNode
  catchAllNodeType treeRowNode
  javascript
   get columnNames() {
-    return this._getUnionNames()
+   return this._getUnionNames()
   }
   get tableBody() {
-   return this
-    .map(node => `<tr>${node.toRow(this.columns)}</tr>`)
-    .join("\n")
+   return this.map(node => `<tr>${node.toRow(this.columns)}</tr>`).join("\n")
   }
  example
   treeTable
@@ -685,13 +775,12 @@ kpiTableNode
    const items = this.getTopDownArray()
    let str = ""
    for (let i = 0; i < items.length; i = i + 3) {
-      str += this.makeRow(items.slice(i, i + 3))
+    str += this.makeRow(items.slice(i, i + 3))
    }
    return str
   }
   makeRow(items) {
-    return `<tr>` + items.map(node => `<td>${node.getWord(0)}<span>${node.getContent()}</span></td>`)
-    .join("\n") + `</tr>\n`
+   return `<tr>` + items.map(node => `<td>${node.getWord(0)}<span>${node.getContent()}</span></td>`).join("\n") + `</tr>\n`
   }
   compile() {
    return `<table class="scrollKpiTable">${this.tableBody}</table>`
@@ -729,7 +818,10 @@ abstractAftertextDirectiveNode
    return [...text.matchAll(new RegExp(escapedPattern, "g"))].map(match => {
     const { index } = match
     const endIndex = index + pattern.length
-    return [{ index, string: `<${this.openTag}${this.allAttributes}>`, endIndex }, { index: endIndex, endIndex, string: `</${this.closeTag}>` }]
+    return [
+     { index, string: `<${this.openTag}${this.allAttributes}>`, endIndex },
+     { index: endIndex, endIndex, string: `</${this.closeTag}>` }
+    ]
    })
   }
   getInserts(text) {
@@ -878,7 +970,10 @@ wrapsOnNode
    return [...text.matchAll(pattern)].map(match => {
     const { index } = match
     const endIndex = index + match[0].length
-    return [{ index, string: `<${tag + (attributes ? " " + attributes : "")}>`, endIndex, consumeStartCharacters: delimiterLength }, { index: endIndex, endIndex, string: `</${tag}>`, consumeEndCharacters: delimiterLength }]
+    return [
+     { index, string: `<${tag + (attributes ? " " + attributes : "")}>`, endIndex, consumeStartCharacters: delimiterLength },
+     { index: endIndex, endIndex, string: `</${tag}>`, consumeEndCharacters: delimiterLength }
+    ]
    })
   }
 wrapNode
@@ -927,10 +1022,10 @@ dayjsNode
  extends abstractAftertextDirectiveNode
  javascript
   getInserts() {
-    const dayjs = require("dayjs")
-    const days = eval(this.getContent())
-    const index = this.getParent().originalTextPostLinkify.indexOf("days")
-    return [{ index, string: `${days} ` }]
+   const dayjs = require("dayjs")
+   const days = eval(this.getContent())
+   const index = this.getParent().originalTextPostLinkify.indexOf("days")
+   return [{ index, string: `${days} ` }]
   }
 abstractMarkupParameterNode
  cells keywordCell
@@ -975,7 +1070,9 @@ catchAllParagraphNode
  catchAllCellType stringCell
  baseNodeType errorNode
  javascript
-  compile() { return `<p class="scrollParagraphComponent">${this.getLine()}</p>`}
+  compile() {
+   return `<p class="scrollParagraphComponent">${this.getLine()}</p>`
+  }
 errorNode
  baseNodeType errorNode
 chatLineNode
@@ -992,10 +1089,8 @@ cssLineNode
 htmlLineNode
  catchAllCellType anyCell
  catchAllNodeType htmlLineNode
-stumpNode
- description Stump is a Tree Language that compiles to HTML.
+stumpContentNode
  catchAllCellType anyCell
- catchAllNodeType stumpNode
 quoteLineNode
  catchAllCellType anyCell
  catchAllNodeType quoteLineNode
@@ -1004,15 +1099,17 @@ readingListItemNode
  catchAllCellType stringCell
  javascript
   compile() {
-    const url = this.getWord(0)
-    const [title, author] = this.getContent().split(" by ")
-    return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
+   const url = this.getWord(0)
+   const [title, author] = this.getContent().split(" by ")
+   return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
   }
 blankLineNode
  description Blank lines compile to nothing in the HTML.
  cells blankCell
  javascript
-  compile() { return ""}
+  compile() {
+   return ""
+  }
  pattern ^$
  tags doNotSynthesize
 scrollScriptNode
@@ -1024,8 +1121,11 @@ scrollScriptNode
  compilesTo html
  javascript
   setFile(file) {
-    this.file = file
-    return this
+   this.file = file
+   return this
+  }
+  compileSnippet() {
+   return this.map(child => (child.compileSnippet ? child.compileSnippet() : child.compile())).join("\n")
   }
   file = {}
   get permalink() {
@@ -1056,8 +1156,7 @@ rowNode
     if (col.isLink) continue
     let tagged = content
     const link = words[col.linkIndex]
-    if (col.linkIndex > -1 && link)
-     tagged = `<a href="${link}">${content}</a>`
+    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
     str += `<td>${tagged}</td>\n`
    }
    return str
@@ -1082,18 +1181,15 @@ treeRowNode
     const node = this.getNode(col.name)
     if (col.isLink) return
     if (!node) {
-      str += "<td></td>\n"
-      return
+     str += "<td></td>\n"
+     return
     }
     const content = node.length ? node.childrenToString() : node.getContent()
     let tagged = ""
     const link = this.get(col.name + "Link")
-    if (col.linkIndex > -1 && link)
-     tagged = `<a href="${link}">${content}</a>`
-    else if (node.length)
-     tagged = `<pre>${content ?? ""}</pre>`
-    else
-     tagged = content ?? ""
+    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
+    else if (node.length) tagged = `<pre>${content ?? ""}</pre>`
+    else tagged = content ?? ""
     str += `<td>${tagged}</td>\n`
    })
    return str
