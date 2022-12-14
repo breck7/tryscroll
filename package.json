@@ -10,12 +10,13 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "jtree": "^59.0.0",
-    "scroll-cli": "^47.1.0"
+    "scroll-cli": "^47.1.2"
   },
   "devDependencies": {
     "tap": "^15.0.9"
   },
   "scripts": {
+    "build": "./build.js",
     "buildCoverageReport": "tap testAll.js",
     "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
     "test": "node testAll.js",

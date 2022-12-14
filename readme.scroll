@@ -28,7 +28,7 @@ code
 
 code
  npm install scroll-cli
- ./build.js
+ npm run build
  open index.html
  git add .
  git commit -m "Updated Scroll"
