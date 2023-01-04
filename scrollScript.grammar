@@ -81,11 +81,12 @@ abstractAftertextNode
    const shouldLinkify = originalText.includes("<a ") ? false : true
    return shouldLinkify ? this.replaceNotes(jtree.Utils.linkify(originalText)) : originalText
   }
-  get notes() {
-   return this.getParent().filter(node => node.getLine().startsWith("^"))
-  }
   replaceNotes(originalText) {
-   this.notes.forEach((note, index) => (originalText = originalText.replace(note.getWord(0), `<a href="#note${index + 1}" class="scrollNoteLink"><sup>${index + 1}</sup></a>`)))
+   this.getRootNode().footnotes.forEach((note, index) => {
+    const needle = note.getWord(0)
+    if (originalText.includes(needle))
+        originalText = originalText.replace(needle, `<a href="#${note.anchorId}" class="scrollNoteLink" id="${note.linkBack()}"><sup>${note.noteId}</sup></a>`)
+   })
    return originalText
   }
   get text() {
@@ -130,6 +131,62 @@ thoughtNode
    newLine2.destroy()
    return compiled
   }
+h3AftertextNode
+ description Compiles to an h3 tag.
+ extends thoughtNode
+ crux #
+ javascript
+  tag = "h3"
+  className = "scrollSectionComponent"
+h4AftertextNode
+ extends h3AftertextNode
+ crux ##
+ javascript
+  tag = "h4"
+blinkNode
+ description Useful when you have a client that always needs to find 1 thing they would like you to change.
+ extends thoughtNode
+ crux blink
+ javascript
+  compile() {
+   return `<span class="scrollBlink">${super.compile()}</span>
+    <script>
+    setInterval(()=>{
+        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
+        el.style.color = el.style.color === "white" ? "black" : "white"
+        )
+    }, 2000)
+    </script>`
+  }
+footnoteDefinitionNode
+ description A footnote. Can also be used as section notes.
+ extends thoughtNode
+ boolean isFootnote true
+ pattern ^\^.+$
+ javascript
+  get divAttributes() {
+   return super.divAttributes + ` id="${this.anchorId}"`
+  }
+  get anchorId() {
+    return `note${this.noteIndex}`
+  }
+  get noteId() {
+    // In the future we could allow common practices like author name
+    return this.noteIndex
+  }
+  linkBack() {
+    return `noteUsage${this.noteIndex}`
+  }
+  get text() {
+   return `<a class="scrollNoteIndex" href="#noteUsage${this.noteIndex}">${this.noteIndex}</a> ${super.text}`
+  }
+  get noteIndex() {
+   return this.getParent().footnotes.indexOf(this) + 1
+  }
+imageCaptionAftertextNode
+ description An optional caption to accompany the image.
+ crux caption
+ extends thoughtNode
 listAftertextNode
  extends thoughtNode
  example
@@ -166,148 +223,9 @@ questionAftertextNode
  javascript
   tag = "h4"
   className = "scrollQuestionComponent"
-noteDefinitionNode
- description A section note or footnote.
- extends thoughtNode
- pattern ^\^.+$
- javascript
-  compile() {
-   return ""
-  }
-  get divAttributes() {
-   return super.divAttributes + ` id="note${this.noteIndex}" `
-  }
-  get text() {
-   return `${this.noteIndex}. ${super.text}`
-  }
-  compileNote(noteIndex) {
-   this.noteIndex = noteIndex
-   return super.compile()
-  }
-h3AftertextNode
- description Compiles to an h3 tag.
- extends thoughtNode
- crux #
- javascript
-  tag = "h3"
-  className = "scrollSectionComponent"
-h4AftertextNode
- extends h3AftertextNode
- crux ##
- javascript
-  tag = "h4"
-blinkNode
- description Useful when you have a client that always needs to find 1 thing they would like you to change.
- extends thoughtNode
- crux blink
- javascript
-  compile() {
-   return `<span class="scrollBlink">${super.compile()}</span>
-    <script>
-    setInterval(()=>{
-        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
-        el.style.color = el.style.color === "white" ? "black" : "white"
-        )
-    }, 2000)
-    </script>`
-  }
-imageCaptionAftertextNode
- description An optional caption to accompany the image.
- crux caption
- extends thoughtNode
-abstractSnippetNode
+startColumnsNode
  extends abstractAftertextNode
  cruxFromId
-scrollHeaderNode
- extends abstractSnippetNode
- description Define a header for a certain page. Setting to blank will also remove the header on a page.
- javascript
-  compileSnippet() {
-   return ""
-  }
-  compile() {
-   const file = this.getParent().file
-   const { SVGS, cssClasses, linkToPrevious, linkToNext } = file
-   return file.compileStumpCode(`div
-   class scrollHeaderComponent
-   a <
-    class ${cssClasses.scrollPrevPageLink}
-    href ${linkToPrevious}
-   a ${SVGS.home}
-    class scrollTopLeftBarComponent
-    href index.html
-   a ${SVGS.github}
-    class scrollTopRightBarComponent
-    href ${file.github}
-   a >
-    class ${cssClasses.scrollNextPageLink}
-    href ${linkToNext}`)
-  }
-scrollFooterNode
- extends abstractSnippetNode
- javascript
-  compileSnippet() {
-   return ""
-  }
-  compile() {
-   const file = this.getParent().file
-   const { SVGS, SCROLL_VERSION, viewSourceUrl, cssClasses } = file
-   const closeContainerTag = "</div>"
-   return (
-    closeContainerTag +
-    file.compileStumpCode(`p
-   class ${cssClasses.scrollFileViewSourceUrlComponent}
-   a View source
-    href ${viewSourceUrl}
-  div
-   class scrollFooterComponent
-   a ${SVGS.email}
-    href mailto:${file.email}
-   a ${SVGS.twitter}
-    href ${file.twitter}
-   a ${SVGS.github}
-    href ${file.github}
-   a Built with Scroll v${SCROLL_VERSION}
-    href https://scroll.pub
-    class scrollCommunityLinkComponent`)
-   )
-  }
-snippetsNode
- extends abstractSnippetNode
- cells keywordCell groupNameCell
- description Prints the snippets of all files in a folder that are in the named group.
- example
-  snippets index
- javascript
-  methodForGettingHtml = "htmlCodeForSnippetsPage"
-  makeSnippet(file) {
-   const { cssClasses } = file
-   const snippet = new jtree.TreeNode(`div
-   class ${cssClasses.scrollSnippetContainerComponent}`)
-   const div = snippet.getNode("div")
-   div.appendLineAndChildren("bern", file[this.methodForGettingHtml])
-   return snippet.toString().replace(/\n/g, "\n ")
-  }
-  compile() {
-   const groupName = this.getWord(1)
-   const file = this.getParent().file
-   const { cssClasses, folder } = file
-   const files = folder.getGroup(groupName)
-   const snippets = files.map(file => this.makeSnippet(file)).join("\n ")
-   const code = `div
-   class scrollColumnsComponent scrollColumnsComponentRuled
-   style column-width:35ch;
-   ${snippets}`
-   return file.compileStumpCode(code)
-  }
-fullSnippetsNode
- extends snippetsNode
- cruxFromId
- description Prints the full contents of files in a folder that are in the named group.
- javascript
-  methodForGettingHtml = "compiledSnippet"
-startColumnsNode
- extends abstractSnippetNode
  catchAllCellType integerCell
  description Start a multicolumn grid.
  javascript
@@ -321,19 +239,20 @@ startColumnsNode
    const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
    return `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
-startRuledColumnsNode
- extends startColumnsNode
- description Columns but with rules.
- cruxFromId
 endColumnsNode
- extends abstractSnippetNode
+ extends abstractAftertextNode
+ cruxFromId
  description End a multicolumn grid.
  javascript
   compile() {
    return "</div>"
   }
+  compileSnippet() {
+   return ""
+  }
 scrollCssTagNode
- extends abstractSnippetNode
+ extends abstractAftertextNode
+ cruxFromId
  description Prints the Scroll CSS in an <style> tag. To not print the style tag use `scrollCss`.
  javascript
   compile() {
@@ -348,8 +267,69 @@ scrollCssNode
   compile() {
    return this.getParent().file.SCROLL_CSS
   }
+scrollFooterNode
+ extends abstractAftertextNode
+ cruxFromId
+ javascript
+  compileSnippet() {
+   return ""
+  }
+  compile() {
+   const file = this.getParent().file
+   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
+   const closeContainerTag = "</div>"
+   return (
+    closeContainerTag +
+    file.compileStumpCode(`p
+   class scrollFileViewSourceUrlComponent doNotPrint
+   a View source
+    href ${viewSourceUrl}
+  div
+   class scrollFooterComponent doNotPrint
+   a ${SVGS.email}
+    href mailto:${file.email}
+   a ${SVGS.git}
+    href ${file.git}
+   a Built with Scroll v${SCROLL_VERSION}
+    href https://scroll.pub
+    class scrollCommunityLinkComponent`)
+   )
+  }
+scrollHeaderNode
+ extends abstractAftertextNode
+ cruxFromId
+ description The simple default Scroll header.
+ javascript
+  compileSnippet() {
+   return ""
+  }
+  compile() {
+   const file = this.getParent().file
+   const { SVGS, linkToPrevious, linkToNext } = file
+   let previousButton = ""
+   if (linkToPrevious)
+    previousButton = `a <
+    class scrollPrevPageLink
+    href ${linkToPrevious}`
+   let nextButton = ""
+   if (linkToNext)
+    nextButton = `a >
+    class scrollNextPageLink
+    href ${linkToNext}`
+   return file.compileStumpCode(`div
+   class scrollHeaderComponent doNotPrint
+   ${previousButton}
+   a ${SVGS.home}
+    class scrollTopLeftBarComponent
+    href index.html
+   a ${SVGS.git}
+    class scrollTopRightBarComponent
+    href ${file.git}
+   ${nextButton}`)
+  }
 loremIpsumNode
- extends abstractSnippetNode
+ extends abstractAftertextNode
+ cruxFromId
  description Generate dummy text.
  catchAllCellType integerCell
  javascript
@@ -357,16 +337,54 @@ loremIpsumNode
    const text = `Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
    return text.repeat(this.getWord(1) ? parseInt(this.getWord(1)) : 1)
   }
-notesNode
- extends abstractScrollNode
- description Print all preceding notes. Currently only supports 1 group of notes but may expand in future.
+snippetsNode
+ extends abstractAftertextNode
  cruxFromId
+ cells keywordCell groupNameCell
+ description Prints the snippets of all files in a folder that are in the named group.
+ example
+  snippets index
  javascript
-  get notes() {
-   return this.getParent().filter(node => node.getLine().startsWith("^"))
+  methodForGettingHtml = "htmlCodeForSnippetsPage"
+  makeSnippet(file) {
+   const snippet = new jtree.TreeNode(`div
+   class scrollSnippetContainerComponent`)
+   const div = snippet.getNode("div")
+   div.appendLineAndChildren("bern", file[this.methodForGettingHtml])
+   return snippet.toString().replace(/\n/g, "\n ")
   }
   compile() {
-   return this.notes.map((note, noteIndex) => note.compileNote(noteIndex + 1)).join("\n")
+   const groupName = this.getWord(1)
+   const file = this.getParent().file
+   const { folder } = file
+   const files = folder.getGroup(groupName)
+   const snippets = files.map(file => this.makeSnippet(file)).join("\n ")
+   const code = `div
+   class scrollColumnsComponent
+   style column-width:35ch;
+   ${snippets}`
+   return file.compileStumpCode(code)
+  }
+fullSnippetsNode
+ extends snippetsNode
+ cruxFromId
+ description Prints the full contents of files in a folder that are in the named group.
+ javascript
+  methodForGettingHtml = "compiledSnippet"
+viewSourceNode
+ extends abstractAftertextNode
+ cruxFromId
+ javascript
+  compileSnippet() {
+   return ""
+  }
+  compile() {
+   const file = this.getParent().file
+   const { viewSourceUrl } = file
+   return file.compileStumpCode(`p
+   class scrollFileViewSourceUrlComponent doNotPrint
+   a View source
+    href ${viewSourceUrl}`)
   }
 abstractTopLevelSingleMetaNode
  description Use these keywords once per file.
@@ -389,55 +407,6 @@ groupsNode
  extends abstractTopLevelSingleMetaNode
  cells keywordCell
  catchAllCellType permalinkCell
-metaTagsNode
- cruxFromId
- extends abstractTopLevelSingleMetaNode
- description Adds meta tags like title, description, et cetera.
- javascript
-  compileSnippet() {
-   return ""
-  }
-  compile() {
-   const { file } = this.getParent()
-   const { title, description, openGraphImage, SCROLL_VERSION } = file
-   const rssFeedUrl = file.get("rssFeedUrl")
-   let rssTag = ""
-   if (rssFeedUrl) {
-    rssTag = `link
-   rel alternate
-   type application/rss+xml
-   title ${title}
-   href ${rssFeedUrl}`
-   }
-   return file.compileStumpCode(`meta
-   charset utf-8
-  titleTag ${title}
-  script /* The HTML below was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
-  meta
-   charset iso-8859-1
-  meta
-   name viewport
-   content width=device-width,initial-scale=1
-  meta
-   name description
-   content ${description}
-  meta
-   name generator
-   content Scroll v${SCROLL_VERSION}
-  meta
-   property og:title
-   content ${title}
-  meta
-   property og:description
-   content ${description}
-  meta
-   property og:image
-   content ${openGraphImage}
-   ${rssTag}
-  meta
-   name twitter:card
-   content summary_large_image`)
-  }
 titleNode
  catchAllCellType stringCell
  description Title of the page.
@@ -463,7 +432,57 @@ dateNode
 endSnippetNode
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractTopLevelSingleMetaNode
-abstractSiteSettingNode
+metaTagsNode
+ cruxFromId
+ extends abstractTopLevelSingleMetaNode
+ description Adds meta tags like title, description, et cetera.
+ javascript
+  compileSnippet() {
+   return ""
+  }
+  compile() {
+   const { file } = this.getParent()
+   const { title, description, openGraphImage, SCROLL_VERSION } = file
+   const rssFeedUrl = file.get("rssFeedUrl")
+   let rssTag = ""
+   if (rssFeedUrl) {
+    rssTag = `link
+   rel alternate
+   type application/rss+xml
+   title ${title}
+   href ${rssFeedUrl}`
+   }
+   return file.compileStumpCode(`meta
+   charset utf-8
+  titleTag ${title}
+  script /* The HTML below was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
+  styleTag @media print {.doNotPrint {display: none !important;}}
+  meta
+   charset iso-8859-1
+  meta
+   name viewport
+   content width=device-width,initial-scale=1
+  meta
+   name description
+   content ${description}
+  meta
+   name generator
+   content Scroll v${SCROLL_VERSION}
+  meta
+   property og:title
+   content ${title}
+  meta
+   property og:description
+   content ${description}
+  meta
+   property og:image
+   content ${openGraphImage}
+   ${rssTag}
+  meta
+   name twitter:card
+   content summary_large_image`)
+  }
+abstractFolderSettingNode
  extends abstractScrollNode
  cells keywordCell
  javascript
@@ -471,34 +490,31 @@ abstractSiteSettingNode
    return ""
   }
 abstractUrlSettingNode
- extends abstractSiteSettingNode
+ extends abstractFolderSettingNode
  cells keywordCell urlCell
  cruxFromId
 openGraphImageNode
  description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
  extends abstractUrlSettingNode
-rssFeedUrlNode
- description URL for RSS feed, if any.
- extends abstractUrlSettingNode
 baseUrlNode
- description Root url of the published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
+ description Root url of this published folder on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
  extends abstractUrlSettingNode
 viewSourceBaseUrlNode
  description The base link to be used to generate the "View source" link.
  extends abstractUrlSettingNode
-githubNode
- description A link to the GitHub project or profile page.
+gitNode
+ description A link to the web Git UI for this folder.
  extends abstractUrlSettingNode
-twitterNode
- description A link to the blog or author's Twitter account.
+rssFeedUrlNode
+ description URL for RSS feed, if any.
  extends abstractUrlSettingNode
 abstractSiteStringSettingNode
- extends abstractSiteSettingNode
+ extends abstractFolderSettingNode
  catchAllCellType stringCell
  cruxFromId
 emailNode
- description Email address for the site owner.
- extends abstractSiteSettingNode
+ description Email address for the folder owner.
+ extends abstractFolderSettingNode
  cruxFromId
  cells keywordCell emailAddressCell
 authorNode
@@ -604,6 +620,14 @@ stumpNode
   compile() {
    const file = this.getParent().file
    return file.compileStumpCode(this.childrenToString())
+  }
+stumpNoSnippetNode
+ extends stumpNode
+ description Useful for headers and footers when you have something you don't want included in snippets.
+ cruxFromId
+ javascript
+  compileSnippet() {
+   return ""
   }
 imageNode
  description An img tag.
@@ -737,16 +761,18 @@ printFeedNode
  cells keywordCell groupNameCell
  javascript
   compile() {
+   const dayjs = require("dayjs")
    const file = this.getRootNode().file
    const folder = file.folder
    const files = folder.getGroup(this.getWord(1))
    const { title, baseUrl, description } = file
    return `<?xml version="1.0" encoding="ISO-8859-1" ?>
-  <rss version="0.91">
+  <rss version="2.0">
   <channel>
    <title>${title}</title>
    <link>${baseUrl}</link>
    <description>${description}</description>
+   <lastBuildDate>${dayjs().format("ddd, DD MMM YYYY HH:mm:ss ZZ")}</lastBuildDate>
    <language>en-us</language>
   ${files.map(file => file.toRss()).join("\n")}
   </channel>
@@ -847,6 +873,15 @@ kpiTableNode
   }
   compile() {
    return `<table class="scrollKpiTable">${this.tableBody}</table>`
+  }
+youTubeNode
+ description Embed a YouTube video. Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
+ extends abstractScrollNode
+ cruxFromId
+ cells urlCell
+ javascript
+  compile() {
+   return `<div class="youTubeHolder"><iframe class="youTubeEmbed" src="${this.getWord(1)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
 abstractAftertextAttributeNode
  cells keywordCell
@@ -990,7 +1025,7 @@ classMarkupNode
   get pattern() {
    return this.getWordsFrom(2).join(" ")
   }
-caveatNode
+hoverNoteNode
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
  cruxFromId
  extends classMarkupNode
@@ -1000,16 +1035,11 @@ caveatNode
    return this.getWordsFrom(1).join(" ")
   }
   get attributes() {
-   return [`class="scrollCaveat"`, `title="${this.caveatText}"`]
+   return [`class="scrollHoverNote"`, `title="${this.hoverNoteText}"`]
   }
-  get caveatText() {
+  get hoverNoteText() {
    return this.childrenToString().replace(/\n/g, " ")
   }
-footnoteNode
- todo Improve this
- description Provide a little more information to the interested reader, without diverting the main flow of the text.
- extends caveatNode
- crux footnote
 strikethroughNode
  cruxFromId
  extends abstractMarkupNode
@@ -1189,6 +1219,11 @@ scrollScriptNode
   }
   compileSnippet() {
    return this.map(child => (child.compileSnippet ? child.compileSnippet() : child.compile())).join("\n")
+  }
+  get footnotes() {
+   if (this._footnotes === undefined)
+    this._footnotes = this.filter(node => node.isFootnote)
+   return this._footnotes
   }
   file = {}
   get permalink() {
