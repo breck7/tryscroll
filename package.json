@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "jtree": "^61.0.1",
-    "scroll-cli": "^50.0.0"
+    "jtree": "^62.2.0",
+    "scroll-cli": "^52.2.0"
   },
   "devDependencies": {
     "tap": "^15.0.9"
