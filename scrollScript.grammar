@@ -47,9 +47,6 @@ groupNameCell
  extends stringCell
 htmlAnyCell
  extends anyCell
-aftertextTextNode
- catchAllCellType stringCell
- boolean isTextNode true
 abstractScrollNode
  cells keywordCell
  javascript
@@ -59,7 +56,6 @@ abstractScrollNode
 abstractAftertextNode
  description Text followed by markup commands.
  extends abstractScrollNode
- catchAllNodeType aftertextTextNode
  inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode
  example
   aftertext
@@ -77,9 +73,7 @@ abstractAftertextNode
     .flat()
   }
   get originalText() {
-    return this.filter(node => node.isTextNode)
-    .map(node => node.toString())
-    .join("\n")
+    return this.getContent() ?? ""
   }
   get originalTextPostLinkify() {
    const {originalText} = this
@@ -127,9 +121,6 @@ thoughtNode
  description A thought.
  crux *
  javascript
-  get originalText() {
-    return this.getContent() ?? ""
-  }
   compile() {
    // Hacky, I know.
    const newLine = this.appendLine("wrapsOn")
@@ -738,6 +729,7 @@ readingListNode
 redirectToNode
  description Prints an HTML redirect tag. In the future might also emit nginx config.
  extends abstractScrollNode
+ cells keywordCell urlCell
  cruxFromId
  example
   redirectTo https://scroll.pub/releaseNotes.html
@@ -1044,6 +1036,7 @@ hoverNoteNode
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
  cruxFromId
  extends classMarkupNode
+ catchAllNodeType lineOfTextNode
  cells keywordCell
  javascript
   get pattern() {
@@ -1190,6 +1183,9 @@ commentLineNode
 cssLineNode
  catchAllCellType anyCell
  catchAllNodeType cssLineNode
+lineOfTextNode
+ catchAllCellType stringCell
+ boolean isTextNode true
 htmlLineNode
  catchAllCellType htmlAnyCell
  catchAllNodeType htmlLineNode
