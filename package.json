@@ -10,15 +10,16 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "jtree": "^62.2.0",
-    "scroll-cli": "^53.0.1"
+    "scroll-cli": "^54.0.0"
   },
   "devDependencies": {
     "tap": "^15.0.9"
   },
   "scripts": {
-    "build": "./build.js",
+    "build": "npm remove scroll-cli;npm install scroll-cli;./build.js",
     "buildCoverageReport": "tap testAll.js",
     "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
+    "open": "open index.html",
     "test": "node testAll.js",
     "beta": "npm install ~/scroll; node ./build.js"
   },
