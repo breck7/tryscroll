@@ -1,4 +1,5 @@
-const { jtree } = require("jtree")
+const { TreeNode } = require("jtree/products/TreeNode.js")
+const { HandGrammarProgram } = require("jtree/products/GrammarLanguage.js")
 const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
@@ -49,7 +50,7 @@ class BrowserGlue extends AbstractTreeComponent {
 
   async fetchCode() {
     const hash = this.willowBrowser.getHash().substr(1)
-    const deepLink = new jtree.TreeNode(decodeURIComponent(hash))
+    const deepLink = new TreeNode(decodeURIComponent(hash))
     const fromUrl = deepLink.get(UrlKeys.url)
     const code = deepLink.getNode(UrlKeys.scroll)
 
@@ -63,7 +64,7 @@ class BrowserGlue extends AbstractTreeComponent {
   }
 
   async init(grammarCode, styleCode) {
-    window.programCompiler = new jtree.HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
+    window.programCompiler = new HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
     const simCode = await this.fetchCode()
 
     window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight, styleCode)

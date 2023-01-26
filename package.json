@@ -1,6 +1,6 @@
 {
   "name": "tryscroll",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Try ScrollScript",
   "main": "components/EditorApp.js",
   "prettier": {
@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "jtree": "^62.2.0",
-    "scroll-cli": "^54.0.0"
+    "jtree": "^63.0.0",
+    "scroll-cli": "^55.2.0"
   },
   "devDependencies": {
     "tap": "^15.0.9"

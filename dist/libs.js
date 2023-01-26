@@ -10301,7 +10301,6 @@ d.init=function(){var a=d(u),b;for(b in a)"_"!==b.charAt(0)&&(d[b]=function(b){r
 })
 
 
-"use strict"
 class Timer {
   constructor() {
     this._tickTime = Date.now() - (Utils.isNodeJs() ? 1000 * process.uptime() : 0)
@@ -10839,236 +10838,8 @@ Utils.getRange = (startIndex, endIndexExclusive, increment = 1) => {
 }
 Utils.MAX_INT = Math.pow(2, 32) - 1
 window.Utils = Utils
-class TestRacerTestBlock {
-  constructor(testFile, testName, fn) {
-    this._parentFile = testFile
-    this._testName = testName
-    this._testFn = fn
-  }
-  _emitMessage(message) {
-    this._parentFile.getRunner()._emitMessage(message)
-    return message
-  }
-  async execute() {
-    let passes = []
-    let failures = []
-    const assertEqual = (actual, expected, message = "") => {
-      if (expected === actual) {
-        passes.push(message)
-      } else {
-        failures.push([actual, expected, message])
-      }
-    }
-    try {
-      await this._testFn(assertEqual)
-    } catch (err) {
-      failures.push([
-        "1",
-        "0",
-        `Should not have uncaught errors but in ${this._testName} got error:
- toString:
-  ${new TreeNode(err.toString()).toString(2)}
- stack:
-  ${new TreeNode(err.stack).toString(2)}`
-      ])
-    }
-    failures.length ? this._emitBlockFailedMessage(failures) : this._emitBlockPassedMessage(passes)
-    return {
-      passes,
-      failures
-    }
-  }
-  _emitBlockPassedMessage(passes) {
-    this._emitMessage(`ok block ${this._testName} - ${passes.length} passed`)
-  }
-  _emitBlockFailedMessage(failures) {
-    // todo: should replace not replace last newline?
-    // todo: do side by side.
-    // todo: add diff.
-    this._emitMessage(`failed block ${this._testName}`)
-    this._emitMessage(
-      failures
-        .map(failure => {
-          const actualVal = failure[0] === undefined ? "undefined" : failure[0].toString()
-          const expectedVal = failure[1] === undefined ? "undefined" : failure[1].toString()
-          const actual = new TreeNode(`actual\n${new TreeNode(actualVal).toString(1)}`)
-          const expected = new TreeNode(`expected\n${new TreeNode(expectedVal.toString()).toString(1)}`)
-          const comparison = actual.toComparison(expected)
-          return new TreeNode(` assertion ${failure[2]}\n${comparison.toSideBySide([actual, expected]).toString(2)}`)
-        })
-        .join("\n")
-    )
-  }
-}
-class TestRacerFile {
-  constructor(runner, testTree, fileName) {
-    this._runner = runner
-    this._testTree = {}
-    this._fileName = fileName
-    Object.keys(testTree).forEach(key => {
-      this._testTree[key] = new TestRacerTestBlock(this, key, testTree[key])
-    })
-  }
-  getRunner() {
-    return this._runner
-  }
-  getFileName() {
-    return this._fileName
-  }
-  get length() {
-    return Object.values(this._testTree).length
-  }
-  get skippedTestBlockNames() {
-    const testsToRun = this._filterSkippedTestBlocks()
-    return Object.keys(this._testTree).filter(blockName => !testsToRun.includes(blockName))
-  }
-  _emitMessage(message) {
-    this.getRunner()._emitMessage(message)
-  }
-  _filterSkippedTestBlocks() {
-    // _ prefix = run on these tests block
-    // $ prefix = skip this test
-    const runOnlyTheseTestBlocks = Object.keys(this._testTree).filter(key => key.startsWith("_"))
-    if (runOnlyTheseTestBlocks.length) return runOnlyTheseTestBlocks
-    return Object.keys(this._testTree).filter(key => !key.startsWith("$"))
-  }
-  async execute() {
-    const testBlockNames = this._filterSkippedTestBlocks()
-    this._emitStartFileMessage(testBlockNames.length)
-    const fileTimer = new Utils.Timer()
-    const blockResults = {}
-    const blockPromises = testBlockNames.map(async testName => {
-      const results = await this._testTree[testName].execute()
-      blockResults[testName] = results
-    })
-    await Promise.all(blockPromises)
-    const fileStats = this._aggregateBlockResultsIntoFileResults(blockResults)
-    const fileTimeElapsed = fileTimer.tick()
-    fileStats.blocksFailed ? this._emitFileFailedMessage(fileStats, fileTimeElapsed, testBlockNames.length) : this._emitFilePassedMessage(fileStats, fileTimeElapsed, testBlockNames.length)
-    return fileStats
-  }
-  _aggregateBlockResultsIntoFileResults(fileBlockResults) {
-    const fileStats = {
-      assertionsPassed: 0,
-      assertionsFailed: 0,
-      blocksPassed: 0,
-      blocksFailed: 0,
-      failedBlocks: []
-    }
-    Object.keys(fileBlockResults).forEach(blockName => {
-      const results = fileBlockResults[blockName]
-      fileStats.assertionsPassed += results.passes.length
-      fileStats.assertionsFailed += results.failures.length
-      if (results.failures.length) {
-        fileStats.blocksFailed++
-        fileStats.failedBlocks.push(blockName)
-      } else fileStats.blocksPassed++
-    })
-    return fileStats
-  }
-  _emitStartFileMessage(blockCount) {
-    this._emitMessage(`start file ${blockCount} test blocks in file ${this._fileName}`)
-  }
-  _emitFilePassedMessage(fileStats, fileTimeElapsed, blockCount) {
-    this._emitMessage(`ok file ${this._fileName} in ${fileTimeElapsed}ms. ${blockCount} blocks and ${fileStats.assertionsPassed} assertions passed.`)
-  }
-  _emitFileFailedMessage(fileStats, fileTimeElapsed, blockCount) {
-    this._emitMessage(
-      `failed file ${this._fileName} over ${fileTimeElapsed}ms. ${fileStats.blocksFailed} blocks and ${fileStats.assertionsFailed} failed. ${blockCount - fileStats.blocksFailed} blocks and ${fileStats.assertionsPassed} assertions passed`
-    )
-  }
-}
-class TestRacer {
-  constructor(fileTestTree) {
-    this._logFunction = console.log
-    this._timer = new Utils.Timer()
-    this._sessionFilesPassed = 0
-    this._sessionFilesFailed = {}
-    this._sessionBlocksFailed = 0
-    this._sessionBlocksPassed = 0
-    this._sessionAssertionsFailed = 0
-    this._sessionAssertionsPassed = 0
-    this._fileTestTree = {}
-    Object.keys(fileTestTree).forEach(fileName => {
-      this._fileTestTree[fileName] = new TestRacerFile(this, fileTestTree[fileName], fileName)
-    })
-  }
-  setLogFunction(logFunction) {
-    this._logFunction = logFunction
-    return this
-  }
-  _addFileResultsToSessionResults(fileStats, fileName) {
-    this._sessionAssertionsPassed += fileStats.assertionsPassed
-    this._sessionAssertionsFailed += fileStats.assertionsFailed
-    this._sessionBlocksPassed += fileStats.blocksPassed
-    this._sessionBlocksFailed += fileStats.blocksFailed
-    if (!fileStats.blocksFailed) this._sessionFilesPassed++
-    else {
-      this._sessionFilesFailed[fileName] = fileStats.failedBlocks
-    }
-  }
-  async execute() {
-    this._emitSessionPlanMessage()
-    const proms = Object.values(this._fileTestTree).map(async testFile => {
-      const results = await testFile.execute()
-      this._addFileResultsToSessionResults(results, testFile.getFileName())
-    })
-    await Promise.all(proms)
-    return this
-  }
-  finish() {
-    return this._emitSessionFinishMessage()
-  }
-  _emitMessage(message) {
-    this._logFunction(message)
-    return message
-  }
-  get length() {
-    return Object.values(this._fileTestTree).length
-  }
-  _emitSessionPlanMessage() {
-    let blocks = 0
-    Object.values(this._fileTestTree).forEach(value => (blocks += value.length))
-    this._emitMessage(`${this.length} files and ${blocks} blocks to run. ${this._getSkippedBlockNames().length} skipped blocks.`)
-  }
-  _getSkippedBlockNames() {
-    const skippedBlocks = []
-    Object.values(this._fileTestTree).forEach(file => {
-      file.skippedTestBlockNames.forEach(blockName => {
-        skippedBlocks.push(blockName)
-      })
-    })
-    return skippedBlocks
-  }
-  _getFailures() {
-    if (!Object.keys(this._sessionFilesFailed).length) return ""
-    return `
- failures
-${new TreeNode(this._sessionFilesFailed).forEach(row => row.forEach(line => line.deleteWordAt(0))).toString(2)}`
-  }
-  _emitSessionFinishMessage() {
-    const skipped = this._getSkippedBlockNames()
-    return this._emitMessage(`finished in ${this._timer.getTotalElapsedTime()}ms
- skipped
-  ${skipped.length} blocks${skipped ? " " + skipped.join(" ") : ""}
- passed
-  ${this._sessionFilesPassed} files
-  ${this._sessionBlocksPassed} blocks
-  ${this._sessionAssertionsPassed} assertions
- failed
-  ${Object.keys(this._sessionFilesFailed).length} files
-  ${this._sessionBlocksFailed} blocks
-  ${this._sessionAssertionsFailed} assertions${this._getFailures()}`)
-  }
-  static async testSingleFile(fileName, testTree) {
-    const obj = {}
-    obj[fileName] = testTree
-    const session = new TestRacer(obj)
-    await session.execute()
-    session.finish()
-  }
-}
-window.TestRacer = TestRacer
+
+
 let _jtreeLatestTime = 0
 let _jtreeMinTimeIncrement = 0.000000000001
 class AbstractNode {
@@ -13556,7 +13327,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "62.2.0"
+TreeNode.getVersion = () => "63.0.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13640,6 +13411,15 @@ window.ExtendibleTreeNode = ExtendibleTreeNode
 window.AbstractExtendibleTreeNode = AbstractExtendibleTreeNode
 window.TreeEvents = TreeEvents
 window.TreeWord = TreeWord
+
+
+// Compiled language parsers will include these files:
+const GlobalNamespaceAdditions = {
+  Utils: "Utils.js",
+  TreeNode: "TreeNode.js",
+  HandGrammarProgram: "GrammarLanguage.js",
+  GrammarBackedNode: "GrammarLanguage.js"
+}
 var GrammarConstantsCompiler
 ;(function(GrammarConstantsCompiler) {
   GrammarConstantsCompiler["stringTemplate"] = "stringTemplate"
@@ -15360,7 +15140,7 @@ ${properties.join("\n")}
   _getParserToJavascript() {
     if (this._isBlobNodeType())
       // todo: do we need this?
-      return "createParser() { return new jtree.TreeNode.Parser(this._getBlobNodeCatchAllNodeType())}"
+      return "createParser() { return new TreeNode.Parser(this._getBlobNodeCatchAllNodeType())}"
     const parserInfo = this._createParserInfo(this._getMyInScopeNodeTypeIds())
     const myFirstWordMap = parserInfo.firstWordMap
     const regexRules = parserInfo.regexTests
@@ -15382,7 +15162,7 @@ ${properties.join("\n")}
       : "undefined"
     const catchAllStr = catchAllConstructor ? catchAllConstructor : this._amIRoot() ? `this._getBlobNodeCatchAllNodeType()` : "undefined"
     return `createParser() {
-  return new jtree.TreeNode.Parser(${catchAllStr}, ${firstWordsStr}, ${regexStr})
+  return new TreeNode.Parser(${catchAllStr}, ${firstWordsStr}, ${regexStr})
   }`
   }
   _getCatchAllNodeConstructorToJavascript() {
@@ -15396,7 +15176,7 @@ ${properties.join("\n")}
   _nodeDefToJavascriptClass() {
     const components = [this._getParserToJavascript(), this._getErrorMethodToJavascript(), this._getCellGettersAndNodeTypeConstants(), this._getCustomJavascriptMethods()].filter(identity => identity)
     if (this._amIRoot()) {
-      components.push(`static cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(\`${Utils.escapeBackTicks(
+      components.push(`static cachedHandGrammarProgramRoot = new HandGrammarProgram(\`${Utils.escapeBackTicks(
         this.getParent()
           .toString()
           .replace(/\\/g, "\\\\")
@@ -15422,7 +15202,7 @@ ${properties.join("\n")}
     const hardCodedExtend = this.get(GrammarConstants._extendsJsClass)
     if (hardCodedExtend) return hardCodedExtend
     const extendedDef = this._getExtendedParent()
-    return extendedDef ? extendedDef._getGeneratedClassName() : "jtree.GrammarBackedNode"
+    return extendedDef ? extendedDef._getGeneratedClassName() : "GrammarBackedNode"
   }
   _getCompilerObject() {
     let obj = {}
@@ -15605,7 +15385,7 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
     if (!this.isNodeJs()) this._cache_compiledLoadedNodeTypes = Utils.appendCodeAndReturnValueOnWindow(this.toBrowserJavascript(), this.getRootNodeTypeId()).getNodeTypeMap()
     else {
       const path = require("path")
-      const code = this.toNodeJsJavascript(path.join(__dirname, "..", "index.js"))
+      const code = this.toNodeJsJavascript(__dirname)
       try {
         const rootNode = this._requireInVmNodeJsRootNodeTypeConstructor(code)
         this._cache_compiledLoadedNodeTypes = rootNode.getNodeTypeMap()
@@ -15688,10 +15468,11 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
   _requireInVmNodeJsRootNodeTypeConstructor(code) {
     const vm = require("vm")
     const path = require("path")
-    const jtreePath = path.join(__dirname, "..", "index.js")
     // todo: cleanup up
     try {
-      global.jtree = require(jtreePath)
+      Object.keys(GlobalNamespaceAdditions).forEach(key => {
+        global[key] = require("./" + GlobalNamespaceAdditions[key])
+      })
       global.require = require
       global.__dirname = this._dirName
       global.module = {}
@@ -15700,7 +15481,6 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
       // todo: figure out best error pattern here for debugging
       console.log(`Error in compiled grammar code for language "${this.getGrammarName()}"`)
       // console.log(new TreeNode(code).toStringWithLineNumbers())
-      console.log(`jtreePath: "${jtreePath}"`)
       console.log(err)
       throw err
     }
@@ -15802,7 +15582,9 @@ if (errors.length)
     files[GrammarBundleFiles.indexJs] = `module.exports = require("./${nodePath}")`
     const browserPath = `${languageName}.browser.js`
     files[browserPath] = this.toBrowserJavascript()
-    files[GrammarBundleFiles.indexHtml] = `<script src="node_modules/jtree/products/jtree.browser.js"></script>
+    files[GrammarBundleFiles.indexHtml] = `<script src="node_modules/jtree/products/Utils.browser.js"></script>
+<script src="node_modules/jtree/products/TreeNode.browser.js"></script>
+<script src="node_modules/jtree/products/GrammarLanguage.browser.js"></script>
 <script src="${browserPath}"></script>
 <script>
 const sampleCode = \`${sampleCode.toString()}\`
@@ -15918,8 +15700,8 @@ ${testCode}`
           .join(",")
       : this.getExtensionName()
   }
-  toNodeJsJavascript(normalizedJtreePath = "jtree") {
-    return this._rootNodeDefToJavascriptClass(normalizedJtreePath, true).trim()
+  toNodeJsJavascript(jtreeProductsPath = "jtree/products") {
+    return this._rootNodeDefToJavascriptClass(jtreeProductsPath, true).trim()
   }
   toBrowserJavascript() {
     return this._rootNodeDefToJavascriptClass("", false).trim()
@@ -15927,7 +15709,7 @@ ${testCode}`
   _getProperName() {
     return Utils.ucfirst(this.getExtensionName())
   }
-  _rootNodeDefToJavascriptClass(normalizedJtreePath, forNodeJs = true) {
+  _rootNodeDefToJavascriptClass(jtreeProductsPath, forNodeJs = true) {
     const defs = this.getValidConcreteAndAbstractNodeTypeDefinitions()
     // todo: throw if there is no root node defined
     const nodeTypeClasses = defs.map(def => def._nodeDefToJavascriptClass()).join("\n\n")
@@ -15942,9 +15724,14 @@ ${rootName}`
     } else {
       exportScript = `window.${rootName} = ${rootName}`
     }
+    let nodeJsImports = ``
+    if (forNodeJs)
+      nodeJsImports = Object.keys(GlobalNamespaceAdditions)
+        .map(key => `const { ${key} } = require("${jtreeProductsPath}/${GlobalNamespaceAdditions[key]}")`)
+        .join("\n")
     // todo: we can expose the previous "constants" export, if needed, via the grammar, which we preserve.
     return `{
-${forNodeJs ? `const {jtree} = require("${normalizedJtreePath.replace(/\\/g, "\\\\")}")` : ""}
+${nodeJsImports}
 ${rootNodeJsHeader ? rootNodeJsHeader : ""}
 ${nodeTypeClasses}
 
@@ -16141,6 +15928,9 @@ window.HandGrammarProgram = HandGrammarProgram
 window.GrammarBackedNode = GrammarBackedNode
 window.UnknownNodeTypeError = UnknownNodeTypeError
 window.UnknownGrammarProgram = UnknownGrammarProgram
+
+
+"use strict"
 // Adapted from https://github.com/NeekSandhu/codemirror-textmate/blob/master/src/tmToCm.ts
 var CmToken
 ;(function(CmToken) {
@@ -16321,7 +16111,7 @@ const textMateScopeToCodeMirrorStyle = (scopeSegments, styleTree = tmToCm) => {
   const matchingBranch = styleTree[scopeSegments.shift()]
   return matchingBranch ? textMateScopeToCodeMirrorStyle(scopeSegments, matchingBranch) || matchingBranch.$ || null : null
 }
-class TreeNotationCodeMirrorMode {
+class GrammarCodeMirrorMode {
   constructor(name, getProgramConstructorFn, getProgramCodeFn, codeMirrorLib = undefined) {
     this._name = name
     this._getProgramConstructorFn = getProgramConstructorFn
@@ -16476,27 +16266,13 @@ class TreeNotationCodeMirrorMode {
     state.cellIndex = 0
   }
 }
-window.TreeNotationCodeMirrorMode = TreeNotationCodeMirrorMode
-class jtree {}
-jtree.GrammarBackedNode = GrammarBackedNode
-jtree.GrammarConstants = GrammarConstants
-jtree.Utils = Utils
-jtree.UnknownNodeTypeError = UnknownNodeTypeError
-jtree.TestRacer = TestRacer
-jtree.TreeEvents = TreeEvents
-jtree.TreeNode = TreeNode
-jtree.ExtendibleTreeNode = ExtendibleTreeNode
-jtree.HandGrammarProgram = HandGrammarProgram
-jtree.UnknownGrammarProgram = UnknownGrammarProgram
-jtree.TreeNotationCodeMirrorMode = TreeNotationCodeMirrorMode
-jtree.getVersion = () => TreeNode.getVersion()
-window.jtree = jtree
+window.GrammarCodeMirrorMode = GrammarCodeMirrorMode
 
 
 {
-  class stumpNode extends jtree.GrammarBackedNode {
+  class stumpNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(
+      return new TreeNode.Parser(
         errorNode,
         Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {
           blockquote: htmlTagNode,
@@ -16619,8 +16395,7 @@ window.jtree = jtree
     _getHtmlJoinByCharacter() {
       return ""
     }
-    static cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(`tooling onsave jtree build produceLang stump
-anyCell
+    static cachedHandGrammarProgramRoot = new HandGrammarProgram(`anyCell
 keywordCell
 emptyCell
 extraCell
@@ -16770,7 +16545,7 @@ htmlTagNode
    return this.insertChildNode(text, index)
   }
   insertChildNode(text, index) {
-   const singleNode = new jtree.TreeNode(text).getChildren()[0]
+   const singleNode = new TreeNode(text).getChildren()[0]
    const newNode = this.insertLineAndChildren(singleNode.getLine(), singleNode.childrenToString(), index)
    const stumpNodeIndex = this.filter(node => node.isHtmlTagNode).indexOf(newNode)
    this.getShadow().insertHtmlNode(newNode, stumpNodeIndex)
@@ -16904,7 +16679,7 @@ bernNode
     }
   }
 
-  class blankLineNode extends jtree.GrammarBackedNode {
+  class blankLineNode extends GrammarBackedNode {
     get emptyCell() {
       return this.getWord(0)
     }
@@ -16916,9 +16691,9 @@ bernNode
     }
   }
 
-  class htmlTagNode extends jtree.GrammarBackedNode {
+  class htmlTagNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(
+      return new TreeNode.Parser(
         undefined,
         Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {
           blockquote: htmlTagNode,
@@ -17310,7 +17085,7 @@ bernNode
       return this.insertChildNode(text, index)
     }
     insertChildNode(text, index) {
-      const singleNode = new jtree.TreeNode(text).getChildren()[0]
+      const singleNode = new TreeNode(text).getChildren()[0]
       const newNode = this.insertLineAndChildren(singleNode.getLine(), singleNode.childrenToString(), index)
       const stumpNodeIndex = this.filter(node => node.isHtmlTagNode).indexOf(newNode)
       this.getShadow().insertHtmlNode(newNode, stumpNodeIndex)
@@ -17380,7 +17155,7 @@ bernNode
     }
   }
 
-  class errorNode extends jtree.GrammarBackedNode {
+  class errorNode extends GrammarBackedNode {
     getErrors() {
       return this._getErrorNodeErrors()
     }
@@ -17395,9 +17170,9 @@ bernNode
     }
   }
 
-  class htmlAttributeNode extends jtree.GrammarBackedNode {
+  class htmlAttributeNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(errorNode, undefined, undefined)
+      return new TreeNode.Parser(errorNode, undefined, undefined)
     }
     get htmlAttributeNameCell() {
       return this.getWord(0)
@@ -17428,9 +17203,9 @@ bernNode
     }
   }
 
-  class lineOfHtmlContentNode extends jtree.GrammarBackedNode {
+  class lineOfHtmlContentNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(lineOfHtmlContentNode, undefined, undefined)
+      return new TreeNode.Parser(lineOfHtmlContentNode, undefined, undefined)
     }
     get anyHtmlContentCell() {
       return this.getWordsFrom(0)
@@ -17443,9 +17218,9 @@ bernNode
     }
   }
 
-  class bernNode extends jtree.GrammarBackedNode {
+  class bernNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(lineOfHtmlContentNode, undefined, undefined)
+      return new TreeNode.Parser(lineOfHtmlContentNode, undefined, undefined)
     }
     get bernKeywordCell() {
       return this.getWord(0)
@@ -17466,9 +17241,9 @@ bernNode
 
 
 {
-  class hakonNode extends jtree.GrammarBackedNode {
+  class hakonNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(
+      return new TreeNode.Parser(
         selectorNode,
         Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), { comment: commentNode }),
         undefined
@@ -17483,8 +17258,7 @@ bernNode
         .map(child => child.compile())
         .join("")
     }
-    static cachedHandGrammarProgramRoot = new jtree.HandGrammarProgram(`tooling onsave jtree build produceLang hakon
-anyCell
+    static cachedHandGrammarProgramRoot = new HandGrammarProgram(`anyCell
 keywordCell
 commentKeywordCell
  extends keywordCell
@@ -17600,9 +17374,9 @@ selectorNode
     }
   }
 
-  class propertyNode extends jtree.GrammarBackedNode {
+  class propertyNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(errorNode, undefined, undefined)
+      return new TreeNode.Parser(errorNode, undefined, undefined)
     }
     get propertyKeywordCell() {
       return this.getWord(0)
@@ -17623,9 +17397,9 @@ selectorNode
     }
   }
 
-  class errorNode extends jtree.GrammarBackedNode {
+  class errorNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(errorNode, undefined, undefined)
+      return new TreeNode.Parser(errorNode, undefined, undefined)
     }
     getErrors() {
       return this._getErrorNodeErrors()
@@ -17635,9 +17409,9 @@ selectorNode
     }
   }
 
-  class commentNode extends jtree.GrammarBackedNode {
+  class commentNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(commentNode, undefined, undefined)
+      return new TreeNode.Parser(commentNode, undefined, undefined)
     }
     get commentKeywordCell() {
       return this.getWord(0)
@@ -17647,9 +17421,9 @@ selectorNode
     }
   }
 
-  class selectorNode extends jtree.GrammarBackedNode {
+  class selectorNode extends GrammarBackedNode {
     createParser() {
-      return new jtree.TreeNode.Parser(
+      return new TreeNode.Parser(
         selectorNode,
         Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {
           "border-bottom-right-radius": propertyNode,
@@ -18238,7 +18012,7 @@ class AbstractWillowBrowser extends stumpNode {
     return this._fullHtmlPageUrlIncludingProtocolAndFileName
   }
   getAppWebPageParentFolderWithoutTrailingSlash() {
-    return jtree.Utils.getPathWithoutFileName(this._fullHtmlPageUrlIncludingProtocolAndFileName)
+    return Utils.getPathWithoutFileName(this._fullHtmlPageUrlIncludingProtocolAndFileName)
   }
   _makeRelativeUrlAbsolute(url) {
     if (url.startsWith("http://") || url.startsWith("https://")) return url
@@ -18798,7 +18572,7 @@ class AbstractTheme {
   }
 }
 class DefaultTheme extends AbstractTheme {}
-class AbstractTreeComponent extends jtree.GrammarBackedNode {
+class AbstractTreeComponent extends GrammarBackedNode {
   async startWhenReady() {
     if (this.isNodeJs()) return this.start()
     document.addEventListener(
@@ -18871,7 +18645,7 @@ class AbstractTreeComponent extends jtree.GrammarBackedNode {
   }
   getStumpNodeStringWithoutCssAndSvg() {
     // todo: cleanup. feels hacky.
-    const clone = new jtree.TreeNode(this.willowBrowser.getHtmlStumpNode().toString())
+    const clone = new TreeNode(this.willowBrowser.getHtmlStumpNode().toString())
     clone.getTopDownArray().forEach(node => {
       if (node.getFirstWord() === "styleTag" || (node.getContent() || "").startsWith("<svg ")) node.destroy()
     })
@@ -18988,7 +18762,7 @@ class AbstractTreeComponent extends jtree.GrammarBackedNode {
     })
   }
   getMessageBuffer() {
-    if (!this._messageBuffer) this._messageBuffer = new jtree.TreeNode()
+    if (!this._messageBuffer) this._messageBuffer = new TreeNode()
     return this._messageBuffer
   }
   // todo: move this to tree class? or other higher level class?
@@ -19002,11 +18776,11 @@ class AbstractTreeComponent extends jtree.GrammarBackedNode {
     // todo: cleanup!
     return this.addStumpCodeMessageToLog(`div
  class OhayoError
- bern${jtree.TreeNode.nest(errorMessage, 2)}`)
+ bern${TreeNode.nest(errorMessage, 2)}`)
   }
   logMessageText(message = "") {
     const pre = `pre
- bern${jtree.TreeNode.nest(message, 2)}`
+ bern${TreeNode.nest(message, 2)}`
     return this.addStumpCodeMessageToLog(pre)
   }
   unmount() {
@@ -19196,7 +18970,7 @@ ${new stumpNode(this.toStumpCode()).compile()}
     // todo: only insert css once per class? have a set?
     this._cssStumpNode = this._getPageHeadStump().insertCssChildNode(`styleTag
  for ${this.constructor.name}
- bern${jtree.TreeNode.nest(css, 2)}`)
+ bern${TreeNode.nest(css, 2)}`)
   }
   _getPageHeadStump() {
     return this.getRootNode().willowBrowser.getHeadStumpNode()
@@ -19238,7 +19012,7 @@ ${new stumpNode(this.toStumpCode()).compile()}
     }
     let str = `${this.getWord(0) || this.constructor.name} ${isUpdateOp ? "update" : "mount"} ${treeComponentUpdateReport.shouldUpdate} ${treeComponentUpdateReport.reason}`
     childResults.forEach(child => (str += "\n" + child.toString(1)))
-    return new jtree.TreeNode(str)
+    return new TreeNode(str)
   }
 }
 AbstractTreeComponent._mountedTreeComponents = 0

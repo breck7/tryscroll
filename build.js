@@ -12,7 +12,10 @@ lib/jquery-ui.min.js
 lib/jquery.ui.touch-punch.min.js
 node_modules/jtree/sandbox/lib/codemirror.js
 node_modules/jtree/sandbox/lib/show-hint.js
-node_modules/jtree/products/jtree.browser.js
+node_modules/jtree/products/Utils.browser.js
+node_modules/jtree/products/TreeNode.browser.js
+node_modules/jtree/products/GrammarLanguage.browser.js
+node_modules/jtree/products/GrammarCodeMirrorMode.browser.js
 node_modules/jtree/products/stump.browser.js
 node_modules/jtree/products/hakon.browser.js
 node_modules/jtree/products/TreeComponentFramework.browser.js`.split("\n")

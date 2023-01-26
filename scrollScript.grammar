@@ -47,6 +47,8 @@ groupNameCell
  extends stringCell
 htmlAnyCell
  extends anyCell
+javascriptCell
+ extends stringCell
 abstractScrollNode
  cells keywordCell
  javascript
@@ -78,7 +80,7 @@ abstractAftertextNode
   get originalTextPostLinkify() {
    const {originalText} = this
    const shouldLinkify = originalText.includes("<a ") ? false : true
-   return shouldLinkify ? this.replaceNotes(jtree.Utils.linkify(originalText)) : originalText
+   return shouldLinkify ? this.replaceNotes(Utils.linkify(originalText)) : originalText
   }
   replaceNotes(originalText) {
    this.getRootNode().footnotes.forEach((note, index) => {
@@ -348,7 +350,7 @@ snippetsNode
  javascript
   methodForGettingHtml = "htmlCodeForSnippetsPage"
   makeSnippet(file) {
-   const snippet = new jtree.TreeNode(`div
+   const snippet = new TreeNode(`div
    class scrollSnippetContainerComponent`)
    const div = snippet.getNode("div")
    div.appendLineAndChildren("bern", file[this.methodForGettingHtml])
@@ -672,7 +674,7 @@ youTubeNode
  description Embed a YouTube video. Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
  javascript
   get content() {
-   const url = this.getWord(1).replace("https://www.youtube.com/watch?v=", "https://www.youtube.com/embed/")
+   const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
    return `<div class="youTubeHolder"><iframe class="youTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
 importNode
@@ -751,7 +753,7 @@ redirectToNode
    return `<meta http-equiv="Refresh" content="0; url='${this.getWord(1)}'" />`
   }
 replaceNode
- description Define a variable token and replacement that will be applied to all lines following this one.
+ description Define a variable token and replacement that will be applied to all lines before and after this one.
  extends abstractScrollNode
  cruxFromId
  catchAllCellType stringCell
@@ -762,6 +764,13 @@ replaceNode
   compile() {
    return ""
   }
+replaceJsNode
+ description Define a variable token and replacement that will be applied to all lines before and after this one.
+ extends replaceNode
+ catchAllCellType javascriptCell
+ example
+  replaceJs SUM 1+1
+  * 1+1 = SUM
 replaceDefaultNode
  description Define the default value for a replacement. Useful if you want to import a file and set a replacement later.
  extends abstractScrollNode
@@ -1254,11 +1263,9 @@ scrollScriptNode
    return this.get("permalink") || this.file.permalink || ""
   }
  example
-  title Hello world
-  section This is Scroll
-  
-  paragraph
-   It compiles to HTML. Blank lines get turned into brs.
+  # Hello world
+  ## This is Scroll
+  * It compiles to HTML. Blank lines get turned into brs.
   
   code
    // You can add code as well.

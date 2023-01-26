@@ -1,4 +1,4 @@
-const { jtree } = require("jtree")
+const { TreeNode } = require("jtree/products/TreeNode.js")
 const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
 
 // prettier-ignore
@@ -27,8 +27,8 @@ class CodeEditorComponent extends AbstractTreeComponent {
   }
 
   createParser() {
-    return new jtree.TreeNode.Parser(undefined, {
-      value: jtree.TreeNode
+    return new TreeNode.Parser(undefined, {
+      value: TreeNode
     })
   }
 
@@ -115,12 +115,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new jtree.TreeNotationCodeMirrorMode(
-      "custom",
-      () => programCompiler,
-      undefined,
-      CodeMirror
-    )
+    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => programCompiler, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,

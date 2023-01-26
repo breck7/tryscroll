@@ -1,7 +1,6 @@
 // prettier-ignore
 /*NODE_JS_ONLY*/ const { AbstractTreeComponent, TreeComponentFrameworkDebuggerComponent } = require("jtree/products/TreeComponentFramework.node.js")
-
-const { jtree } = require("jtree")
+const { TreeNode } = require("jtree/products/TreeNode.js")
 
 const { TopBarComponent } = require("./TopBar.js")
 const { CodeEditorComponent } = require("./CodeEditor.js")
@@ -55,7 +54,7 @@ const newSeed = () => {
 
 class EditorApp extends AbstractTreeComponent {
   createParser() {
-    return new jtree.TreeNode.Parser(ErrorNode, {
+    return new TreeNode.Parser(ErrorNode, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,
@@ -110,7 +109,7 @@ class EditorApp extends AbstractTreeComponent {
 
   dumpErrorsCommand() {
     const errs = new programCompiler(this.simCode).getAllErrors()
-    console.log(new jtree.TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
+    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
   }
 
   get mainExperiment() {
@@ -146,7 +145,7 @@ class EditorApp extends AbstractTreeComponent {
   }
 
   get urlHash() {
-    const tree = new jtree.TreeNode()
+    const tree = new TreeNode()
     tree.appendLineAndChildren(UrlKeys.scroll, this.simCode ?? "")
     return "#" + encodeURIComponent(tree.toString())
   }
@@ -182,7 +181,7 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, style
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
-  const startState = new jtree.TreeNode(`${githubTriangleComponent.name}
+  const startState = new TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
  ${ShareComponent.name}
  ${ExportComponent.name}

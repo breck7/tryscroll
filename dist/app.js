@@ -3,7 +3,7 @@
 
 class BottomBarComponent extends AbstractTreeComponent {
   createParser() {
-    return new jtree.TreeNode.Parser(undefined, {})
+    return new TreeNode.Parser(undefined, {})
   }
 }
 
@@ -38,8 +38,8 @@ class CodeEditorComponent extends AbstractTreeComponent {
   }
 
   createParser() {
-    return new jtree.TreeNode.Parser(undefined, {
-      value: jtree.TreeNode
+    return new TreeNode.Parser(undefined, {
+      value: TreeNode
     })
   }
 
@@ -126,12 +126,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new jtree.TreeNotationCodeMirrorMode(
-      "custom",
-      () => programCompiler,
-      undefined,
-      CodeMirror
-    )
+    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => programCompiler, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
@@ -163,7 +158,6 @@ window.CodeEditorComponent = CodeEditorComponent
 
 
 // prettier-ignore
-
 
 
 
@@ -217,7 +211,7 @@ const newSeed = () => {
 
 class EditorApp extends AbstractTreeComponent {
   createParser() {
-    return new jtree.TreeNode.Parser(ErrorNode, {
+    return new TreeNode.Parser(ErrorNode, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,
@@ -272,7 +266,7 @@ class EditorApp extends AbstractTreeComponent {
 
   dumpErrorsCommand() {
     const errs = new programCompiler(this.simCode).getAllErrors()
-    console.log(new jtree.TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
+    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
   }
 
   get mainExperiment() {
@@ -308,7 +302,7 @@ class EditorApp extends AbstractTreeComponent {
   }
 
   get urlHash() {
-    const tree = new jtree.TreeNode()
+    const tree = new TreeNode()
     tree.appendLineAndChildren(UrlKeys.scroll, this.simCode ?? "")
     return "#" + encodeURIComponent(tree.toString())
   }
@@ -344,7 +338,7 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, style
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
-  const startState = new jtree.TreeNode(`${githubTriangleComponent.name}
+  const startState = new TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
  ${ShareComponent.name}
  ${ExportComponent.name}
@@ -508,7 +502,7 @@ window.ShowcaseComponent = ShowcaseComponent
 
 class TopBarComponent extends AbstractTreeComponent {
   createParser() {
-    return new jtree.TreeNode.Parser(undefined, {
+    return new TreeNode.Parser(undefined, {
       ShareComponent,
       ExportComponent
     })
@@ -531,6 +525,7 @@ UrlKeys.url = "url"
 window.LocalStorageKeys = LocalStorageKeys
 
 window.UrlKeys = UrlKeys
+
 
 
 
@@ -584,7 +579,7 @@ class BrowserGlue extends AbstractTreeComponent {
 
   async fetchCode() {
     const hash = this.willowBrowser.getHash().substr(1)
-    const deepLink = new jtree.TreeNode(decodeURIComponent(hash))
+    const deepLink = new TreeNode(decodeURIComponent(hash))
     const fromUrl = deepLink.get(UrlKeys.url)
     const code = deepLink.getNode(UrlKeys.scroll)
 
@@ -598,7 +593,7 @@ class BrowserGlue extends AbstractTreeComponent {
   }
 
   async init(grammarCode, styleCode) {
-    window.programCompiler = new jtree.HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
+    window.programCompiler = new HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
     const simCode = await this.fetchCode()
 
     window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight, styleCode)

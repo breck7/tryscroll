@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { jtree } = require("jtree")
+const { TreeNode } = require("jtree/products/TreeNode.js")
 const { Disk } = require("jtree/products/Disk.node.js")
 const grammarNode = require("jtree/products/grammar.nodejs.js")
 const { EditorApp } = require("./EditorApp.js")
@@ -12,7 +12,7 @@ testTree.grammar = areEqual => {
 	const errs = new grammarNode(new programCompiler().getDefinition().toString())
 		.getAllErrors()
 		.map(err => err.toObject())
-	if (errs.length) console.log(new jtree.TreeNode(errs).toFormattedTable(60))
+	if (errs.length) console.log(new TreeNode(errs).toFormattedTable(60))
 	areEqual(errs.length, 0, "no grammar errors")
 }
 
