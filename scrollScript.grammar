@@ -841,6 +841,13 @@ abstractTableNode
   compile() {
    return `<table class="scrollTableComponent"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
   }
+tableNode
+ description A table with a custom delimiter.
+ extends abstractTableNode
+ javascript
+  get delimiter() {
+    return this.getContent() ?? ""
+  }
 commaTableNode
  description Comma separated values table.
  extends abstractTableNode
@@ -1011,7 +1018,7 @@ linkNode
   }
   patternStartsAtWord = 2
   get pattern() {
-   // If no pattern is provided, make the *entire* line a link.
+   // If no pattern is provided, apply to the *entire* content.
    const words = this.getWordsFrom(this.patternStartsAtWord)
    return words.length ? words.join(" ") : this.getParent().getContent()
   }
@@ -1033,7 +1040,7 @@ quickLinkNode
   }
   patternStartsAtWord = 1
 classMarkupNode
- description Add a span with a class name around matching text.
+ description Add a span with a class name around matching text. If no matching text provided, class will be set on the whole element.
  extends abstractMarkupNode
  cells keywordCell classNameCell
  crux class
@@ -1046,7 +1053,8 @@ classMarkupNode
    return [`class="${this.className}"`]
   }
   get pattern() {
-   return this.getWordsFrom(2).join(" ")
+   const words = this.getWordsFrom(2)
+   return words.length ? words.join(" ") : this.getParent().getContent()
   }
 hoverNoteNode
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
