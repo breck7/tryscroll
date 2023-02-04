@@ -75,18 +75,17 @@ abstractAftertextNode
     .flat()
   }
   get originalText() {
-    return this.getContent() ?? ""
+   return this.getContent() ?? ""
   }
   get originalTextPostLinkify() {
-   const {originalText} = this
+   const { originalText } = this
    const shouldLinkify = originalText.includes("<a ") ? false : true
    return shouldLinkify ? this.replaceNotes(Utils.linkify(originalText)) : originalText
   }
   replaceNotes(originalText) {
    this.getRootNode().footnotes.forEach((note, index) => {
     const needle = note.getWord(0)
-    if (originalText.includes(needle))
-        originalText = originalText.replace(needle, `<a href="#${note.anchorId}" class="scrollNoteLink" id="${note.linkBack()}"><sup>${note.noteId}</sup></a>`)
+    if (originalText.includes(needle)) originalText = originalText.replace(needle, `<a href="#${note.anchorId}" class="scrollNoteLink" id="${note.linkBack()}"><sup>${note.noteId}</sup></a>`)
    })
    return originalText
   }
@@ -108,7 +107,9 @@ abstractAftertextNode
   tag = "p"
   className = "scrollParagraphComponent"
   compile() {
-   return `<${this.tag} ${this.divAttributes}class="${this.className}">${this.text}</${this.tag}>`
+   const {className} = this
+   const classAttr = className ? `class="${this.className}"` : ""
+   return `<${this.tag} ${this.divAttributes}${classAttr}>${this.text}</${this.tag}>`
   }
   get divAttributes() {
    const attrs = this.filter(node => node.isAttributeNode)
@@ -155,14 +156,14 @@ footnoteDefinitionNode
    return super.divAttributes + ` id="${this.anchorId}"`
   }
   get anchorId() {
-    return `note${this.noteIndex}`
+   return `note${this.noteIndex}`
   }
   get noteId() {
-    // In the future we could allow common practices like author name
-    return this.noteIndex
+   // In the future we could allow common practices like author name
+   return this.noteIndex
   }
   linkBack() {
-    return `noteUsage${this.noteIndex}`
+   return `noteUsage${this.noteIndex}`
   }
   get text() {
    return `<a class="scrollNoteIndex" href="#noteUsage${this.noteIndex}">${this.noteIndex}</a> ${super.text}`
@@ -181,36 +182,34 @@ listAftertextNode
  description A list item.
  crux -
  javascript
+  className = ""
   compile() {
    const index = this.getIndex()
    const parent = this.getParent()
-   const isStartOfList =
-    index === 0 ||
-    !parent
-     .nodeAt(index - 1)
-     .getLine()
-     .startsWith("- ")
-   const isEndOfList =
-    parent.length === index + 1 ||
-    !parent
-     .nodeAt(index + 1)
-     .getLine()
-     .startsWith("- ")
+   const nodeClass = this.constructor
+   const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
+   const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
    const { listType } = this
    return (isStartOfList ? `<${listType}>` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
   }
   tag = "li"
-  get listType() {
-   return "ul" // todo: in the future add support for ol
-  }
+  listType = "ul"
+orderedListAftertextNode
+ extends listAftertextNode
+ description A list item.
+ example
+  1. Hello world
+ pattern ^\d+\. 
+ javascript
+  listType = "ol"
 sectionTitleNode
  description Compiles to an html h3 tag.
  extends thoughtNode
  crux #
  javascript
   compile() {
-    this.getParent().stack.push("</div>")
-    return `<div class="scrollSectionComponent">` + super.compile()
+   this.getParent().stack.push("</div>")
+   return `<div class="scrollSectionComponent">` + super.compile()
   }
   tag = "h3"
 sectionSubTitleNode
@@ -430,21 +429,36 @@ codeWithLanguageNode
 belowAsCodeNode
  description Print the Scroll code of the next node.
  extends abstractScrollNode
+ catchAllCellType integerCell
  cruxFromId
  javascript
-  get target() {
-   return this.getNext()
+  method = "getNext"
+  get code() {
+   const { method } = this
+   let code = ""
+   let howMany = parseInt(this.getWord(1))
+   if (!howMany || isNaN(howMany)) howMany = 1
+   let nodes = []
+   let next = this[method]()
+   while (howMany) {
+    nodes.push(next)
+    next = next[method]()
+    howMany--
+   }
+   if (this.reverseNodes)
+    nodes.reverse()
+   return nodes.map(node => node.toString()).join("\n")
   }
+  reverseNodes = false
   compile() {
-   return `<code class="scrollCodeBlockComponent">${this.target.toString().replace(/\</g, "&lt;")}</code>`
+   return `<code class="scrollCodeBlockComponent">${this.code.replace(/\</g, "&lt;")}</code>`
   }
 aboveAsCodeNode
  description Print the Scroll code for the previous node.
  extends belowAsCodeNode
  javascript
-  get target() {
-   return this.getPrevious()
-  }
+  method = "getPrevious"
+  reverseNodes = true
 commentNode
  description Will not appear in the compiled HTML.
  catchAllCellType commentCell
@@ -640,9 +654,9 @@ abstractCaptionedNode
  cruxFromId
  javascript
   compile() {
-    const caption = this.getNode("caption")
-    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
-    return `<figure class="scrollCaptionedComponent">${this.content}${captionFig}</figure>`
+   const caption = this.getNode("caption")
+   const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
+   return `<figure class="scrollCaptionedComponent">${this.content}${captionFig}</figure>`
   }
 imageNode
  description An img tag.
@@ -847,7 +861,7 @@ tableNode
  catchAllCellType anyCell
  javascript
   get delimiter() {
-    return this.getContent() ?? ""
+   return this.getContent() ?? ""
   }
 commaTableNode
  description Comma separated values table.
@@ -1013,7 +1027,7 @@ linkNode
    const options = ["title", "target"]
    options.forEach(option => {
     const node = this.getNode(option)
-   if (node) attrs.push(`${option}="${node.getContent()}"`)
+    if (node) attrs.push(`${option}="${node.getContent()}"`)
    })
    return attrs
   }
@@ -1255,16 +1269,15 @@ scrollScriptNode
   }
   stack = []
   clearStack() {
-    const result = this.stack.join("")
-    this.stack = []
-    return result
+   const result = this.stack.join("")
+   this.stack = []
+   return result
   }
   compileSnippet() {
    return this.map(child => (child.compileSnippet ? child.compileSnippet() : child.compile())).join("\n")
   }
   get footnotes() {
-   if (this._footnotes === undefined)
-    this._footnotes = this.filter(node => node.isFootnote)
+   if (this._footnotes === undefined) this._footnotes = this.filter(node => node.isFootnote)
    return this._footnotes
   }
   file = {}
