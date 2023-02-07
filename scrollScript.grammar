@@ -75,7 +75,7 @@ abstractAftertextNode
     .flat()
   }
   get originalText() {
-   return this.getContent() ?? ""
+   return this.content ?? ""
   }
   get originalTextPostLinkify() {
    const { originalText } = this
@@ -83,8 +83,8 @@ abstractAftertextNode
    return shouldLinkify ? this.replaceNotes(Utils.linkify(originalText)) : originalText
   }
   replaceNotes(originalText) {
-   this.getRootNode().footnotes.forEach((note, index) => {
-    const needle = note.getWord(0)
+   this.root.footnotes.forEach((note, index) => {
+    const needle = note.firstWord
     if (originalText.includes(needle)) originalText = originalText.replace(needle, `<a href="#${note.anchorId}" class="scrollNoteLink" id="${note.linkBack()}"><sup>${note.noteId}</sup></a>`)
    })
    return originalText
@@ -169,7 +169,7 @@ footnoteDefinitionNode
    return `<a class="scrollNoteIndex" href="#noteUsage${this.noteIndex}">${this.noteIndex}</a> ${super.text}`
   }
   get noteIndex() {
-   return this.getParent().footnotes.indexOf(this) + 1
+   return this.parent.footnotes.indexOf(this) + 1
   }
 captionAftertextNode
  description An optional caption to accompany the resource.
@@ -185,7 +185,7 @@ listAftertextNode
   className = ""
   compile() {
    const index = this.getIndex()
-   const parent = this.getParent()
+   const parent = this.parent
    const nodeClass = this.constructor
    const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
    const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
@@ -208,7 +208,7 @@ sectionTitleNode
  crux #
  javascript
   compile() {
-   this.getParent().stack.push("</div>")
+   this.parent.stack.push("</div>")
    return `<div class="scrollSectionComponent">` + super.compile()
   }
   tag = "h3"
@@ -258,7 +258,7 @@ scrollCssTagNode
  description Prints the Scroll CSS in an <style> tag. To not print the style tag use `scrollCss`.
  javascript
   compile() {
-   return `<style>${this.getParent().file.SCROLL_CSS}</style>`
+   return `<style>${this.parent.file.SCROLL_CSS}</style>`
   }
   compileSnippet() {
    return ""
@@ -267,7 +267,7 @@ scrollCssNode
  extends scrollCssTagNode
  javascript
   compile() {
-   return this.getParent().file.SCROLL_CSS
+   return this.parent.file.SCROLL_CSS
   }
 scrollFooterNode
  extends abstractAftertextNode
@@ -277,7 +277,7 @@ scrollFooterNode
    return ""
   }
   compile() {
-   const file = this.getParent().file
+   const file = this.parent.file
    const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
    const closeContainerTag = "</div>"
    return (
@@ -306,7 +306,7 @@ scrollHeaderNode
    return ""
   }
   compile() {
-   const file = this.getParent().file
+   const file = this.parent.file
    const { SVGS, linkToPrevious, linkToNext } = file
    let previousButton = ""
    if (linkToPrevious)
@@ -357,7 +357,7 @@ snippetsNode
   }
   compile() {
    const groupName = this.getWord(1)
-   const file = this.getParent().file
+   const file = this.parent.file
    const { folder } = file
    const files = folder.getGroup(groupName)
    const snippets = files.map(file => this.makeSnippet(file)).join("\n ")
@@ -381,7 +381,7 @@ viewSourceNode
    return ""
   }
   compile() {
-   const file = this.getParent().file
+   const file = this.parent.file
    const { viewSourceUrl } = file
    return file.compileStumpCode(`p
    class scrollFileViewSourceUrlComponent doNotPrint
@@ -508,7 +508,7 @@ metaTagsNode
    return ""
   }
   compile() {
-   const { file } = this.getParent()
+   const { file } = this.parent
    const { title, description, openGraphImage, SCROLL_VERSION } = file
    const rssFeedUrl = file.get("rssFeedUrl")
    let rssTag = ""
@@ -567,8 +567,8 @@ titleNode
  inScope hiddenTitleNode
  javascript
   compile() {
-   const { file } = this.getParent()
-   return this.has("hidden") ? "" : `<h1 class="scrollTitleComponent"><a href="${file.permalink}">${this.getContent()}</a></h1>`
+   const { file } = this.parent
+   return this.has("hidden") ? "" : `<h1 class="scrollTitleComponent"><a href="${file.permalink}">${this.content}</a></h1>`
   }
 viewSourceUrlNode
  catchAllCellType urlCell
@@ -627,7 +627,7 @@ htmlNode
  catchAllCellType htmlAnyCell
  javascript
   compile() {
-   return `${this.getContent() ?? ""}${this.childrenToString()}`
+   return `${this.content ?? ""}${this.childrenToString()}`
   }
 stumpNode
  cruxFromId
@@ -636,7 +636,7 @@ stumpNode
  catchAllNodeType stumpContentNode
  javascript
   compile() {
-   const file = this.getParent().file
+   const file = this.parent.file
    return file.compileStumpCode(this.childrenToString())
   }
 stumpNoSnippetNode
@@ -663,7 +663,7 @@ imageNode
  extends abstractCaptionedNode
  javascript
   get content() {
-   const file = this.getRootNode().file
+   const file = this.root.file
    const folder = file.folder.folder
    const src = this.getWord(1)
    let dimensionAttributes = ""
@@ -720,7 +720,7 @@ keyboardNavNode
    return ""
   }
   compile() {
-   const file = this.getRootNode().file
+   const file = this.root.file
    const linkToPrevious = this.getWord(1) ?? file.linkToPrevious
    const linkToNext = this.getWord(2) ?? file.linkToNext
    const script = `<script>document.addEventListener('keydown', function(event) {
@@ -805,7 +805,7 @@ printFeedNode
  javascript
   compile() {
    const dayjs = require("dayjs")
-   const file = this.getRootNode().file
+   const file = this.root.file
    const folder = file.folder
    const files = folder.getGroup(this.getWord(1))
    const { title, baseUrl, description } = file
@@ -861,7 +861,7 @@ tableNode
  catchAllCellType anyCell
  javascript
   get delimiter() {
-   return this.getContent() ?? ""
+   return this.content ?? ""
   }
 commaTableNode
  description Comma separated values table.
@@ -920,7 +920,7 @@ kpiTableNode
    return str
   }
   makeRow(items) {
-   return `<tr>` + items.map(node => `<td>${node.getWord(0)}<span>${node.getContent()}</span></td>`).join("\n") + `</tr>\n`
+   return `<tr>` + items.map(node => `<td>${node.firstWord}<span>${node.content}</span></td>`).join("\n") + `</tr>\n`
   }
   compile() {
    return `<table class="scrollKpiTable">${this.tableBody}</table>`
@@ -930,7 +930,7 @@ abstractAftertextAttributeNode
  boolean isAttributeNode true
  javascript
   get divAttributes() {
-   return `${this.getWord(0)}="${this.getContent()}"`
+   return `${this.firstWord}="${this.content}"`
   }
   compile() {
    return ""
@@ -1027,7 +1027,7 @@ linkNode
    const options = ["title", "target"]
    options.forEach(option => {
     const node = this.getNode(option)
-    if (node) attrs.push(`${option}="${node.getContent()}"`)
+    if (node) attrs.push(`${option}="${node.content}"`)
    })
    return attrs
   }
@@ -1035,7 +1035,7 @@ linkNode
   get pattern() {
    // If no pattern is provided, apply to the *entire* content.
    const words = this.getWordsFrom(this.patternStartsAtWord)
-   return words.length ? words.join(" ") : this.getParent().getContent()
+   return words.length ? words.join(" ") : this.parent.content
   }
 emailLinkNode
  description A mailto link
@@ -1051,7 +1051,7 @@ quickLinkNode
  cells urlCell
  javascript
   get link() {
-   return this.getWord(0)
+   return this.firstWord
   }
   patternStartsAtWord = 1
 classMarkupNode
@@ -1069,7 +1069,7 @@ classMarkupNode
   }
   get pattern() {
    const words = this.getWordsFrom(2)
-   return words.length ? words.join(" ") : this.getParent().getContent()
+   return words.length ? words.join(" ") : this.parent.content
   }
 hoverNoteNode
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
@@ -1143,9 +1143,9 @@ datelineNode
  javascript
   getInserts() {
    let day =
-    this.getContent() ||
-    this.getParent()
-     .getParent()
+    this.content ||
+    this.parent
+     .parent
      .get("date")
    if (!day) return false
    try {
@@ -1163,8 +1163,8 @@ dayjsNode
  javascript
   getInserts() {
    const dayjs = require("dayjs")
-   const days = eval(this.getContent())
-   const index = this.getParent().originalTextPostLinkify.indexOf("days")
+   const days = eval(this.content)
+   const index = this.parent.originalTextPostLinkify.indexOf("days")
    return [{ index, string: `${days} ` }]
   }
 abstractMarkupParameterNode
@@ -1242,8 +1242,8 @@ readingListItemNode
  catchAllCellType stringCell
  javascript
   compile() {
-   const url = this.getWord(0)
-   const [title, author] = this.getContent().split(" by ")
+   const url = this.firstWord
+   const [title, author] = this.content.split(" by ")
    return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
   }
 blankLineNode
@@ -1251,7 +1251,7 @@ blankLineNode
  cells blankCell
  javascript
   compile() {
-   return this.getParent().clearStack()
+   return this.parent.clearStack()
   }
  pattern ^$
  tags doNotSynthesize
@@ -1339,7 +1339,7 @@ treeRowNode
      str += "<td></td>\n"
      return
     }
-    const content = node.length ? node.childrenToString() : node.getContent()
+    const content = node.length ? node.childrenToString() : node.content
     let tagged = ""
     const link = this.get(col.name + "Link")
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`

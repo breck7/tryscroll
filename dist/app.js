@@ -54,7 +54,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
     const code = this.codeMirrorValue
     if (this._code === code) return
     this._code = code
-    const root = this.getRootNode()
+    const root = this.root
     // this._updateLocalStorage()
 
     this.program = new programCompiler(code)
@@ -95,7 +95,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
   }
 
   loadFromEditor() {
-    this.getRootNode().loadNewDoc(this._code)
+    this.root.loadNewDoc(this._code)
   }
 
   get simCode() {
@@ -363,13 +363,13 @@ window.EditorApp = EditorApp
 
 class EditorHandleComponent extends AbstractTreeComponent {
   get left() {
-    return this.getRootNode().editor.width
+    return this.root.editor.width
   }
 
   makeDraggable() {
     if (this.isNodeJs()) return
 
-    const root = this.getRootNode()
+    const root = this.root
     jQuery(this.getStumpNode().getShadow().element).draggable({
       axis: "x",
       drag: function(event, ui) {
@@ -397,7 +397,7 @@ class EditorHandleComponent extends AbstractTreeComponent {
   }
 
   getDependencies() {
-    return [this.getRootNode().editor]
+    return [this.root.editor]
   }
 }
 
@@ -418,19 +418,19 @@ class ExportComponent extends AbstractTreeComponent {
   }
 
   copyHtmlToClipboardCommand() {
-    this.app.willowBrowser.copyTextToClipboard(this.app.completeHtml)
+    this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
   }
 
   downloadHtmlCommand() {
     // todo: figure this out. use the browsers filename? tile title? id?
     let extension = "html"
     let type = "text/html"
-    let str = this.app.completeHtml
-    this.app.willowBrowser.downloadFile(str, "scrollOutput.html", type)
+    let str = this.root.completeHtml
+    this.root.willowBrowser.downloadFile(str, "scrollOutput.html", type)
   }
 
   get app() {
-    return this.getRootNode()
+    return this.root
   }
 }
 
@@ -450,13 +450,13 @@ class ShareComponent extends AbstractTreeComponent {
   }
 
   getDependencies() {
-    return [this.getRootNode().mainExperiment]
+    return [this.root.mainExperiment]
   }
 
   get link() {
     const url = new URL(typeof location === "undefined" ? "http://localhost/" : location.href) // todo: TCF should provide shim for this
     url.hash = ""
-    return url.toString() + this.getRootNode().urlHash
+    return url.toString() + this.root.urlHash
   }
 }
 
@@ -467,11 +467,7 @@ window.ShareComponent = ShareComponent
 
 class ShowcaseComponent extends AbstractTreeComponent {
   get html() {
-    return this.app.completeHtml
-  }
-
-  get app() {
-    return this.getRootNode()
+    return this.root.completeHtml
   }
 
   refresh() {
@@ -485,7 +481,7 @@ class ShowcaseComponent extends AbstractTreeComponent {
   toStumpCode() {
     return `div
  class ${ShowcaseComponent.name}
- style left:${this.app.leftStartPosition + 10}px;
+ style left:${this.root.leftStartPosition + 10}px;
  iframe
   id theIframe
   srcdoc`

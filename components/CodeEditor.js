@@ -43,7 +43,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
     const code = this.codeMirrorValue
     if (this._code === code) return
     this._code = code
-    const root = this.getRootNode()
+    const root = this.root
     // this._updateLocalStorage()
 
     this.program = new programCompiler(code)
@@ -84,7 +84,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
   }
 
   loadFromEditor() {
-    this.getRootNode().loadNewDoc(this._code)
+    this.root.loadNewDoc(this._code)
   }
 
   get simCode() {

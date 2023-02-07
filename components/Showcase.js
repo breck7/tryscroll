@@ -2,11 +2,7 @@ const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework
 
 class ShowcaseComponent extends AbstractTreeComponent {
   get html() {
-    return this.app.completeHtml
-  }
-
-  get app() {
-    return this.getRootNode()
+    return this.root.completeHtml
   }
 
   refresh() {
@@ -20,7 +16,7 @@ class ShowcaseComponent extends AbstractTreeComponent {
   toStumpCode() {
     return `div
  class ${ShowcaseComponent.name}
- style left:${this.app.leftStartPosition + 10}px;
+ style left:${this.root.leftStartPosition + 10}px;
  iframe
   id theIframe
   srcdoc`

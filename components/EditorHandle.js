@@ -2,13 +2,13 @@ const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework
 
 class EditorHandleComponent extends AbstractTreeComponent {
   get left() {
-    return this.getRootNode().editor.width
+    return this.root.editor.width
   }
 
   makeDraggable() {
     if (this.isNodeJs()) return
 
-    const root = this.getRootNode()
+    const root = this.root
     jQuery(this.getStumpNode().getShadow().element).draggable({
       axis: "x",
       drag: function(event, ui) {
@@ -36,7 +36,7 @@ class EditorHandleComponent extends AbstractTreeComponent {
   }
 
   getDependencies() {
-    return [this.getRootNode().editor]
+    return [this.root.editor]
   }
 }
 
