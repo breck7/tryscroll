@@ -17,6 +17,7 @@ integerCell
  highlightScope constant.numeric
 permalinkCell
  highlightScope string
+ description A string that doesn't contain characters that might interfere with most filesystems. No slashes, for instance.
 commentCell
  highlightScope comment
 blankCell
@@ -43,7 +44,12 @@ htmlIdCell
  extends idCell
 filePathCell
  extends stringCell
+cssAnyCell
+ extends anyCell
 groupNameCell
+ extends permalinkCell
+groupNameWithOptionalFolderCell
+ description A group name combined with a folder path. Only used when referencing groups, not in posts.
  extends stringCell
 htmlAnyCell
  extends anyCell
@@ -212,6 +218,23 @@ sectionTitleNode
    return `<div class="scrollSectionComponent">` + super.compile()
   }
   tag = "h3"
+titleNode
+ description Title of the page for meta tags and also compiles to an html h1 tag.
+ extends sectionTitleNode
+ crux title
+ javascript
+  compile() {
+   // Hacky, I know.
+   const {relativePath, permalink} = this.parent.file
+   if (!permalink)
+    return super.compile()
+   const newLine = this.appendLine("link " + relativePath + permalink)
+   const compiled = super.compile()
+   newLine.destroy()
+   return compiled
+  }
+  className = "scrollTitleComponent"
+  tag = "h1"
 sectionSubTitleNode
  description Compiles to an html h4 tag.
  extends sectionTitleNode
@@ -342,24 +365,23 @@ loremIpsumNode
 snippetsNode
  extends abstractAftertextNode
  cruxFromId
- cells keywordCell groupNameCell
+ cells keywordCell groupNameWithOptionalFolderCell
+ catchAllCellType groupNameWithOptionalFolderCell
  description Prints the snippets of all files in a folder that are in the named group.
  example
   snippets index
  javascript
-  methodForGettingHtml = "htmlCodeForSnippetsPage"
+  methodForGettingHtml = "getHtmlCodeForSnippetsPage"
   makeSnippet(file) {
    const snippet = new TreeNode(`div
    class scrollSnippetContainerComponent`)
    const div = snippet.getNode("div")
-   div.appendLineAndChildren("bern", file[this.methodForGettingHtml])
+   div.appendLineAndChildren("bern", file[this.methodForGettingHtml]())
    return snippet.toString().replace(/\n/g, "\n ")
   }
   compile() {
-   const groupName = this.getWord(1)
    const file = this.parent.file
-   const { folder } = file
-   const files = folder.getGroup(groupName)
+   const files = file.folder.getFilesInGroups(this.getWordsFrom(1))
    const snippets = files.map(file => this.makeSnippet(file)).join("\n ")
    const code = `div
    class scrollColumnsComponent
@@ -372,7 +394,7 @@ fullSnippetsNode
  cruxFromId
  description Prints the full contents of files in a folder that are in the named group.
  javascript
-  methodForGettingHtml = "compiledSnippet"
+  methodForGettingHtml = "getCompiledSnippet"
 viewSourceNode
  extends abstractAftertextNode
  cruxFromId
@@ -474,9 +496,10 @@ cssNode
  description Prints CSS content wrapped in a style tag.
  cruxFromId
  catchAllNodeType cssLineNode
+ catchAllCellType cssAnyCell
  javascript
   compile() {
-   return `<style>${this.childrenToString()}</style>`
+   return `<style>${this.content ?? ""}${this.childrenToString()}</style>`
   }
 abstractTopLevelSingleMetaNode
  description Use these keywords once per file.
@@ -498,7 +521,7 @@ groupsNode
   groups index.html
  extends abstractTopLevelSingleMetaNode
  cells keywordCell
- catchAllCellType permalinkCell
+ catchAllCellType groupNameCell
 metaTagsNode
  cruxFromId
  extends abstractTopLevelSingleMetaNode
@@ -560,16 +583,6 @@ permalinkNode
 endSnippetNode
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractTopLevelSingleMetaNode
-titleNode
- catchAllCellType stringCell
- description Title of the page.
- extends abstractTopLevelSingleMetaNode
- inScope hiddenTitleNode
- javascript
-  compile() {
-   const { file } = this.parent
-   return this.has("hidden") ? "" : `<h1 class="scrollTitleComponent"><a href="${file.permalink}">${this.content}</a></h1>`
-  }
 viewSourceUrlNode
  catchAllCellType urlCell
  description Use this to override the link to the source code for a scroll file.
@@ -656,16 +669,17 @@ abstractCaptionedNode
   compile() {
    const caption = this.getNode("caption")
    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
-   return `<figure class="scrollCaptionedComponent">${this.content}${captionFig}</figure>`
+   return `<figure class="scrollCaptionedComponent">${this.figureContent}${captionFig}</figure>`
   }
 imageNode
  description An img tag.
  extends abstractCaptionedNode
  javascript
-  get content() {
+  get figureContent() {
    const file = this.root.file
    const folder = file.folder.folder
    const src = this.getWord(1)
+   const {relativePath} = file
    let dimensionAttributes = ""
    // If its a local image, get the dimensions and put them in the HTML
    // to avoid flicker
@@ -681,13 +695,13 @@ imageNode
      console.error(err)
     }
    }
-   return `<a href="${src}" target="_blank"><img src="${src}" ${dimensionAttributes}loading="lazy"></a>`
+   return `<a href="${relativePath + src}" target="_blank"><img src="${relativePath + src}" ${dimensionAttributes}loading="lazy"></a>`
   }
 youTubeNode
  extends abstractCaptionedNode
  description Embed a YouTube video. Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
  javascript
-  get content() {
+  get figureContent() {
    const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
    return `<div class="youTubeHolder"><iframe class="youTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
@@ -801,13 +815,13 @@ printFeedNode
  description Prints out the RSS feed for a group.
  extends abstractScrollNode
  cruxFromId
- cells keywordCell groupNameCell
+ cells keywordCell groupNameWithOptionalFolderCell
+ catchAllCellType groupNameWithOptionalFolderCell
  javascript
   compile() {
    const dayjs = require("dayjs")
    const file = this.root.file
-   const folder = file.folder
-   const files = folder.getGroup(this.getWord(1))
+   const files = file.folder.getFilesInGroups(this.getWordsFrom(1))
    const { title, baseUrl, description } = file
    return `<?xml version="1.0" encoding="ISO-8859-1" ?>
   <rss version="2.0">
@@ -940,6 +954,12 @@ aftertextIdNode
  description Provide an ID to be output in the generated HTML paragraph.
  extends abstractAftertextAttributeNode
  cells keywordCell htmlIdCell
+ single
+aftertextHiddenNode
+ crux hidden
+ cells keywordCell
+ description Do not compile this node to HTML.
+ extends abstractAftertextAttributeNode
  single
 abstractAftertextDirectiveNode
  cells keywordCell
@@ -1224,7 +1244,7 @@ lineOfCodeNode
 commentLineNode
  catchAllCellType commentCell
 cssLineNode
- catchAllCellType anyCell
+ catchAllCellType cssAnyCell
  catchAllNodeType cssLineNode
 lineOfTextNode
  catchAllCellType stringCell
@@ -1312,10 +1332,6 @@ rowNode
    }
    return str
   }
-hiddenTitleNode
- description Set this to not print the title.
- crux hidden
- cells keywordCell
 treeRowContentNode
  description Any blob content in a cell.
  cells stringCell
