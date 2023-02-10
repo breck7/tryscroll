@@ -262,7 +262,7 @@ startColumnsNode
    const COLUMN_GAP = 20
    const maxColumns = parseInt(this.getWord(1) ?? 10)
    const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
-   return `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
+   return this.parent.clearStack() + `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
 endColumnsNode
  extends abstractAftertextNode
@@ -1225,6 +1225,15 @@ linkTitleNode
   * This report showed the treatment had a big impact.
    https://example.com/report This report.
     title The average growth in the treatment group was 14.2x higher than the control group.
+blankLineNode
+ description Blank lines compile to nothing in the HTML.
+ cells blankCell
+ javascript
+  compile() {
+   return this.parent.clearStack()
+  }
+ pattern ^$
+ tags doNotSynthesize
 catchAllParagraphNode
  description A catch all block. This may be removed in future versions.
  catchAllCellType stringCell
@@ -1266,15 +1275,6 @@ readingListItemNode
    const [title, author] = this.content.split(" by ")
    return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
   }
-blankLineNode
- description Blank lines compile to nothing in the HTML.
- cells blankCell
- javascript
-  compile() {
-   return this.parent.clearStack()
-  }
- pattern ^$
- tags doNotSynthesize
 scrollScriptNode
  extensions scroll
  description Tools for thought that compile to HTML.
