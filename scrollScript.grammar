@@ -113,7 +113,7 @@ abstractAftertextNode
   tag = "p"
   className = "scrollParagraphComponent"
   compile() {
-   const {className} = this
+   const { className } = this
    const classAttr = className ? `class="${this.className}"` : ""
    return `<${this.tag} ${this.divAttributes}${classAttr}>${this.text}</${this.tag}>`
   }
@@ -225,10 +225,9 @@ titleNode
  javascript
   compile() {
    // Hacky, I know.
-   const {relativePath, permalink} = this.parent.file
-   if (!permalink)
-    return super.compile()
-   const newLine = this.appendLine("link " + relativePath + permalink)
+   const { relativeLink, permalink } = this.parent.file
+   if (!permalink) return super.compile()
+   const newLine = this.appendLine("link " + relativeLink)
    const compiled = super.compile()
    newLine.destroy()
    return compiled
@@ -382,19 +381,48 @@ snippetsNode
   compile() {
    const file = this.parent.file
    const files = file.folder.getFilesInGroups(this.getWordsFrom(1))
-   const snippets = files.map(file => this.makeSnippet(file)).join("\n ")
+   const snippets = files.map(file => this.makeSnippet(file)).join(this.delimiter)
    const code = `div
    class scrollColumnsComponent
    style column-width:35ch;
    ${snippets}`
    return file.compileStumpCode(code)
   }
+  delimiter = "\n "
 fullSnippetsNode
  extends snippetsNode
  cruxFromId
  description Prints the full contents of files in a folder that are in the named group.
  javascript
   methodForGettingHtml = "getCompiledSnippet"
+loopNode
+ extends abstractAftertextNode
+ cells keywordCell
+ description Iterate over files, lines or words, evaluating code and joining the resulting HTML.
+ cruxFromId
+ inScope abstractLoopConfigNode
+ javascript
+  compile() {
+   const code = this.get("javascript")
+   const joinWith = this.get("join") ?? ""
+   try {
+    const limit = this.get("limit")
+    let items = this.items
+    if (limit)
+      items = items.slice(0, parseInt(limit))
+    return items.map((item, index) => eval(code)).join(joinWith)
+   } catch (err) {
+    console.error(err)
+    return ""
+   }
+  }
+  get items() {
+   // todo: what's the best jtree way to do this?
+   if (this.has("groups")) return this.getNode("groups").items
+   if (this.has("lines")) return this.getNode("lines").items
+   if (this.has("words")) return this.getNode("words").items
+   return []
+  }
 viewSourceNode
  extends abstractAftertextNode
  cruxFromId
@@ -467,8 +495,7 @@ belowAsCodeNode
     next = next[method]()
     howMany--
    }
-   if (this.reverseNodes)
-    nodes.reverse()
+   if (this.reverseNodes) nodes.reverse()
    return nodes.map(node => node.toString()).join("\n")
   }
   reverseNodes = false
@@ -677,9 +704,9 @@ imageNode
  javascript
   get figureContent() {
    const file = this.root.file
-   const folder = file.folder.folder
+   const folder = file.folder
    const src = this.getWord(1)
-   const {relativePath} = file
+   const { relativePath } = folder
    let dimensionAttributes = ""
    // If its a local image, get the dimensions and put them in the HTML
    // to avoid flicker
@@ -687,7 +714,7 @@ imageNode
     try {
      const sizeOf = require("image-size")
      const path = require("path")
-     const dimensions = sizeOf(path.join(folder, src))
+     const dimensions = sizeOf(path.join(folder.folder, src))
      const width = dimensions.width
      const height = dimensions.height
      dimensionAttributes = `width="${width}" height="${height}" `
@@ -1162,11 +1189,7 @@ datelineNode
  extends abstractAftertextDirectiveNode
  javascript
   getInserts() {
-   let day =
-    this.content ||
-    this.parent
-     .parent
-     .get("date")
+   let day = this.content || this.parent.parent.get("date")
    if (!day) return false
    try {
     const dayjs = require("dayjs")
@@ -1312,6 +1335,54 @@ scrollScriptNode
   code
    // You can add code as well.
    print("Hello world")
+loopLineNode
+ catchAllCellType stringCell
+abstractLoopConfigNode
+ cells keywordCell
+abstractItemsProviderNode
+ extends abstractLoopConfigNode
+loopLinesNode
+ crux lines
+ extends abstractItemsProviderNode
+ description Iterate over the provided lines.
+ catchAllNodeType loopLineNode
+ javascript
+  get items() {
+   return this.map(node => node.toString())
+  }
+loopWordsNode
+ crux words
+ extends abstractItemsProviderNode
+ catchAllCellType stringCell
+ description Iterate over the provided words.
+ javascript
+  get items() {
+   return this.getWordsFrom(1)
+  }
+loopGroupsNode
+ crux groups
+ extends abstractItemsProviderNode
+ catchAllCellType groupNameWithOptionalFolderCell
+ description Set this to iterate over files in a folder.
+ javascript
+  get items() {
+   return this.parent.parent.file.folder.getFilesInGroups(this.getWordsFrom(1))
+  }
+loopJoinNode
+ extends abstractLoopConfigNode
+ crux join
+ catchAllCellType stringCell
+ description HTML to use to join the items.
+loopLimitNode
+ extends abstractLoopConfigNode
+ crux limit
+ catchAllCellType stringCell
+ description HTML to use to join the items.
+loopCodeNode
+ extends abstractLoopConfigNode
+ crux javascript
+ catchAllCellType javascriptCell
+ description Javascript to execute for each file in the loop.
 rowNode
  catchAllCellType stringCell
  javascript
