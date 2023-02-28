@@ -10327,7 +10327,9 @@ class Utils {
       instance[name](param)
     }
     if (instance[command + "Command"]) return run(command + "Command")
-    const allCommands = Object.getOwnPropertyNames(Object.getPrototypeOf(instance)).filter(word => word.endsWith("Command"))
+    // Get commands from both the child and parent classes
+    const classes = [Object.getPrototypeOf(instance), Object.getPrototypeOf(Object.getPrototypeOf(instance))]
+    const allCommands = classes.map(classInstance => Object.getOwnPropertyNames(classInstance).filter(word => word.endsWith("Command"))).flat()
     allCommands.sort()
     const commandAsNumber = parseInt(command) - 1
     if (command.match(/^\d+$/) && allCommands[commandAsNumber]) return run(allCommands[commandAsNumber])
@@ -12324,6 +12326,7 @@ class TreeNode extends AbstractNode {
     const adjustedIndex = index < 0 ? this.length + index : index
     this._getChildrenArray().splice(adjustedIndex, 0, newNode)
     if (this._index) this._makeIndex(adjustedIndex)
+    this.clearQuickCache()
     return newNode
   }
   _appendChildrenFromString(str) {
@@ -12467,9 +12470,17 @@ class TreeNode extends AbstractNode {
       if (predicate(node) !== false) node.deepVisit(predicate)
     })
   }
+  get quickCache() {
+    if (!this._quickCache) this._quickCache = {}
+    return this._quickCache
+  }
+  clearQuickCache() {
+    delete this._quickCache
+  }
   // todo: protected?
   _clearIndex() {
     delete this._index
+    this.clearQuickCache()
   }
   slice(start, end) {
     return this.getChildren().slice(start, end)
@@ -13464,7 +13475,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "66.1.0"
+TreeNode.getVersion = () => "69.1.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13690,6 +13701,9 @@ class GrammarBackedNode extends TreeNode {
     const handGrammarProgram = this.getHandGrammarProgram()
     this._definition = this.isRoot() ? handGrammarProgram : handGrammarProgram.getNodeTypeDefinitionByNodeTypeId(this.constructor.name)
     return this._definition
+  }
+  get rootGrammarTree() {
+    return this.getDefinition().root
   }
   toSQLiteInsertStatement(id) {
     const def = this.getDefinition()

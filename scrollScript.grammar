@@ -137,6 +137,61 @@ thoughtNode
    newLine.destroy()
    return compiled
   }
+indentableThoughtNode
+ extends thoughtNode
+ inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode indentableThoughtNode
+ javascript
+  compile() {
+    return super.compile() + this.map(node => node.compile()).join("\n").trim()
+  }
+checklistTodoNode
+ extends indentableThoughtNode
+ example
+  [] Get milk
+ description An incomplete checklist item.
+ crux []
+ string checked 
+ javascript
+  get text() {
+   return `<div style="text-indent:${(this.getIndentLevel() - 1) * 20}px;"><input type="checkbox" ${this.checked} id="${this.id}"><label for="${this.id}">` + super.text + `</label></div>`
+  }
+  get id() {
+    return this.get("id") || "item" + this._getUid()
+  }
+checklistDoneNode
+ extends checklistTodoNode
+ description A complete checklist list item.
+ string checked checked
+ crux [x]
+ example
+  [x] get milk
+listAftertextNode
+ extends indentableThoughtNode
+ example
+  - I had a _new_ thought.
+ description A list item.
+ crux -
+ javascript
+  className = ""
+  compile() {
+   const index = this.getIndex()
+   const parent = this.parent
+   const nodeClass = this.constructor
+   const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
+   const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
+   const { listType } = this
+   return (isStartOfList ? `<${listType} style="text-indent:${(this.getIndentLevel() - 1) * 20}px;">` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
+  }
+  tag = "li"
+  listType = "ul"
+orderedListAftertextNode
+ extends listAftertextNode
+ description A list item.
+ example
+  1. Hello world
+ pattern ^\d+\. 
+ javascript
+  listType = "ol"
 blinkNode
  description Useful when you have a client that always needs to find 1 thing they would like you to change.
  extends thoughtNode
@@ -181,33 +236,6 @@ captionAftertextNode
  description An optional caption to accompany the resource.
  crux caption
  extends thoughtNode
-listAftertextNode
- extends thoughtNode
- example
-  - I had a _new_ thought.
- description A list item.
- crux -
- javascript
-  className = ""
-  compile() {
-   const index = this.getIndex()
-   const parent = this.parent
-   const nodeClass = this.constructor
-   const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
-   const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
-   const { listType } = this
-   return (isStartOfList ? `<${listType}>` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
-  }
-  tag = "li"
-  listType = "ul"
-orderedListAftertextNode
- extends listAftertextNode
- description A list item.
- example
-  1. Hello world
- pattern ^\d+\. 
- javascript
-  listType = "ol"
 sectionTitleNode
  description Compiles to an html h3 tag.
  extends thoughtNode
@@ -1399,6 +1427,8 @@ rowNode
     let tagged = content
     const link = words[col.linkIndex]
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
+    else if (content && content.match(/^https?\:[^ ]+$/))
+     tagged = `<a href="${content}">${content}</a>`
     str += `<td>${tagged}</td>\n`
    }
    return str
