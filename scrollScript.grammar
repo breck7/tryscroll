@@ -9,6 +9,9 @@ keywordCell
  highlightScope keyword
 stringCell
  highlightScope string
+booleanCell
+ highlightScope constant.language
+ enum true false
 idCell
  highlightScope constant.language
 dateCell
@@ -85,7 +88,7 @@ abstractAftertextNode
   }
   get originalTextPostLinkify() {
    const { originalText } = this
-   const shouldLinkify = originalText.includes("<a ") ? false : true
+   const shouldLinkify = this.get("linkify") === "false" || originalText.includes("<a ") ? false : true
    return shouldLinkify ? this.replaceNotes(Utils.linkify(originalText)) : originalText
   }
   replaceNotes(originalText) {
@@ -445,11 +448,8 @@ loopNode
    }
   }
   get items() {
-   // todo: what's the best jtree way to do this?
-   if (this.has("groups")) return this.getNode("groups").items
-   if (this.has("lines")) return this.getNode("lines").items
-   if (this.has("words")) return this.getNode("words").items
-   return []
+   const provider = this.getChildInstancesOfNodeTypeId("abstractItemsProviderNode")[0]
+   return provider ? provider.items : []
   }
 viewSourceNode
  extends abstractAftertextNode
@@ -1067,6 +1067,10 @@ abstractAftertextDirectiveNode
 abstractMarkupNode
  extends abstractAftertextDirectiveNode
  inScope abstractMarkupParameterNode
+ javascript
+  compile() {
+   return ""
+  }
 boldNode
  cruxFromId
  extends abstractMarkupNode
@@ -1167,6 +1171,11 @@ strikethroughNode
  extends abstractMarkupNode
  javascript
   tag = "s"
+linkifyNode
+ description Use this to disable linkify on the text.
+ extends abstractAftertextDirectiveNode
+ cruxFromId
+ cells keywordCell booleanCell
 wrapsOnNode
  cruxFromId
  description Enable `code`, *bold*, and _italics_ rules.
@@ -1391,7 +1400,7 @@ loopGroupsNode
  crux groups
  extends abstractItemsProviderNode
  catchAllCellType groupNameWithOptionalFolderCell
- description Set this to iterate over files in a folder.
+ description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[groupName]
  javascript
   get items() {
    return this.parent.parent.file.folder.getFilesInGroups(this.getWordsFrom(1))
