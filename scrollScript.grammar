@@ -1021,6 +1021,9 @@ abstractAftertextDirectiveNode
  catchAllCellType stringCell
  javascript
   isMarkupNode = true
+  compile() {
+   return ""
+  }
   get pattern() {
    return this.getWordsFrom(1).join(" ")
   }
@@ -1067,10 +1070,6 @@ abstractAftertextDirectiveNode
 abstractMarkupNode
  extends abstractAftertextDirectiveNode
  inScope abstractMarkupParameterNode
- javascript
-  compile() {
-   return ""
-  }
 boldNode
  cruxFromId
  extends abstractMarkupNode
