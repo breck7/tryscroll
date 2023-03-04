@@ -114,7 +114,13 @@ abstractAftertextNode
    return newText
   }
   tag = "p"
-  className = "scrollParagraphComponent"
+  get className() {
+    const classNode = this.getNode("class")
+    if (classNode && classNode.applyToParentElement)
+      return classNode.content
+    return this.defaultClassName
+  }
+  defaultClassName = "scrollParagraphComponent"
   compile() {
    const { className } = this
    const classAttr = className ? `class="${this.className}"` : ""
@@ -175,7 +181,7 @@ listAftertextNode
  description A list item.
  crux -
  javascript
-  className = ""
+  defaultClassName = ""
   compile() {
    const index = this.getIndex()
    const parent = this.parent
@@ -263,7 +269,7 @@ titleNode
    newLine.destroy()
    return compiled
   }
-  className = "scrollTitleComponent"
+  defaultClassName = "scrollTitleComponent"
   tag = "h1"
 sectionSubTitleNode
  description Compiles to an html h4 tag.
@@ -277,7 +283,7 @@ questionAftertextNode
  crux ?
  javascript
   tag = "h4"
-  className = "scrollQuestionComponent"
+  defaultClassName = "scrollQuestionComponent"
 startColumnsNode
  extends abstractAftertextNode
  cruxFromId
@@ -729,12 +735,12 @@ abstractCaptionedNode
 imageNode
  description An img tag.
  extends abstractCaptionedNode
+ inScope classMarkupNode aftertextIdNode
  javascript
   get figureContent() {
    const file = this.root.file
-   const folder = file.folder
    const src = this.getWord(1)
-   const { relativePath } = folder
+   let relativePath = file.folder ? file.folder.relativePath : ""
    let dimensionAttributes = ""
    // If its a local image, get the dimensions and put them in the HTML
    // to avoid flicker
@@ -742,7 +748,7 @@ imageNode
     try {
      const sizeOf = require("image-size")
      const path = require("path")
-     const dimensions = sizeOf(path.join(folder.folder, src))
+     const dimensions = sizeOf(path.join(file.folder.folder, src))
      const width = dimensions.width
      const height = dimensions.height
      dimensionAttributes = `width="${width}" height="${height}" `
@@ -750,7 +756,9 @@ imageNode
      console.error(err)
     }
    }
-   return `<a href="${relativePath + src}" target="_blank"><img src="${relativePath + src}" ${dimensionAttributes}loading="lazy"></a>`
+   const className = this.has("class") ? ` class="${this.get("class")}" ` : ""
+   const id = this.has("id") ? ` id="${this.get("id")}" ` : ""
+   return `<a href="${relativePath + src}" target="_blank" ${className} ${id}><img src="${relativePath + src}" ${dimensionAttributes}loading="lazy"></a>`
   }
 youTubeNode
  extends abstractCaptionedNode
@@ -1006,7 +1014,7 @@ abstractAftertextAttributeNode
   }
 aftertextIdNode
  crux id
- description Provide an ID to be output in the generated HTML paragraph.
+ description Provide an ID to be output in the generated HTML tag.
  extends abstractAftertextAttributeNode
  cells keywordCell htmlIdCell
  single
@@ -1133,12 +1141,20 @@ quickLinkNode
   }
   patternStartsAtWord = 1
 classMarkupNode
- description Add a span with a class name around matching text. If no matching text provided, class will be set on the whole element.
+ description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
  extends abstractMarkupNode
  cells keywordCell classNameCell
  crux class
  javascript
   tag = "span"
+  get applyToParentElement() {
+    return this.words.length === 2
+  }
+  getInserts(text) {
+    // If no select text is added, set the class on the parent element.
+    if (this.applyToParentElement) return []
+    return super.getInserts(text)
+  }
   get className() {
    return this.getWord(1)
   }
