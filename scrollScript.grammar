@@ -67,7 +67,7 @@ abstractScrollNode
 abstractAftertextNode
  description Text followed by markup commands.
  extends abstractScrollNode
- inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode
+ inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode slashCommentNode
  example
   aftertext
    Hello brave new world
@@ -262,9 +262,9 @@ titleNode
  javascript
   compile() {
    // Hacky, I know.
-   const { relativeLink, permalink } = this.parent.file
+   const { permalink } = this.parent.file
    if (!permalink) return super.compile()
-   const newLine = this.appendLine("link " + relativeLink)
+   const newLine = this.appendLine(`link ${permalink}`)
    const compiled = super.compile()
    newLine.destroy()
    return compiled
@@ -382,7 +382,7 @@ scrollHeaderNode
    ${previousButton}
    a ${SVGS.home}
     class scrollTopLeftBarComponent
-    href index.html
+    href ${file.get("homeLink") || "index.html"}
    a ${SVGS.git}
     class scrollTopRightBarComponent
     href ${file.git}
@@ -543,7 +543,7 @@ aboveAsCodeNode
   method = "getPrevious"
   reverseNodes = true
 commentNode
- description Will not appear in the compiled HTML.
+ description Comments do not appear in the compiled HTML.
  catchAllCellType commentCell
  extends abstractScrollNode
  cruxFromId
@@ -552,6 +552,9 @@ commentNode
    return ``
   }
  catchAllNodeType commentLineNode
+slashCommentNode
+ extends commentNode
+ crux //
 cssNode
  extends abstractScrollNode
  description Prints CSS content wrapped in a style tag.
@@ -662,6 +665,9 @@ abstractUrlSettingNode
 baseUrlNode
  description Root url of this published folder on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
  extends abstractUrlSettingNode
+homeLinkNode
+ description In the default Scroll theme the home button will link to "index.html". You can override this with this setting.
+ extends abstractUrlSettingNode
 viewSourceBaseUrlNode
  description The base link to be used to generate the "View source" link.
  extends abstractUrlSettingNode
@@ -724,7 +730,7 @@ stumpNoSnippetNode
 abstractCaptionedNode
  extends abstractScrollNode
  cells keywordCell urlCell
- inScope captionAftertextNode
+ inScope captionAftertextNode slashCommentNode
  cruxFromId
  javascript
   compile() {
@@ -1106,7 +1112,9 @@ linkNode
  javascript
   tag = "a"
   get link() {
-   return this.getWord(1)
+   const link = this.getWord(1)
+   const isAbsoluteLink = link.startsWith("https://") || link.startsWith("http://")
+   return isAbsoluteLink ? link : (this.root.file.folder?.relativePath || "") + link
   }
   get attributes() {
    const attrs = [`href="${this.link}"`]

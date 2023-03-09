@@ -10411,7 +10411,7 @@ class Utils {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
   // generate a random alpha numeric hash:
-  static getRandomCharacters(len) {
+  static getRandomCharacters(length) {
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     let result = ""
     for (let i = 0; i < length; i++) {
@@ -12474,6 +12474,19 @@ class TreeNode extends AbstractNode {
     if (!this._quickCache) this._quickCache = {}
     return this._quickCache
   }
+  getCustomIndex(key) {
+    if (!this.quickCache.customIndexes) this.quickCache.customIndexes = {}
+    const customIndexes = this.quickCache.customIndexes
+    if (customIndexes[key]) return customIndexes[key]
+    const customIndex = {}
+    customIndexes[key] = customIndex
+    this.filter(file => file.has(key)).forEach(file => {
+      const value = file.get(key)
+      if (!customIndex[value]) customIndex[value] = []
+      customIndex[value].push(file)
+    })
+    return customIndex
+  }
   clearQuickCache() {
     delete this._quickCache
   }
@@ -12764,6 +12777,10 @@ class TreeNode extends AbstractNode {
   appendLine(line) {
     return this._insertLineAndChildren(line)
   }
+  appendUniqueLine(line) {
+    if (!this.hasLine(line)) return this.appendLine(line)
+    return this.findLine(line)
+  }
   appendLineAndChildren(line, children) {
     return this._insertLineAndChildren(line, children)
   }
@@ -13003,6 +13020,9 @@ class TreeNode extends AbstractNode {
   }
   hasLine(line) {
     return this.getChildren().some(node => node.getLine() === line)
+  }
+  findLine(line) {
+    return this.getChildren().find(node => node.getLine() === line)
   }
   getNodesByLine(line) {
     return this.filter(node => node.getLine() === line)
@@ -13475,7 +13495,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "69.1.0"
+TreeNode.getVersion = () => "69.3.1"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
