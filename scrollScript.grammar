@@ -55,7 +55,7 @@ groupNameWithOptionalFolderCell
  description A group name combined with a folder path. Only used when referencing groups, not in posts.
  extends stringCell
 htmlAnyCell
- extends anyCell
+ extends stringCell
 javascriptCell
  extends stringCell
 abstractScrollNode
@@ -215,6 +215,15 @@ blinkNode
         )
     }, 2000)
     </script>`
+  }
+catchAllParagraphNode
+ description A catch all block. This may be removed in future versions.
+ extends thoughtNode
+ cells stringCell
+ baseNodeType errorNode
+ javascript
+  get originalText() {
+   return this.getLine() || ""
   }
 footnoteDefinitionNode
  description A footnote. Can also be used as section notes.
@@ -717,6 +726,15 @@ htmlNode
   compile() {
    return `${this.content ?? ""}${this.childrenToString()}`
   }
+quickHtmlNode
+ extends htmlNode
+ cells htmlAnyCell
+ pattern ^<
+ description Start a line with a less than sign to immediately write HTML
+ javascript
+  compile() {
+   return `${this.getLine() ?? ""}${this.childrenToString()}`
+  }
 stumpNode
  cruxFromId
  extends abstractScrollNode
@@ -1137,7 +1155,7 @@ linkNode
   get pattern() {
    // If no pattern is provided, apply to the *entire* content.
    const words = this.getWordsFrom(this.patternStartsAtWord)
-   return words.length ? words.join(" ") : this.parent.content
+   return words.length ? words.join(" ") : this.parent.originalText
   }
 emailLinkNode
  description A mailto link
@@ -1325,14 +1343,6 @@ blankLineNode
   }
  pattern ^$
  tags doNotSynthesize
-catchAllParagraphNode
- description A catch all block. This may be removed in future versions.
- catchAllCellType stringCell
- baseNodeType errorNode
- javascript
-  compile() {
-   return `<p class="scrollParagraphComponent">${this.getLine()}</p>`
-  }
 errorNode
  baseNodeType errorNode
 chatLineNode
