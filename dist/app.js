@@ -98,7 +98,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
     this.root.loadNewDoc(this._code)
   }
 
-  get simCode() {
+  get scrollCode() {
     return this.codeMirrorInstance ? this.codeMirrorValue : this.getNode("value").childrenToString()
   }
 
@@ -229,7 +229,7 @@ class EditorApp extends AbstractTreeComponent {
   }
 
   get completeHtml() {
-    return this.mainExperiment.compile() + this.styleTag
+    return this.mainDocument.compile() + this.styleTag
   }
 
   verbose = true
@@ -242,35 +242,35 @@ class EditorApp extends AbstractTreeComponent {
     return this.getNode(CodeEditorComponent.name)
   }
 
-  get simCode() {
-    return this.editor.simCode
+  get scrollCode() {
+    return this.editor.scrollCode
   }
 
-  loadNewDoc(simCode) {
+  loadNewDoc(scrollCode) {
     this.renderAndGetRenderReport()
-    this.updateLocalStorage(simCode)
+    this.updateLocalStorage(scrollCode)
     this.refreshHtml()
   }
 
   // todo: cleanup
-  pasteCodeCommand(simCode) {
-    this.editor.setCodeMirrorValue(simCode)
-    this.loadNewDoc(simCode)
+  pasteCodeCommand(scrollCode) {
+    this.editor.setCodeMirrorValue(scrollCode)
+    this.loadNewDoc(scrollCode)
   }
 
-  updateLocalStorage(simCode) {
+  updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
-    localStorage.setItem(LocalStorageKeys.scroll, simCode)
+    localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
     console.log("Local storage updated...")
   }
 
   dumpErrorsCommand() {
-    const errs = new programCompiler(this.simCode).getAllErrors()
+    const errs = new programCompiler(this.scrollCode).getAllErrors()
     console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
   }
 
-  get mainExperiment() {
-    return new programCompiler(this.simCode)
+  get mainDocument() {
+    return new programCompiler(this.scrollCode)
   }
 
   refreshHtml() {
@@ -303,7 +303,7 @@ class EditorApp extends AbstractTreeComponent {
 
   get urlHash() {
     const tree = new TreeNode()
-    tree.appendLineAndChildren(UrlKeys.scroll, this.simCode ?? "")
+    tree.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
     return "#" + encodeURIComponent(tree.toString())
   }
 
@@ -414,7 +414,11 @@ class ExportComponent extends AbstractTreeComponent {
   clickCommand copyHtmlToClipboardCommand
  span  | 
  a Download HTML
-  clickCommand downloadHtmlCommand`
+  clickCommand downloadHtmlCommand
+ span  | 
+ a Tutorial
+  target _blank
+  href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
   }
 
   copyHtmlToClipboardCommand() {
@@ -450,7 +454,7 @@ class ShareComponent extends AbstractTreeComponent {
   }
 
   getDependencies() {
-    return [this.root.mainExperiment]
+    return [this.root.mainDocument]
   }
 
   get link() {
@@ -579,6 +583,9 @@ class BrowserGlue extends AbstractTreeComponent {
     const fromUrl = deepLink.get(UrlKeys.url)
     const code = deepLink.getNode(UrlKeys.scroll)
 
+    // Clear hash
+    history.pushState("", document.title, window.location.pathname)
+
     if (fromUrl) return this.fetchAndLoadScrollCodeFromUrlCommand(fromUrl)
     if (code) return code.childrenToString()
 
@@ -590,9 +597,9 @@ class BrowserGlue extends AbstractTreeComponent {
 
   async init(grammarCode, styleCode) {
     window.programCompiler = new HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
-    const simCode = await this.fetchCode()
+    const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight, styleCode)
+    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight, styleCode)
     window.app.start()
     return window.app
   }

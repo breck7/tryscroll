@@ -388,6 +388,14 @@ scrollHeaderNode
     href ${file.git}
    ${nextButton}`)
   }
+horizontalRuleNode
+ crux ---
+ description Prints an html <hr> tag
+ extends abstractAftertextNode
+ javascript
+  compile() {
+   return `<hr>`
+  }
 loremIpsumNode
  extends abstractAftertextNode
  cruxFromId

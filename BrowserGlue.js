@@ -54,6 +54,9 @@ class BrowserGlue extends AbstractTreeComponent {
     const fromUrl = deepLink.get(UrlKeys.url)
     const code = deepLink.getNode(UrlKeys.scroll)
 
+    // Clear hash
+    history.pushState("", document.title, window.location.pathname)
+
     if (fromUrl) return this.fetchAndLoadScrollCodeFromUrlCommand(fromUrl)
     if (code) return code.childrenToString()
 
@@ -65,9 +68,9 @@ class BrowserGlue extends AbstractTreeComponent {
 
   async init(grammarCode, styleCode) {
     window.programCompiler = new HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
-    const simCode = await this.fetchCode()
+    const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(simCode, window.innerWidth, window.innerHeight, styleCode)
+    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight, styleCode)
     window.app.start()
     return window.app
   }

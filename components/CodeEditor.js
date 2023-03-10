@@ -87,7 +87,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
     this.root.loadNewDoc(this._code)
   }
 
-  get simCode() {
+  get scrollCode() {
     return this.codeMirrorInstance ? this.codeMirrorValue : this.getNode("value").childrenToString()
   }
 

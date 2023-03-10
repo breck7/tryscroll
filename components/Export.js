@@ -8,7 +8,11 @@ class ExportComponent extends AbstractTreeComponent {
   clickCommand copyHtmlToClipboardCommand
  span  | 
  a Download HTML
-  clickCommand downloadHtmlCommand`
+  clickCommand downloadHtmlCommand
+ span  | 
+ a Tutorial
+  target _blank
+  href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
   }
 
   copyHtmlToClipboardCommand() {

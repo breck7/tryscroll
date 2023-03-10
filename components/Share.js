@@ -11,7 +11,7 @@ class ShareComponent extends AbstractTreeComponent {
   }
 
   getDependencies() {
-    return [this.root.mainExperiment]
+    return [this.root.mainDocument]
   }
 
   get link() {

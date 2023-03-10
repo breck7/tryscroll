@@ -56,6 +56,13 @@ body {
 	height: var(--topBarHeight);
 	white-space: nowrap;
 }
+.TopBarComponent a {
+	color: white;
+	text-decoration-color: transparent;
+}
+.TopBarComponent a:hover {
+	text-decoration-color: white;
+}
 .ShareComponent {
 	display: inline;
 }
