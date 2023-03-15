@@ -3,7 +3,7 @@
 const { Disk } = require("jtree/products/Disk.node.js")
 const path = require("path")
 const { TypeScriptRewriter } = require("jtree/products/TypeScriptRewriter.js")
-const { DefaultScrollCompiler, ScrollFile } = require("scroll-cli")
+const { ScrollFolder, ScrollFile } = require("scroll-cli")
 
 // Libs
 const libPaths = `node_modules/jtree/treeComponentFramework/sweepercraft/lib/mousetrap.min.js
@@ -39,7 +39,8 @@ const appCode = ourPaths
 Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 
 // Scroll code
-const grammar = new DefaultScrollCompiler().getDefinition().toString()
+const defaultScrollCompiler = new ScrollFolder(__dirname).defaultScrollCompiler
+const grammar = new defaultScrollCompiler().getDefinition().toString()
 const AppConstants = {
 	grammar,
 	style: new ScrollFile().SCROLL_CSS

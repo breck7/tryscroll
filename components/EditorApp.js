@@ -12,7 +12,7 @@ const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const programCompiler = require("scroll-cli").DefaultScrollCompiler
+/*NODE_JS_ONLY*/ const programCompiler = new (require("scroll-cli").ScrollFolder)(__dirname).defaultScrollCompiler
 
 class githubTriangleComponent extends AbstractTreeComponent {
   githubLink = `https://github.com/breck7/tryscroll`

@@ -115,10 +115,9 @@ abstractAftertextNode
   }
   tag = "p"
   get className() {
-    const classNode = this.getNode("class")
-    if (classNode && classNode.applyToParentElement)
-      return classNode.content
-    return this.defaultClassName
+   const classNode = this.getNode("class")
+   if (classNode && classNode.applyToParentElement) return classNode.content
+   return this.defaultClassName
   }
   defaultClassName = "scrollParagraphComponent"
   compile() {
@@ -151,7 +150,12 @@ indentableThoughtNode
  inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode indentableThoughtNode
  javascript
   compile() {
-    return super.compile() + this.map(node => node.compile()).join("\n").trim()
+   return (
+    super.compile() +
+    this.map(node => node.compile())
+     .join("\n")
+     .trim()
+   )
   }
 checklistTodoNode
  extends indentableThoughtNode
@@ -165,7 +169,7 @@ checklistTodoNode
    return `<div style="text-indent:${(this.getIndentLevel() - 1) * 20}px;"><input type="checkbox" ${this.checked} id="${this.id}"><label for="${this.id}">` + super.text + `</label></div>`
   }
   get id() {
-    return this.get("id") || "item" + this._getUid()
+   return this.get("id") || "item" + this._getUid()
   }
 checklistDoneNode
  extends checklistTodoNode
@@ -462,8 +466,7 @@ loopNode
    try {
     const limit = this.get("limit")
     let items = this.items
-    if (limit)
-      items = items.slice(0, parseInt(limit))
+    if (limit) items = items.slice(0, parseInt(limit))
     return items.map((item, index) => eval(code)).join(joinWith)
    } catch (err) {
     console.error(err)
@@ -527,6 +530,24 @@ codeWithLanguageNode
  description Use this to specify the language of the code block, such as csvCode or rustCode.
  extends codeNode
  pattern ^[a-zA-Z0-9_]+Code$
+copyButtonsNode
+ cruxFromId
+ extends abstractScrollNode
+ description Make code snippets copyable.
+ javascript
+  compile() {
+   return `
+      <script>document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollCodeBlockComponent").forEach(block => {
+   if (!navigator.clipboard) return
+   const button = document.createElement("span")
+   button.classList.add("scrollCopyButton")
+   block.appendChild(button)
+   button.addEventListener("click", async () => {
+     await navigator.clipboard.writeText(block.innerText)
+     button.classList.add("scrollCopied")
+   })
+   }))</script>`
+  }
 belowAsCodeNode
  description Print the Scroll code of the next node.
  extends abstractScrollNode
@@ -894,6 +915,16 @@ replaceJsNode
  example
   replaceJs SUM 1+1
   * 1+1 = SUM
+nodejsNode
+ description Write nodejs code inside a Scroll file. Sort of like PHP.
+ extends abstractScrollNode
+ cruxFromId
+ catchAllCellType javascriptCell
+ baseNodeType blobNode
+ example
+  nodejs
+   module.exports = {SCORE : 1 + 2}
+  * The score is SCORE
 replaceDefaultNode
  description Define the default value for a replacement. Useful if you want to import a file and set a replacement later.
  extends abstractScrollNode
@@ -1182,12 +1213,12 @@ classMarkupNode
  javascript
   tag = "span"
   get applyToParentElement() {
-    return this.words.length === 2
+   return this.words.length === 2
   }
   getInserts(text) {
-    // If no select text is added, set the class on the parent element.
-    if (this.applyToParentElement) return []
-    return super.getInserts(text)
+   // If no select text is added, set the class on the parent element.
+   if (this.applyToParentElement) return []
+   return super.getInserts(text)
   }
   get className() {
    return this.getWord(1)
@@ -1477,8 +1508,7 @@ rowNode
     let tagged = content
     const link = words[col.linkIndex]
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
-    else if (content && content.match(/^https?\:[^ ]+$/))
-     tagged = `<a href="${content}">${content}</a>`
+    else if (content && content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
     str += `<td>${tagged}</td>\n`
    }
    return str

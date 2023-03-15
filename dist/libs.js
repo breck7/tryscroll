@@ -10338,6 +10338,9 @@ class Utils {
   static removeReturnChars(str = "") {
     return str.replace(/\r/g, "")
   }
+  static isAbsoluteUrl(url) {
+    return url.startsWith("https://") || url.startsWith("http://")
+  }
   static removeEmptyLines(str = "") {
     return str.replace(/\n\n+/g, "\n")
   }
@@ -11769,6 +11772,21 @@ class TreeNode extends AbstractNode {
     if (!node) return undefined
     return node.nodeAt(indexOrIndexArray.slice(1))
   }
+  // Flatten a tree node into an object like {twitter:"pldb", "twitter.followers":123}.
+  // Assumes you have a nested key/value list with no multiline strings.
+  toFlatObject(delimiter = ".") {
+    let newObject = {}
+    const { edgeSymbolRegex } = this
+    this.forEach((child, index) => {
+      newObject[child.getWord(0)] = child.content
+      child.getTopDownArray().forEach(node => {
+        const newColumnName = node.getFirstWordPathRelativeTo(this).replace(edgeSymbolRegex, delimiter)
+        const value = node.content
+        newObject[newColumnName] = value
+      })
+    })
+    return newObject
+  }
   _toObject() {
     const obj = {}
     this.forEach(node => {
@@ -12236,6 +12254,9 @@ class TreeNode extends AbstractNode {
   }
   getWordBreakSymbol() {
     return " "
+  }
+  get edgeSymbolRegex() {
+    return new RegExp(this.getEdgeSymbol(), "g")
   }
   getNodeBreakSymbolRegex() {
     return new RegExp(this.getNodeBreakSymbol(), "g")
@@ -13495,7 +13516,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "69.3.1"
+TreeNode.getVersion = () => "69.4.1"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
