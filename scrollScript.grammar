@@ -18,6 +18,8 @@ dateCell
  highlightScope string
 integerCell
  highlightScope constant.numeric
+floatCell
+ highlightScope constant.numeric
 permalinkCell
  highlightScope string
  description A string that doesn't contain characters that might interfere with most filesystems. No slashes, for instance.
@@ -863,6 +865,37 @@ keyboardNavNode
    });</script>`
    return `<div class="scrollKeyboardNav"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
+mapNode
+ cruxFromId
+ inScope latNode longNode zoomNode pointNode heightNode
+ extends abstractScrollNode
+ description Uses LeafletJs
+ todo Make this only require once
+ string requireOnce
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+ javascript
+  compile() {
+   const height = 500
+   const id = this._getUid()
+   return `<div id="map${id}" style="height: ${height}px;"></div>${this.requireOnce}<script>
+        {
+        const lat = ${this.get("lat") ?? 37.8}
+        const long = ${this.get("long") ?? 4}
+        const zoomLevel = ${this.get("zoom") ?? 4}
+        const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
+        const map = L.map("map${id}").setView([lat, long], zoomLevel)
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+          maxZoom: 18
+        }).addTo(map)
+        points.forEach(point => {
+          L.marker([point.lat, point.long])
+            .addTo(map)
+            .bindPopup("<b>" +point.title + "</b><br />" + point.description)
+        })
+      }</script>`
+  }
 quoteNode
  cruxFromId
  description A blockquote.
@@ -1395,6 +1428,36 @@ htmlLineNode
  catchAllNodeType htmlLineNode
 stumpContentNode
  catchAllCellType anyCell
+heightNode
+ cells keywordCell floatCell
+ cruxFromId
+ single
+latNode
+ cells keywordCell floatCell
+ cruxFromId
+ single
+longNode
+ cells keywordCell floatCell
+ cruxFromId
+ single
+zoomNode
+ cells keywordCell integerCell
+ cruxFromId
+ single
+pointTitleNode
+ crux title
+ cells keywordCell
+ catchAllCellType stringCell
+ single
+pointDescriptionNode
+ crux description
+ cells keywordCell
+ catchAllCellType stringCell
+ single
+pointNode
+ cells keywordCell
+ inScope pointTitleNode pointDescriptionNode latNode longNode
+ cruxFromId
 quoteLineNode
  catchAllCellType anyCell
  catchAllNodeType quoteLineNode
