@@ -4,12 +4,12 @@ const { TreeNode } = require("jtree/products/TreeNode.js")
 const { Disk } = require("jtree/products/Disk.node.js")
 const grammarNode = require("jtree/products/grammar.nodejs.js")
 const { EditorApp } = require("./EditorApp.js")
+const { DefaultScrollCompiler } = require("scroll-cli")
 
-const programCompiler = new (require("scroll-cli").ScrollFolder)(__dirname).defaultScrollCompiler
 const testTree = {}
 
 testTree.grammar = areEqual => {
-	const errs = new grammarNode(new programCompiler().getDefinition().toString())
+	const errs = new grammarNode(new DefaultScrollCompiler().getDefinition().toString())
 		.getAllErrors()
 		.map(err => err.toObject())
 	if (errs.length) console.log(new TreeNode(errs).toFormattedTable(60))

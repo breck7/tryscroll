@@ -1,6 +1,3 @@
-
-
-
 class BottomBarComponent extends AbstractTreeComponent {
   createParser() {
     return new TreeNode.Parser(undefined, {})
@@ -8,10 +5,6 @@ class BottomBarComponent extends AbstractTreeComponent {
 }
 
 window.BottomBarComponent = BottomBarComponent
-
-
-
-
 
 // prettier-ignore
 
@@ -156,18 +149,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
 
 window.CodeEditorComponent = CodeEditorComponent
 
-
 // prettier-ignore
-
-
-
-
-
-
-
-
-
-
 
 // prettier-ignore
 
@@ -358,9 +340,6 @@ ${ShowcaseComponent.name}`)
 
 window.EditorApp = EditorApp
 
-
-
-
 class EditorHandleComponent extends AbstractTreeComponent {
   get left() {
     return this.root.editor.width
@@ -403,9 +382,6 @@ class EditorHandleComponent extends AbstractTreeComponent {
 
 window.EditorHandleComponent = EditorHandleComponent
 
-
-
-
 class ExportComponent extends AbstractTreeComponent {
   toStumpCode() {
     return `div
@@ -440,9 +416,6 @@ class ExportComponent extends AbstractTreeComponent {
 
 window.ExportComponent = ExportComponent
 
-
-
-
 class ShareComponent extends AbstractTreeComponent {
   toStumpCode() {
     return `div
@@ -465,9 +438,6 @@ class ShareComponent extends AbstractTreeComponent {
 }
 
 window.ShareComponent = ShareComponent
-
-
-
 
 class ShowcaseComponent extends AbstractTreeComponent {
   get html() {
@@ -494,12 +464,6 @@ class ShowcaseComponent extends AbstractTreeComponent {
 
 window.ShowcaseComponent = ShowcaseComponent
 
-
-
-
-
-
-
 class TopBarComponent extends AbstractTreeComponent {
   createParser() {
     return new TreeNode.Parser(undefined, {
@@ -510,7 +474,6 @@ class TopBarComponent extends AbstractTreeComponent {
 }
 
 window.TopBarComponent = TopBarComponent
-
 
 const LocalStorageKeys = {}
 
@@ -526,12 +489,6 @@ window.LocalStorageKeys = LocalStorageKeys
 
 window.UrlKeys = UrlKeys
 
-
-
-
-
-
-
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 
 * Scroll is an extensible alternative to Markdown.
@@ -541,7 +498,7 @@ quote
  Scroll aims to help you structure your thoughts.
 
 chat
- What can I do with ScrollScript?
+ What can I do with Scroll?
  You can invent your own node types.
  What's an example?
  This chat node.
@@ -559,7 +516,7 @@ spaceTable
  Format NodeTypes
  HTML ~142
  Markdown ~192
- ScrollScript 1,000,000's`
+ Scroll 1,000,000's`
 
 class BrowserGlue extends AbstractTreeComponent {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {

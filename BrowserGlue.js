@@ -12,7 +12,7 @@ quote
  Scroll aims to help you structure your thoughts.
 
 chat
- What can I do with ScrollScript?
+ What can I do with Scroll?
  You can invent your own node types.
  What's an example?
  This chat node.
@@ -30,7 +30,7 @@ spaceTable
  Format NodeTypes
  HTML ~142
  Markdown ~192
- ScrollScript 1,000,000's`
+ Scroll 1,000,000's`
 
 class BrowserGlue extends AbstractTreeComponent {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {

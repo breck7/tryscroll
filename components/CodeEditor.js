@@ -2,7 +2,7 @@ const { TreeNode } = require("jtree/products/TreeNode.js")
 const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const programCompiler = new (require("scroll-cli").ScrollFolder)(__dirname).defaultScrollCompiler
+/*NODE_JS_ONLY*/ const programCompiler = new (require("scroll-cli").DefaultScrollCompiler)
 
 class CodeMirrorShim {
   setSize() {}
