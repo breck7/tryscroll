@@ -63,8 +63,8 @@ javascriptCell
 abstractScrollNode
  cells keywordCell
  javascript
-  compileEmbeddedVersion() {
-   return this.compile()
+  compileEmbeddedVersion(compileSettings) {
+   return this.compile(compileSettings)
   }
 abstractAftertextNode
  description Text followed by markup commands.
@@ -122,7 +122,8 @@ abstractAftertextNode
    return this.defaultClassName
   }
   defaultClassName = "scrollParagraphComponent"
-  compile() {
+  compile(compileSettings) {
+   this.compileSettings = compileSettings
    const { className } = this
    const classAttr = className ? `class="${this.className}"` : ""
    return `<${this.tag} ${this.divAttributes}${classAttr}>${this.text}</${this.tag}>`
@@ -140,10 +141,10 @@ thoughtNode
  description A thought.
  crux *
  javascript
-  compile() {
+  compile(compileSettings) {
    // Hacky, I know.
    const newLine = this.appendLine("wrapsOn")
-   const compiled = super.compile()
+   const compiled = super.compile(compileSettings)
    newLine.destroy()
    return compiled
   }
@@ -265,9 +266,9 @@ sectionTitleNode
  extends thoughtNode
  crux #
  javascript
-  compile() {
-   this.parent.stack.push("</div>")
-   return `<div class="scrollSectionComponent">` + super.compile()
+  compile(compileSettings) {
+   this.parent.sectionStack.push("</div>")
+   return `<div class="scrollSectionComponent">` + super.compile(compileSettings)
   }
   tag = "h3"
 titleNode
@@ -275,12 +276,12 @@ titleNode
  extends sectionTitleNode
  crux title
  javascript
-  compile() {
+  compile(compileSettings) {
    // Hacky, I know.
    const { permalink } = this.parent.file
-   if (!permalink) return super.compile()
+   if (!permalink) return super.compile(compileSettings)
    const newLine = this.appendLine(`link ${permalink}`)
-   const compiled = super.compile()
+   const compiled = super.compile(compileSettings)
    newLine.destroy()
    return compiled
   }
@@ -313,7 +314,7 @@ startColumnsNode
    const COLUMN_GAP = 20
    const maxColumns = parseInt(this.getWord(1) ?? 10)
    const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
-   return this.parent.clearStack() + `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
+   return this.parent.clearSectionStack() + `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
 endColumnsNode
  extends abstractAftertextNode
@@ -430,35 +431,38 @@ snippetsNode
  example
   snippets index
  javascript
-  getHtml(file) {
-    return file.htmlForEmbeddedVersionWithShortSnippets
-  }
-  makeSnippet(file) {
-   const snippet = new TreeNode(`div
-   class scrollSnippetContainerComponent`)
-   const div = snippet.getNode("div")
-   div.appendLineAndChildren("bern", this.getHtml(file))
-   return snippet.toString().replace(/\n/g, "\n ")
+  makeSnippet(file, compileSettings) {
+    const {scrollProgram} = file
+    const snippetBreakNode = scrollProgram.getNode("endSnippet")
+    if (!snippetBreakNode) return scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
+    const indexOfBreak = snippetBreakNode.getIndex()
+    const linkRelativeToCompileTarget = compileSettings.relativePath + file.permalink
+    const joinChar = "\n"
+    const html = scrollProgram
+        .map((child, index) => (index >= indexOfBreak ? "" : child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+        .filter(i => i)
+        .join(joinChar)
+        .trim() +
+      `<a class="scrollContinueReadingLink" href="${linkRelativeToCompileTarget}">Continue reading...</a>`
+    return html + file.viewSourceHtml
   }
   compile() {
    const file = this.parent.file
    const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
-   const snippets = files.map(file => this.makeSnippet(file)).join(this.delimiter)
-   file.clearEmbeddingRelativeUrls(files)
-   const code = `div
-   class scrollColumnsComponent
-   style column-width:35ch;
-   ${snippets}`
-   return file.compileStumpCode(code)
+   const alreadyRequired = this.root.alreadyRequired
+   const snippets = files.map(file => {
+   const compileSettings = {relativePath: file.relativePath, alreadyRequired }
+   return `<div class="scrollSnippetContainerComponent">${this.makeSnippet(file.file, compileSettings)}</div>`
+   }).join("\n\n")
+   return `<div class="scrollColumnsComponent" style="column-width:35ch;">${snippets}</div>`
   }
-  delimiter = "\n "
 fullSnippetsNode
  extends snippetsNode
  cruxFromId
  description Prints the full contents of files that are in the named group.
  javascript
-  getHtml(file) {
-    return file.compiledEmbeddedVersion
+  makeSnippet(file, compileSettings) {
+   return file.scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
   }
 loopNode
  extends abstractAftertextNode
@@ -479,7 +483,7 @@ loopNode
     console.error(err)
     return ""
    } finally {
-     this.teardown()
+    this.teardown()
    }
   }
   get items() {
@@ -540,23 +544,74 @@ codeWithLanguageNode
  description Use this to specify the language of the code block, such as csvCode or rustCode.
  extends codeNode
  pattern ^[a-zA-Z0-9_]+Code$
+abstractScrollWithRequirementsNode
+ extends abstractScrollNode
+ javascript
+  compile(compileSettings) {
+    const {requireOnce} = this
+    const set = compileSettings?.alreadyRequired || this.root.alreadyRequired
+    let requireSnippet = ""
+    if (!set.has(requireOnce)) {
+      set.add(requireOnce)
+      requireSnippet = requireOnce + "\n\n"
+    }
+    return requireSnippet + this.compileInstance()
+  }
 copyButtonsNode
  cruxFromId
- extends abstractScrollNode
+ extends abstractScrollWithRequirementsNode
  description Make code snippets copyable.
  javascript
-  compile() {
-   return `
-      <script>document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollCodeBlockComponent").forEach(block => {
-   if (!navigator.clipboard) return
-   const button = document.createElement("span")
-   button.classList.add("scrollCopyButton")
-   block.appendChild(button)
-   button.addEventListener("click", async () => {
-     await navigator.clipboard.writeText(block.innerText)
-     button.classList.add("scrollCopied")
-   })
-   }))</script>`
+  compileInstance() {
+   return ""
+  }
+ string requireOnce
+  <script>
+  document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollCodeBlockComponent").forEach(block =>
+   {
+    if (!navigator.clipboard) return
+    const button = document.createElement("span")
+    button.classList.add("scrollCopyButton")
+    block.appendChild(button)
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(block.innerText)
+      button.classList.add("scrollCopied")
+    })
+   }
+  ))
+  </script>
+mapNode
+ cruxFromId
+ inScope latNode longNode zoomNode pointNode heightNode
+ extends abstractScrollWithRequirementsNode
+ description Uses LeafletJs
+ todo Make this only require once
+ string requireOnce
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+ javascript
+  compileInstance() {
+   const height = 500
+   const id = this._getUid()
+   return `<div id="map${id}" style="height: ${height}px;"></div>
+  <script>
+   {
+    const lat = ${this.get("lat") ?? 37.8}
+    const long = ${this.get("long") ?? 4}
+    const zoomLevel = ${this.get("zoom") ?? 4}
+    const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
+    const map = L.map("map${id}").setView([lat, long], zoomLevel)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+     attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+     maxZoom: 18
+    }).addTo(map)
+    points.forEach(point => {
+     L.marker([point.lat, point.long])
+      .addTo(map)
+      .bindPopup("<b>" +point.title + "</b><br />" + point.description)
+    })
+   }
+  </script>`
   }
 belowAsCodeNode
  description Print the Scroll code of the next node.
@@ -657,7 +712,7 @@ metaTagsNode
    return file.compileStumpCode(`meta
    charset utf-8
   titleTag ${title}
-  script /* The HTML below was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
+  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
   styleTag @media print {.doNotPrint {display: none !important;}}
   link
    rel canonical
@@ -682,7 +737,7 @@ metaTagsNode
   meta
    property og:image
    content ${openGraphImage}
-   ${rssTag}
+  ${rssTag}
   meta
    name twitter:card
    content summary_large_image`)
@@ -796,20 +851,20 @@ abstractCaptionedNode
  inScope captionAftertextNode slashCommentNode
  cruxFromId
  javascript
-  compile() {
+  compile(compileSettings) {
    const caption = this.getNode("caption")
    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
-   return `<figure class="scrollCaptionedComponent">${this.figureContent}${captionFig}</figure>`
+   return `<figure class="scrollCaptionedComponent">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
   }
 imageNode
  description An img tag.
  extends abstractCaptionedNode
  inScope classMarkupNode aftertextIdNode
  javascript
-  get figureContent() {
+  getFigureContent(compileSettings) {
    const file = this.root.file
    const src = this.getWord(1)
-   const linkRelativeToCompileTarget = this.root.relativePathToCompileTarget + src
+   const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + src
    let dimensionAttributes = ""
    // If its a local image, get the dimensions and put them in the HTML
    // to avoid flicker
@@ -834,7 +889,7 @@ youTubeNode
  extends abstractCaptionedNode
  description Embed a YouTube video. Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
  javascript
-  get figureContent() {
+  getFigureContent() {
    const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
    return `<div class="youTubeHolder"><iframe class="youTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
@@ -879,37 +934,6 @@ keyboardNavNode
       getLinks()[1].click()
    });</script>`
    return `<div class="scrollKeyboardNav"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
-  }
-mapNode
- cruxFromId
- inScope latNode longNode zoomNode pointNode heightNode
- extends abstractScrollNode
- description Uses LeafletJs
- todo Make this only require once
- string requireOnce
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
- javascript
-  compile() {
-   const height = 500
-   const id = this._getUid()
-   return `<div id="map${id}" style="height: ${height}px;"></div>${this.requireOnce}<script>
-        {
-        const lat = ${this.get("lat") ?? 37.8}
-        const long = ${this.get("long") ?? 4}
-        const zoomLevel = ${this.get("zoom") ?? 4}
-        const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
-        const map = L.map("map${id}").setView([lat, long], zoomLevel)
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-          maxZoom: 18
-        }).addTo(map)
-        points.forEach(point => {
-          L.marker([point.lat, point.long])
-            .addTo(map)
-            .bindPopup("<b>" +point.title + "</b><br />" + point.description)
-        })
-      }</script>`
   }
 quoteNode
  cruxFromId
@@ -998,7 +1022,7 @@ printFeedNode
   compile() {
    const dayjs = require("dayjs")
    const file = this.root.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
    const { title, baseUrl, description } = file
    return `<?xml version="1.0" encoding="ISO-8859-1" ?>
   <rss version="2.0">
@@ -1223,7 +1247,8 @@ linkNode
    const link = this.getWord(1)
    const isAbsoluteLink = link.startsWith("https://") || link.startsWith("http://")
    if (isAbsoluteLink) return link
-   return this.root.relativePathToCompileTarget + link
+   const relativePath = this.parent.compileSettings?.relativePath || ""
+   return relativePath + link
   }
   get attributes() {
    const attrs = [`href="${this.link}"`]
@@ -1422,7 +1447,7 @@ blankLineNode
  cells blankCell
  javascript
   compile() {
-   return this.parent.clearStack()
+   return this.parent.clearSectionStack()
   }
  pattern ^$
  tags doNotSynthesize
@@ -1501,15 +1526,23 @@ scrollNode
    this.file = file
    return this
   }
-  relativePathToCompileTarget = ""
-  stack = []
-  clearStack() {
-   const result = this.stack.join("")
-   this.stack = []
+  compile(compileSettings) {
+    this.sectionStack = []
+    return this.map(child => child.compile(compileSettings)).filter(i => i).join("\n") + this.clearSectionStack()
+  }
+  sectionStack = []
+  clearSectionStack() {
+   const result = this.sectionStack.join("")
+   this.sectionStack = []
    return result
   }
-  compileEmbeddedVersion() {
-   return this.map(child => (child.compileEmbeddedVersion ? child.compileEmbeddedVersion() : child.compile())).join("\n")
+  alreadyRequired = new Set()
+  compileEmbeddedVersion(compileSettings) {
+   this.sectionStack = []
+   return this.map(child => (child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+     .filter(i => i)
+     .join("\n")
+     .trim() + this.clearSectionStack()
   }
   get footnotes() {
    if (this._footnotes === undefined) this._footnotes = this.filter(node => node.isFootnote)
@@ -1522,7 +1555,7 @@ scrollNode
  example
   # Hello world
   ## This is Scroll
-  * It compiles to HTML. Blank lines get turned into brs.
+  * It compiles to HTML.
   
   code
    // You can add code as well.
@@ -1558,12 +1591,7 @@ loopGroupsNode
  description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[groupName]
  javascript
   get items() {
-   this.files = this.root.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
-   return this.files
-  }
-  teardown() {
-    this.root.file.clearEmbeddingRelativeUrls(this.files)
-    delete this.files
+   return this.root.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
   }
 loopJoinNode
  extends abstractLoopConfigNode
