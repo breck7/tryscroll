@@ -65,11 +65,11 @@ class CodeEditorComponent extends AbstractTreeComponent {
         .slice(0, 1) // Only show 1 error at a time. Otherwise UX is not fun.
         .forEach(err => {
           const el = err.getCodeMirrorLineWidgetElement(() => {
-            this.codeMirrorInstance.setValue(this.program.toString())
+            this.codeMirrorInstance.setValue(this.program.asString)
             this._onCodeKeyUp()
           })
           this.codeWidgets.push(
-            this.codeMirrorInstance.addLineWidget(err.getLineNumber() - 1, el, { coverGutter: false, noHScroll: false })
+            this.codeMirrorInstance.addLineWidget(err.lineNumber - 1, el, { coverGutter: false, noHScroll: false })
           )
         })
       const info = this.codeMirrorInstance.getScrollInfo()

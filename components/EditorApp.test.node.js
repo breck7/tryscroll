@@ -8,24 +8,24 @@ const { DefaultScrollCompiler } = require("scroll-cli")
 
 const testTree = {}
 
-testTree.grammar = areEqual => {
-	const errs = new grammarNode(new DefaultScrollCompiler().getDefinition().toString())
+testTree.grammar = (areEqual) => {
+	const errs = new grammarNode(
+		new DefaultScrollCompiler().definition.asString
+	)
 		.getAllErrors()
-		.map(err => err.toObject())
+		.map((err) => err.toObject())
 	if (errs.length) console.log(new TreeNode(errs).toFormattedTable(60))
 	areEqual(errs.length, 0, "no grammar errors")
 }
 
-testTree.EditorApp = areEqual => {
+testTree.EditorApp = (areEqual) => {
 	const app = EditorApp.setupApp("")
 	areEqual(!!app, true)
 }
 
 module.exports = { testTree }
-const runTree = testTree => {
+const runTree = (testTree) => {
 	const tap = require("tap")
-	Object.keys(testTree).forEach(key => {
-		testTree[key](tap.equal)
-	})
+	Object.keys(testTree).forEach((key) => testTree[key](tap.equal))
 }
 if (module && !module.parent) runTree(testTree)

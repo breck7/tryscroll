@@ -40,7 +40,9 @@ class ErrorNode extends AbstractTreeComponent {
     return true
   }
   toStumpCode() {
-    console.error(`Warning: EditorApp does not have a node type for "${this.getLine()}"`)
+    console.error(
+      `Warning: EditorApp does not have a node type for "${this.getLine()}"`
+    )
     return `span
  style display: none;`
   }
@@ -61,7 +63,7 @@ class EditorApp extends AbstractTreeComponent {
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
-      ShowcaseComponent
+      ShowcaseComponent,
     })
   }
 
@@ -109,7 +111,9 @@ class EditorApp extends AbstractTreeComponent {
 
   dumpErrorsCommand() {
     const errs = new programCompiler(this.scrollCode).getAllErrors()
-    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
+    console.log(
+      new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200)
+    )
   }
 
   get mainDocument() {
@@ -126,7 +130,7 @@ class EditorApp extends AbstractTreeComponent {
     this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
-    Object.keys(keyboardShortcuts).forEach(key => {
+    Object.keys(keyboardShortcuts).forEach((key) => {
       willowBrowser.getMousetrap().bind(key, function(evt) {
         keyboardShortcuts[key]()
         // todo: handle the below when we need to
@@ -147,20 +151,21 @@ class EditorApp extends AbstractTreeComponent {
   get urlHash() {
     const tree = new TreeNode()
     tree.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
-    return "#" + encodeURIComponent(tree.toString())
+    return "#" + encodeURIComponent(tree.asString)
   }
 
   _getKeyboardShortcuts() {
     return {
       d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
-      w: () => this.resizeEditorCommand()
+      w: () => this.resizeEditorCommand(),
     }
   }
 
   resizeEditorCommand(newSize = SIZES.EDITOR_WIDTH) {
     this.editor.setWord(1, newSize)
 
-    if (!this.isNodeJs()) localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
+    if (!this.isNodeJs())
+      localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
     this.renderAndGetRenderReport()
   }
 }
@@ -170,16 +175,25 @@ const SIZES = {}
 SIZES.BOARD_MARGIN = 20
 SIZES.TOP_BAR_HEIGHT = 28
 SIZES.BOTTOM_BAR_HEIGHT = 40
-SIZES.CHROME_HEIGHT = SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
+SIZES.CHROME_HEIGHT =
+  SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
 SIZES.TITLE_HEIGHT = 20
 
-SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
+SIZES.EDITOR_WIDTH = Math.floor(
+  typeof window !== "undefined" ? window.innerWidth / 2 : 400
+)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, styleCode = "") => {
+EditorApp.setupApp = (
+  simojiCode,
+  windowWidth = 1000,
+  windowHeight = 1000,
+  styleCode = ""
+) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
-      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
+      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ??
+        SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
   const startState = new TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
@@ -192,7 +206,7 @@ ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
 ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
-  const app = new EditorApp(startState.toString())
+  const app = new EditorApp(startState.asString)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   app.style = styleCode
