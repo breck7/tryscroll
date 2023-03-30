@@ -1,0 +1,1666 @@
+// Related work:
+ CSS is great for text selector ideas: https://www.w3schools.com/cssref/css_selectors.asp
+ Roff has a lot of related markup ideas: https://www.systutorials.com/docs/linux/man/7-groff_man/
+// Extend this if you want to create a new provider
+// Some basic providers:
+
+
+
+
+
+anyCell
+urlCell
+ highlightScope constant.language
+keywordCell
+ highlightScope keyword
+stringCell
+ highlightScope string
+booleanCell
+ highlightScope constant.language
+ enum true false
+idCell
+ highlightScope constant.language
+dateCell
+ highlightScope string
+integerCell
+ highlightScope constant.numeric
+floatCell
+ highlightScope constant.numeric
+permalinkCell
+ highlightScope string
+ description A string that doesn't contain characters that might interfere with most filesystems. No slashes, for instance.
+commentCell
+ highlightScope comment
+blankCell
+personNameCell
+ extends stringCell
+codeCell
+ highlightScope comment
+bulletPointCell
+ description Any token used as a bullet point such as "-" or "1." or ">"
+ highlightScope keyword
+emailAddressCell
+ extends stringCell
+tagOrUrlCell
+ description An HTML tag or a url.
+ highlightScope constant.language
+delimiterCell
+ description String to use as a delimiter.
+ highlightScope string
+htmlAttributesCell
+ highlightScope comment
+classNameCell
+ highlightScope constant
+htmlIdCell
+ extends idCell
+filePathCell
+ extends stringCell
+cssAnyCell
+ extends anyCell
+groupNameCell
+ extends permalinkCell
+groupNameWithOptionalFolderCell
+ description A group name optionally combined with a folder path. Only used when referencing groups, not in posts.
+ extends stringCell
+htmlAnyCell
+ extends stringCell
+javascriptCell
+ extends stringCell
+abstractScrollNode
+ cells keywordCell
+ javascript
+  compileEmbeddedVersion(compileSettings) {
+   return this.compile(compileSettings)
+  }
+abstractAftertextNode
+ description Text followed by markup commands.
+ extends abstractScrollNode
+ inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode slashCommentNode
+ example
+  aftertext
+   Hello brave new world
+   link home.com new
+   bold brave new
+   underline new world
+   strikethrough wor
+ javascript
+  get markupInserts() {
+   const { originalTextPostLinkify } = this
+   return this.filter(node => node.isMarkupNode)
+    .map(node => node.getInserts(originalTextPostLinkify))
+    .filter(i => i)
+    .flat()
+  }
+  get originalText() {
+   return this.content ?? ""
+  }
+  get originalTextPostLinkify() {
+   const { originalText } = this
+   const shouldLinkify = this.get("linkify") === "false" || originalText.includes("<a ") ? false : true
+   return shouldLinkify ? this.replaceNotes(Utils.linkify(originalText)) : originalText
+  }
+  replaceNotes(originalText) {
+   this.root.footnotes.forEach((note, index) => {
+    const needle = note.firstWord
+    if (originalText.includes(needle)) originalText = originalText.replace(needle, `<a href="#${note.anchorId}" class="scrollNoteLink" id="${note.linkBack()}"><sup>${note.noteId}</sup></a>`)
+   })
+   return originalText
+  }
+  get text() {
+   const { originalTextPostLinkify, markupInserts } = this
+   let adjustment = 0
+   let newText = originalTextPostLinkify
+   // If multiple tags start at same index, the tag that closes first should start last. Otherwise HTML breaks.
+   markupInserts.sort((a, b) => (a.index === b.index ? b.endIndex - a.endIndex : a.index - b.index))
+   markupInserts.forEach(insertion => {
+    insertion.index += adjustment
+    const consumeStartCharacters = insertion.consumeStartCharacters ?? 0
+    const consumeEndCharacters = insertion.consumeEndCharacters ?? 0
+    newText = newText.slice(0, insertion.index - consumeEndCharacters) + insertion.string + newText.slice(insertion.index + consumeStartCharacters)
+    adjustment += insertion.string.length - consumeEndCharacters - consumeStartCharacters
+   })
+   return newText
+  }
+  tag = "p"
+  get className() {
+   const classNode = this.getNode("class")
+   if (classNode && classNode.applyToParentElement) return classNode.content
+   return this.defaultClassName
+  }
+  defaultClassName = "scrollParagraphComponent"
+  compile(compileSettings) {
+   this.compileSettings = compileSettings
+   const { className } = this
+   const classAttr = className ? `class="${this.className}"` : ""
+   return `<${this.tag} ${this.divAttributes}${classAttr}>${this.text}</${this.tag}>`
+  }
+  get divAttributes() {
+   const attrs = this.filter(node => node.isAttributeNode)
+   return attrs.length ? attrs.map(node => node.divAttributes).join(" ") + " " : ""
+  }
+thoughtNode
+ // todo Perhaps rewrite this from scratch and move out of aftertext.
+ extends abstractAftertextNode
+ catchAllCellType stringCell
+ example
+  * I had a _new_ thought.
+ description A thought.
+ crux *
+ javascript
+  compile(compileSettings) {
+   // Hacky, I know.
+   const newLine = this.appendLine("wrapsOn")
+   const compiled = super.compile(compileSettings)
+   newLine.destroy()
+   return compiled
+  }
+indentableThoughtNode
+ extends thoughtNode
+ inScope abstractAftertextDirectiveNode abstractAftertextAttributeNode indentableThoughtNode
+ javascript
+  compile() {
+   return (
+    super.compile() +
+    this.map(node => node.compile())
+     .join("\n")
+     .trim()
+   )
+  }
+checklistTodoNode
+ extends indentableThoughtNode
+ example
+  [] Get milk
+ description An incomplete checklist item.
+ crux []
+ string checked 
+ javascript
+  get text() {
+   return `<div style="text-indent:${(this.getIndentLevel() - 1) * 20}px;"><input type="checkbox" ${this.checked} id="${this.id}"><label for="${this.id}">` + super.text + `</label></div>`
+  }
+  get id() {
+   return this.get("id") || "item" + this._getUid()
+  }
+checklistDoneNode
+ extends checklistTodoNode
+ description A complete checklist list item.
+ string checked checked
+ crux [x]
+ example
+  [x] get milk
+listAftertextNode
+ extends indentableThoughtNode
+ example
+  - I had a _new_ thought.
+ description A list item.
+ crux -
+ javascript
+  defaultClassName = ""
+  compile() {
+   const index = this.getIndex()
+   const parent = this.parent
+   const nodeClass = this.constructor
+   const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
+   const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
+   const { listType } = this
+   return (isStartOfList ? `<${listType} style="text-indent:${(this.getIndentLevel() - 1) * 20}px;">` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
+  }
+  tag = "li"
+  listType = "ul"
+orderedListAftertextNode
+ extends listAftertextNode
+ description A list item.
+ example
+  1. Hello world
+ pattern ^\d+\. 
+ javascript
+  listType = "ol"
+blinkNode
+ description Useful when you have a client that always needs to find 1 thing they would like you to change.
+ extends thoughtNode
+ crux blink
+ javascript
+  compile() {
+   return `<span class="scrollBlink">${super.compile()}</span>
+    <script>
+    setInterval(()=>{
+        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
+        el.style.color = el.style.color === "white" ? "black" : "white"
+        )
+    }, 2000)
+    </script>`
+  }
+catchAllParagraphNode
+ description A catch all block. This may be removed in future versions.
+ extends thoughtNode
+ cells stringCell
+ baseNodeType errorNode
+ javascript
+  get originalText() {
+   return this.getLine() || ""
+  }
+footnoteDefinitionNode
+ description A footnote. Can also be used as section notes.
+ extends thoughtNode
+ boolean isFootnote true
+ pattern ^\^.+$
+ javascript
+  get divAttributes() {
+   return super.divAttributes + ` id="${this.anchorId}"`
+  }
+  get anchorId() {
+   return `note${this.noteIndex}`
+  }
+  get noteId() {
+   // In the future we could allow common practices like author name
+   return this.noteIndex
+  }
+  linkBack() {
+   return `noteUsage${this.noteIndex}`
+  }
+  get text() {
+   return `<a class="scrollNoteIndex" href="#noteUsage${this.noteIndex}">${this.noteIndex}</a> ${super.text}`
+  }
+  get noteIndex() {
+   return this.parent.footnotes.indexOf(this) + 1
+  }
+captionAftertextNode
+ description An optional caption to accompany the resource.
+ crux caption
+ extends thoughtNode
+sectionTitleNode
+ description Compiles to an html h3 tag.
+ extends thoughtNode
+ crux #
+ javascript
+  compile(compileSettings) {
+   this.parent.sectionStack.push("</div>")
+   return `<div class="scrollSectionComponent">` + super.compile(compileSettings)
+  }
+  tag = "h3"
+titleNode
+ description Title of the page for meta tags and also compiles to an html h1 tag.
+ extends sectionTitleNode
+ crux title
+ javascript
+  compile(compileSettings) {
+   // Hacky, I know.
+   const { permalink } = this.parent.file
+   if (!permalink) return super.compile(compileSettings)
+   const newLine = this.appendLine(`link ${permalink}`)
+   const compiled = super.compile(compileSettings)
+   newLine.destroy()
+   return compiled
+  }
+  defaultClassName = "scrollTitleComponent"
+  tag = "h1"
+sectionSubTitleNode
+ description Compiles to an html h4 tag.
+ extends sectionTitleNode
+ crux ##
+ javascript
+  tag = "h4"
+questionAftertextNode
+ description A question.
+ extends sectionTitleNode
+ crux ?
+ javascript
+  tag = "h4"
+  defaultClassName = "scrollQuestionComponent"
+startColumnsNode
+ extends abstractAftertextNode
+ cruxFromId
+ catchAllCellType integerCell
+ description Start a multicolumn grid.
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const columnWidth = 35
+   const COLUMN_GAP = 20
+   const maxColumns = parseInt(this.getWord(1) ?? 10)
+   const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
+   return this.parent.clearSectionStack() + `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
+  }
+endColumnsNode
+ extends abstractAftertextNode
+ cruxFromId
+ description End a multicolumn grid.
+ javascript
+  compile() {
+   return "</div>"
+  }
+  compileEmbeddedVersion() {
+   return ""
+  }
+scrollCssTagNode
+ extends abstractAftertextNode
+ cruxFromId
+ description Prints the Scroll CSS in an <style> tag. To not print the style tag use `scrollCss`.
+ javascript
+  compile() {
+   return `<style>${this.parent.file.SCROLL_CSS}</style>`
+  }
+  compileEmbeddedVersion() {
+   return ""
+  }
+scrollCssNode
+ extends scrollCssTagNode
+ javascript
+  compile() {
+   return this.parent.file.SCROLL_CSS
+  }
+scrollFooterNode
+ extends abstractAftertextNode
+ cruxFromId
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const file = this.parent.file
+   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
+   const closeContainerTag = "</div>"
+   return (
+    closeContainerTag +
+    file.compileStumpCode(`p
+   class scrollFileViewSourceUrlComponent doNotPrint
+   a View source
+    href ${viewSourceUrl}
+  div
+   class scrollFooterComponent doNotPrint
+   a ${SVGS.email}
+    href mailto:${file.email}
+   a ${SVGS.git}
+    href ${file.git}
+   a Built with Scroll v${SCROLL_VERSION}
+    href https://scroll.pub
+    class scrollCommunityLinkComponent`)
+   )
+  }
+scrollHeaderNode
+ extends abstractAftertextNode
+ cruxFromId
+ description The simple default Scroll header.
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const file = this.parent.file
+   const { SVGS, linkToPrevious, linkToNext } = file
+   let previousButton = ""
+   if (linkToPrevious)
+    previousButton = `a <
+    class scrollPrevPageLink
+    href ${linkToPrevious}`
+   let nextButton = ""
+   if (linkToNext)
+    nextButton = `a >
+    class scrollNextPageLink
+    href ${linkToNext}`
+   return file.compileStumpCode(`div
+   class scrollHeaderComponent doNotPrint
+   ${previousButton}
+   a ${SVGS.home}
+    class scrollTopLeftBarComponent
+    href ${file.get("homeLink") || "index.html"}
+   a ${SVGS.git}
+    class scrollTopRightBarComponent
+    href ${file.git}
+   ${nextButton}`)
+  }
+horizontalRuleNode
+ crux ---
+ description Prints an html <hr> tag
+ extends abstractAftertextNode
+ javascript
+  compile() {
+   return `<hr>`
+  }
+loopNode
+ extends abstractAftertextNode
+ cells keywordCell
+ description Iterate over files, lines or words, evaluating code and joining the resulting HTML.
+ cruxFromId
+ inScope abstractItemsProviderNode
+ joinNode
+  extends abstractLoopConfigNode
+  description HTML to use to join the items.
+ limitNode
+  extends abstractLoopConfigNode
+  description HTML to use to join the items.
+ javascriptNode
+  extends abstractLoopConfigNode
+  description Javascript to execute for each file in the loop.
+ javascript
+  compile() {
+   const code = this.get("javascript")
+   const joinWith = this.get("join") ?? ""
+   try {
+    const limit = this.get("limit")
+    let items = this.items
+    if (limit) items = items.slice(0, parseInt(limit))
+    return items.map((item, index) => eval(code)).join(joinWith)
+   } catch (err) {
+    console.error(err)
+    return ""
+   } finally {
+    this.teardown()
+   }
+  }
+  get items() {
+   const provider = this.getChildInstancesOfNodeTypeId("abstractItemsProviderNode")[0]
+   return provider ? provider.items : []
+  }
+  teardown() {}
+loremIpsumNode
+ extends abstractAftertextNode
+ cruxFromId
+ description Generate dummy text.
+ catchAllCellType integerCell
+ javascript
+  compile() {
+   const text = `Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
+   return text.repeat(this.getWord(1) ? parseInt(this.getWord(1)) : 1)
+  }
+snippetsNode
+ extends abstractAftertextNode
+ cruxFromId
+ cells keywordCell groupNameWithOptionalFolderCell
+ catchAllCellType groupNameWithOptionalFolderCell
+ description Prints the snippets of all files in the named group(s).
+ example
+  snippets index
+ javascript
+  makeSnippet(file, compileSettings) {
+    const {scrollProgram} = file
+    const snippetBreakNode = scrollProgram.getNode("endSnippet")
+    if (!snippetBreakNode) return scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
+    const indexOfBreak = snippetBreakNode.getIndex()
+    const linkRelativeToCompileTarget = compileSettings.relativePath + file.permalink
+    const joinChar = "\n"
+    const html = scrollProgram
+        .map((child, index) => (index >= indexOfBreak ? "" : child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+        .filter(i => i)
+        .join(joinChar)
+        .trim() +
+      `<a class="scrollContinueReadingLink" href="${linkRelativeToCompileTarget}">Continue reading...</a>`
+    return html + file.viewSourceHtml
+  }
+  compile() {
+   const file = this.parent.file
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+   const alreadyRequired = this.root.alreadyRequired
+   const snippets = files.map(file => {
+   const compileSettings = {relativePath: file.relativePath, alreadyRequired }
+   return `<div class="scrollSnippetContainerComponent">${this.makeSnippet(file.file, compileSettings)}</div>`
+   }).join("\n\n")
+   return `<div class="scrollColumnsComponent" style="column-width:35ch;">${snippets}</div>`
+  }
+fullSnippetsNode
+ extends snippetsNode
+ cruxFromId
+ description Prints the full contents of files that are in the named group.
+ javascript
+  makeSnippet(file, compileSettings) {
+   return file.scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
+  }
+viewSourceNode
+ extends abstractAftertextNode
+ cruxFromId
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const file = this.parent.file
+   const { viewSourceUrl } = file
+   return file.compileStumpCode(`p
+   class scrollFileViewSourceUrlComponent doNotPrint
+   a View source
+    href ${viewSourceUrl}`)
+  }
+authorNode
+ description Prints an author byline with an optional link to a page for the author.
+ extends abstractScrollNode
+ cruxFromId
+ cells keywordCell urlCell
+ catchAllCellType personNameCell
+ example
+  comment With Link:
+  author https://breckyunits.com Breck Yunits
+  comment No link:
+  author  Breck Yunits
+ javascript
+  compile() {
+   const link = this.getWord(1)
+   return `<div class="scrollAuthor">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
+  }
+chatNode
+ description A dialogue between two people.
+ catchAllNodeType chatLineNode
+ cruxFromId
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return this.map((line, index) => `<div class="scrollDialogueComponent ${index % 2 ? "scrollDialogueComponentRight" : "scrollDialogueComponentLeft"}"><span>${line.asString}</span></div>`).join("")
+  }
+codeNode
+ description A code block.
+ catchAllNodeType lineOfCodeNode
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return `<code class="scrollCodeBlockComponent">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
+  }
+ cruxFromId
+codeWithLanguageNode
+ description Use this to specify the language of the code block, such as csvCode or rustCode.
+ extends codeNode
+ pattern ^[a-zA-Z0-9_]+Code$
+abstractScrollWithRequirementsNode
+ extends abstractScrollNode
+ javascript
+  compile(compileSettings) {
+    const {requireOnce} = this
+    const set = compileSettings?.alreadyRequired || this.root.alreadyRequired
+    let requireSnippet = ""
+    if (!set.has(requireOnce)) {
+      set.add(requireOnce)
+      requireSnippet = requireOnce + "\n\n"
+    }
+    return requireSnippet + this.compileInstance()
+  }
+copyButtonsNode
+ cruxFromId
+ extends abstractScrollWithRequirementsNode
+ description Make code snippets copyable.
+ javascript
+  compileInstance() {
+   return ""
+  }
+ string requireOnce
+  <script>
+  document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollCodeBlockComponent").forEach(block =>
+   {
+    if (!navigator.clipboard) return
+    const button = document.createElement("span")
+    button.classList.add("scrollCopyButton")
+    block.appendChild(button)
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(block.innerText)
+      button.classList.add("scrollCopied")
+    })
+   }
+  ))
+  </script>
+mapNode
+ cruxFromId
+ inScope latNode longNode
+ zoomNode
+  cells keywordCell integerCell
+  cruxFromId
+  single
+ heightNode
+  cells keywordCell floatCell
+  cruxFromId
+  single
+ pointNode
+  cells keywordCell
+  inScope latNode longNode
+  cruxFromId
+  titleNode
+   extends abstractPointConfigNode
+  descriptionNode
+   extends abstractPointConfigNode
+ extends abstractScrollWithRequirementsNode
+ description Uses LeafletJs
+ // todo Make this only require once
+ string requireOnce
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+ javascript
+  compileInstance() {
+   const height = 500
+   const id = this._getUid()
+   return `<div id="map${id}" style="height: ${height}px;"></div>
+  <script>
+   {
+    const lat = ${this.get("lat") ?? 37.8}
+    const long = ${this.get("long") ?? 4}
+    const zoomLevel = ${this.get("zoom") ?? 4}
+    const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
+    const map = L.map("map${id}").setView([lat, long], zoomLevel)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+     attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+     maxZoom: 18
+    }).addTo(map)
+    points.forEach(point => {
+     L.marker([point.lat, point.long])
+      .addTo(map)
+      .bindPopup("<b>" +point.title + "</b><br />" + point.description)
+    })
+   }
+  </script>`
+  }
+belowAsCodeNode
+ description Print the Scroll code of the next node.
+ extends abstractScrollNode
+ catchAllCellType integerCell
+ cruxFromId
+ javascript
+  method = "next"
+  get code() {
+   const { method } = this
+   let code = ""
+   let howMany = parseInt(this.getWord(1))
+   if (!howMany || isNaN(howMany)) howMany = 1
+   let nodes = []
+   let next = this[method]
+   while (howMany) {
+    nodes.push(next)
+    next = next[method]
+    howMany--
+   }
+   if (this.reverseNodes) nodes.reverse()
+   return nodes.map(node => node.asString).join("\n")
+  }
+  reverseNodes = false
+  compile() {
+   return `<code class="scrollCodeBlockComponent">${this.code.replace(/\</g, "&lt;")}</code>`
+  }
+aboveAsCodeNode
+ description Print the Scroll code for the previous node.
+ extends belowAsCodeNode
+ javascript
+  method = "previous"
+  reverseNodes = true
+commentNode
+ description Comments do not appear in the compiled HTML.
+ catchAllCellType commentCell
+ extends abstractScrollNode
+ cruxFromId
+ javascript
+  compile() {
+   return ``
+  }
+ catchAllNodeType commentLineNode
+slashCommentNode
+ extends commentNode
+ crux //
+cssNode
+ extends abstractScrollNode
+ description Prints CSS content wrapped in a style tag.
+ cruxFromId
+ catchAllNodeType cssLineNode
+ catchAllCellType cssAnyCell
+ javascript
+  compile() {
+   return `<style>${this.content ?? ""}${this.childrenToString()}</style>`
+  }
+abstractTopLevelSingleMetaNode
+ description Use these keywords once per file.
+ extends abstractScrollNode
+ cruxFromId
+ cells keywordCell
+ javascript
+  compile() {
+   return ""
+  }
+dateNode
+ catchAllCellType dateCell
+ description Date this file was first published.
+ extends abstractTopLevelSingleMetaNode
+permalinkNode
+ description When compiling, Scroll will save this file to {permalink}
+ extends abstractTopLevelSingleMetaNode
+ cells keywordCell permalinkCell
+groupsNode
+ description Add this file to zero or more groups.
+ cruxFromId
+ example
+  groups index.html
+ extends abstractTopLevelSingleMetaNode
+ cells keywordCell
+ catchAllCellType groupNameCell
+metaTagsNode
+ cruxFromId
+ extends abstractTopLevelSingleMetaNode
+ description Adds meta tags like title, description, et cetera.
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const { file } = this.parent
+   const { title, description, openGraphImage, SCROLL_VERSION, canonicalLink } = file
+   const rssFeedUrl = file.get("rssFeedUrl")
+   let rssTag = ""
+   if (rssFeedUrl) {
+    rssTag = `link
+   rel alternate
+   type application/rss+xml
+   title ${title}
+   href ${rssFeedUrl}`
+   }
+   return file.compileStumpCode(`meta
+   charset utf-8
+  titleTag ${title}
+  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
+  styleTag @media print {.doNotPrint {display: none !important;}}
+  link
+   rel canonical
+   href ${canonicalLink}
+  meta
+   charset iso-8859-1
+  meta
+   name viewport
+   content width=device-width,initial-scale=1
+  meta
+   name description
+   content ${description}
+  meta
+   name generator
+   content Scroll v${SCROLL_VERSION}
+  meta
+   property og:title
+   content ${title}
+  meta
+   property og:description
+   content ${description}
+  meta
+   property og:image
+   content ${openGraphImage}
+  ${rssTag}
+  meta
+   name twitter:card
+   content summary_large_image`)
+  }
+descriptionNode
+ catchAllCellType stringCell
+ description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
+ extends abstractTopLevelSingleMetaNode
+endSnippetNode
+ description Insert one of these where you want to cut the file for a snippet.
+ extends abstractTopLevelSingleMetaNode
+viewSourceUrlNode
+ catchAllCellType urlCell
+ description Use this to override the link to the source code for a scroll file.
+ extends abstractTopLevelSingleMetaNode
+abstractFileSettingNode
+ extends abstractScrollNode
+ cells keywordCell
+ javascript
+  compile() {
+   return ""
+  }
+abstractUrlSettingNode
+ extends abstractFileSettingNode
+ cells keywordCell urlCell
+ cruxFromId
+baseUrlNode
+ description Root url of this published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
+ extends abstractUrlSettingNode
+homeLinkNode
+ description In the default Scroll theme the home button will link to "index.html". You can override this with this setting.
+ extends abstractUrlSettingNode
+viewSourceBaseUrlNode
+ description The base link to be used to generate the "View source" link.
+ extends abstractUrlSettingNode
+gitNode
+ description A link to the web Git UI for this site.
+ extends abstractUrlSettingNode
+canonicalLinkNode
+ description Canonical URL for SEO. If undefined Scroll generates this from the baseUrl and permalink.
+ extends abstractUrlSettingNode
+openGraphImageNode
+ description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ extends abstractUrlSettingNode
+rssFeedUrlNode
+ description URL for RSS feed, if any.
+ extends abstractUrlSettingNode
+abstractSiteStringSettingNode
+ extends abstractFileSettingNode
+ catchAllCellType stringCell
+ cruxFromId
+emailNode
+ description Email address for the site owner.
+ extends abstractFileSettingNode
+ cruxFromId
+ cells keywordCell emailAddressCell
+scrollNodeTypeDefinitionNode
+ extends abstractScrollNode
+ // todo Figure out best pattern for integrating Scroll and Grammar?
+ pattern ^[a-zA-Z0-9_]+Node$
+ description Define your own nodeTypes in the Grammar language for using in your Scroll files.
+ baseNodeType blobNode
+ javascript
+  compile() {
+   return ""
+  }
+htmlNode
+ description A catch all block to drop in any loose html. Use for HTML one liners and/or blocks of HTML.
+ cruxFromId
+ extends abstractScrollNode
+ catchAllNodeType htmlLineNode
+ catchAllCellType htmlAnyCell
+ javascript
+  compile() {
+   return `${this.content ?? ""}${this.childrenToString()}`
+  }
+quickHtmlNode
+ extends htmlNode
+ cells htmlAnyCell
+ pattern ^<
+ description Start a line with a less than sign to immediately write HTML
+ javascript
+  compile() {
+   return `${this.getLine() ?? ""}${this.childrenToString()}`
+  }
+stumpNode
+ cruxFromId
+ extends abstractScrollNode
+ description Stump is a Tree Language that compiles to HTML.
+ catchAllNodeType stumpContentNode
+ javascript
+  compile() {
+   const file = this.parent.file
+   return file.compileStumpCode(this.childrenToString())
+  }
+stumpNoSnippetNode
+ extends stumpNode
+ description Useful for headers and footers when you have something you don't want included in snippets.
+ cruxFromId
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+abstractCaptionedNode
+ extends abstractScrollNode
+ cells keywordCell urlCell
+ inScope captionAftertextNode slashCommentNode
+ cruxFromId
+ javascript
+  compile(compileSettings) {
+   const caption = this.getNode("caption")
+   const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
+   return `<figure class="scrollCaptionedComponent">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
+  }
+imageNode
+ description An img tag.
+ extends abstractCaptionedNode
+ inScope classMarkupNode aftertextIdNode
+ javascript
+  getFigureContent(compileSettings) {
+   const file = this.root.file
+   const src = this.getWord(1)
+   const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + src
+   let dimensionAttributes = ""
+   // If its a local image, get the dimensions and put them in the HTML
+   // to avoid flicker
+   if (!src.startsWith("http:") && !src.startsWith("https:")) {
+    try {
+     const sizeOf = require("image-size")
+     const path = require("path")
+     const fullImagePath = path.join(file.folderPath, src)
+     const dimensions = sizeOf(fullImagePath)
+     const width = dimensions.width
+     const height = dimensions.height
+     dimensionAttributes = `width="${width}" height="${height}" `
+    } catch (err) {
+     console.error(err)
+    }
+   }
+   const className = this.has("class") ? ` class="${this.get("class")}" ` : ""
+   const id = this.has("id") ? ` id="${this.get("id")}" ` : ""
+   return `<a href="${linkRelativeToCompileTarget}" target="_blank" ${className} ${id}><img src="${linkRelativeToCompileTarget}" ${dimensionAttributes}loading="lazy"></a>`
+  }
+youTubeNode
+ extends abstractCaptionedNode
+ description Embed a YouTube video. Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
+ javascript
+  getFigureContent() {
+   const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
+   return `<div class="youTubeHolder"><iframe class="youTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+  }
+importNode
+ description Import one file into another.
+ cruxFromId
+ extends abstractScrollNode
+ catchAllCellType filePathCell
+ javascript
+  compile() {
+   return ""
+  }
+ example
+  import header.scroll
+importOnlyNode
+ description Mark a file as not one to build. This line will be not be imported into the importing file.
+ cruxFromId
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return ""
+  }
+keyboardNavNode
+ description Makes left go to previous file and right go to next file.
+ extends abstractScrollNode
+ cruxFromId
+ catchAllCellType urlCell
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const file = this.root.file
+   const linkToPrevious = this.getWord(1) ?? file.linkToPrevious
+   const linkToNext = this.getWord(2) ?? file.linkToNext
+   const script = `<script>document.addEventListener('keydown', function(event) {
+    if (document.activeElement !== document.body) return
+    const getLinks = () => document.getElementsByClassName("scrollKeyboardNav")[0].getElementsByTagName("a")
+    if (event.key === "ArrowLeft")
+      getLinks()[0].click()
+    else if (event.key === "ArrowRight")
+      getLinks()[1].click()
+   });</script>`
+   return `<div class="scrollKeyboardNav"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
+  }
+quoteNode
+ cruxFromId
+ description A blockquote.
+ catchAllNodeType quoteLineNode
+ extends abstractScrollNode
+ javascript
+  compile() {
+   return `<blockquote class="scrollQuoteComponent">${this.childrenToString()}</blockquote>`
+  }
+readingListNode
+ extends abstractScrollNode
+ description Easily create a reading list with links, titles, and author names.
+ cells keywordCell
+ cruxFromId
+ catchAllNodeType readingListItemNode
+ example
+  readingList
+   https://example.com/similar by Author Name
+ javascript
+  compile() {
+   return `<br><ul>${this.map(child => child.compile()).join("\n")}</ul>`
+  }
+redirectToNode
+ description Prints an HTML redirect tag. In the future might also emit nginx config.
+ extends abstractScrollNode
+ cells keywordCell urlCell
+ cruxFromId
+ example
+  redirectTo https://scroll.pub/releaseNotes.html
+ javascript
+  compile() {
+   return `<meta http-equiv="Refresh" content="0; url='${this.getWord(1)}'" />`
+  }
+replaceNode
+ description Define a variable token and replacement that will be applied to all lines before and after this one.
+ extends abstractScrollNode
+ cruxFromId
+ catchAllCellType stringCell
+ baseNodeType blobNode
+ example
+  replace YEAR 2022
+ javascript
+  compile() {
+   return ""
+  }
+replaceJsNode
+ description Define a variable token and replacement that will be applied to all lines before and after this one.
+ extends replaceNode
+ catchAllCellType javascriptCell
+ example
+  replaceJs SUM 1+1
+  * 1+1 = SUM
+nodejsNode
+ description Write nodejs code inside a Scroll file. Sort of like PHP.
+ extends abstractScrollNode
+ cruxFromId
+ catchAllCellType javascriptCell
+ baseNodeType blobNode
+ example
+  nodejs
+   module.exports = {SCORE : 1 + 2}
+  * The score is SCORE
+replaceDefaultNode
+ description Define the default value for a replacement. Useful if you want to import a file and set a replacement later.
+ extends abstractScrollNode
+ catchAllCellType stringCell
+ baseNodeType blobNode
+ example
+  replaceDefault YEAR 2021
+ cruxFromId
+ javascript
+  compile() {
+   return ""
+  }
+printFeedNode
+ description Prints out the RSS feed for a group.
+ extends abstractScrollNode
+ cruxFromId
+ cells keywordCell groupNameWithOptionalFolderCell
+ catchAllCellType groupNameWithOptionalFolderCell
+ example
+  printFeed index
+  printFeed cars/index
+ javascript
+  compile() {
+   const dayjs = require("dayjs")
+   const file = this.root.file
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const { title, baseUrl, description } = file
+   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
+  <rss version="2.0">
+  <channel>
+   <title>${title}</title>
+   <link>${baseUrl}</link>
+   <description>${description}</description>
+   <lastBuildDate>${dayjs().format("ddd, DD MMM YYYY HH:mm:ss ZZ")}</lastBuildDate>
+   <language>en-us</language>
+  ${files.map(file => file.toRss()).join("\n")}
+  </channel>
+  </rss>`
+  }
+abstractTableNode
+ cruxFromId
+ catchAllNodeType rowNode
+ extends abstractScrollNode
+ javascript
+  get tableHeader() {
+   return this.columns.filter(col => !col.isLink).map(column => `<th>${column.name}</th>\n`)
+  }
+  get columnNames() {
+   const header = this.nodeAt(0)
+   return header ? header.getLine().split(this.delimiter) : []
+  }
+  get columns() {
+   const cols = this.columnNames
+   return cols.map((name, index) => {
+    const isLink = name.endsWith("Link")
+    const linkIndex = cols.indexOf(name + "Link")
+    return {
+     name,
+     isLink,
+     linkIndex
+    }
+   })
+  }
+  get tableBody() {
+   const { delimiter } = this
+   return this.topDownArray
+    .slice(1)
+    .map(node => `<tr>${node.toRow(this.columns, delimiter)}</tr>`)
+    .join("\n")
+  }
+  compile() {
+   return `<table class="scrollTableComponent"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
+  }
+tableNode
+ description A table with a custom delimiter.
+ extends abstractTableNode
+ catchAllCellType anyCell
+ javascript
+  get delimiter() {
+   return this.content ?? ""
+  }
+commaTableNode
+ description Comma separated values table.
+ extends abstractTableNode
+ string delimiter ,
+pipeTableNode
+ description Pipe separated values table.
+ extends abstractTableNode
+ string delimiter |
+spaceTableNode
+ description Space separated values table. Last column is a catch all.
+ extends abstractTableNode
+ string delimiter  
+tabTableNode
+ description Tab separated values table.
+ extends abstractTableNode
+ string delimiter \t
+treeTableNode
+ description A table of data written in Tree Notation form. Useful when a column contains a text blob.
+ extends abstractTableNode
+ catchAllNodeType treeRowNode
+ javascript
+  get columnNames() {
+   return this._getUnionNames()
+  }
+  get tableBody() {
+   return this.map(node => `<tr>${node.toRow(this.columns)}</tr>`).join("\n")
+  }
+ example
+  treeTable
+   row
+    name Javascript
+    example
+     console.log("Hello world")
+   row
+    name Python
+    example
+     print "Hello world"
+kpiTableNode
+ description Display key statistics in a big font.
+ catchAllNodeType rowNode
+ cruxFromId
+ extends abstractScrollNode
+ example
+  kpiTable
+   #2 Popularity
+   30 Years Old
+   $456 Revenue
+ javascript
+  get tableBody() {
+   const items = this.topDownArray
+   let str = ""
+   for (let i = 0; i < items.length; i = i + 3) {
+    str += this.makeRow(items.slice(i, i + 3))
+   }
+   return str
+  }
+  makeRow(items) {
+   return `<tr>` + items.map(node => `<td>${node.firstWord}<span>${node.content}</span></td>`).join("\n") + `</tr>\n`
+  }
+  compile() {
+   return `<table class="scrollKpiTable">${this.tableBody}</table>`
+  }
+abstractAftertextAttributeNode
+ cells keywordCell
+ boolean isAttributeNode true
+ javascript
+  get divAttributes() {
+   return `${this.firstWord}="${this.content}"`
+  }
+  compile() {
+   return ""
+  }
+aftertextIdNode
+ crux id
+ description Provide an ID to be output in the generated HTML tag.
+ extends abstractAftertextAttributeNode
+ cells keywordCell htmlIdCell
+ single
+aftertextHiddenNode
+ crux hidden
+ cells keywordCell
+ description Do not compile this node to HTML.
+ extends abstractAftertextAttributeNode
+ single
+abstractAftertextDirectiveNode
+ cells keywordCell
+ catchAllCellType stringCell
+ javascript
+  isMarkupNode = true
+  compile() {
+   return ""
+  }
+  get pattern() {
+   return this.getWordsFrom(1).join(" ")
+  }
+  get shouldMatchAll() {
+   return this.has("matchAll")
+  }
+  getMatches(text) {
+   const { pattern } = this
+   const escapedPattern = pattern.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+   return [...text.matchAll(new RegExp(escapedPattern, "g"))].map(match => {
+    const { index } = match
+    const endIndex = index + pattern.length
+    return [
+     { index, string: `<${this.openTag}${this.allAttributes}>`, endIndex },
+     { index: endIndex, endIndex, string: `</${this.closeTag}>` }
+    ]
+   })
+  }
+  getInserts(text) {
+   const matches = this.getMatches(text)
+   if (!matches.length) return false
+   if (this.shouldMatchAll) return matches.flat()
+   const indexNode = this.getNode("match")
+   if (indexNode)
+    return indexNode.indexes
+     .map(index => matches[index])
+     .filter(i => i)
+     .flat()
+   return matches[0]
+  }
+  get allAttributes() {
+   const attr = this.attributes.join(" ")
+   return attr ? " " + attr : ""
+  }
+  get attributes() {
+   return []
+  }
+  get openTag() {
+   return this.tag
+  }
+  get closeTag() {
+   return this.tag
+  }
+abstractMarkupNode
+ extends abstractAftertextDirectiveNode
+ inScope abstractMarkupParameterNode
+boldNode
+ cruxFromId
+ extends abstractMarkupNode
+ javascript
+  tag = "b"
+italicsNode
+ cruxFromId
+ extends abstractMarkupNode
+ javascript
+  tag = "i"
+underlineNode
+ cruxFromId
+ extends abstractMarkupNode
+ javascript
+  tag = "u"
+aftertextCodeNode
+ crux code
+ extends abstractMarkupNode
+ javascript
+  tag = "code"
+linkNode
+ extends abstractMarkupNode
+ cells keywordCell urlCell
+ inScope linkTitleNode linkTargetNode commentNode
+ cruxFromId
+ javascript
+  tag = "a"
+  get link() {
+   const link = this.getWord(1)
+   const isAbsoluteLink = link.startsWith("https://") || link.startsWith("http://")
+   if (isAbsoluteLink) return link
+   const relativePath = this.parent.compileSettings?.relativePath || ""
+   return relativePath + link
+  }
+  get attributes() {
+   const attrs = [`href="${this.link}"`]
+   const options = ["title", "target"]
+   options.forEach(option => {
+    const node = this.getNode(option)
+    if (node) attrs.push(`${option}="${node.content}"`)
+   })
+   return attrs
+  }
+  patternStartsAtWord = 2
+  get pattern() {
+   // If no pattern is provided, apply to the *entire* content.
+   const words = this.getWordsFrom(this.patternStartsAtWord)
+   return words.length ? words.join(" ") : this.parent.originalText
+  }
+emailLinkNode
+ description A mailto link
+ crux email
+ extends linkNode
+ javascript
+  get attributes() {
+   return [`href="mailto:${this.link}"`]
+  }
+quickLinkNode
+ pattern ^https?\:
+ extends linkNode
+ cells urlCell
+ javascript
+  get link() {
+   return this.firstWord
+  }
+  patternStartsAtWord = 1
+classMarkupNode
+ description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
+ extends abstractMarkupNode
+ cells keywordCell classNameCell
+ crux class
+ javascript
+  tag = "span"
+  get applyToParentElement() {
+   return this.words.length === 2
+  }
+  getInserts(text) {
+   // If no select text is added, set the class on the parent element.
+   if (this.applyToParentElement) return []
+   return super.getInserts(text)
+  }
+  get className() {
+   return this.getWord(1)
+  }
+  get attributes() {
+   return [`class="${this.className}"`]
+  }
+  get pattern() {
+   const words = this.getWordsFrom(2)
+   return words.length ? words.join(" ") : this.parent.content
+  }
+hoverNoteNode
+ description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
+ cruxFromId
+ extends classMarkupNode
+ catchAllNodeType lineOfTextNode
+ cells keywordCell
+ javascript
+  get pattern() {
+   return this.getWordsFrom(1).join(" ")
+  }
+  get attributes() {
+   return [`class="scrollHoverNote"`, `title="${this.hoverNoteText}"`]
+  }
+  get hoverNoteText() {
+   return this.childrenToString().replace(/\n/g, " ")
+  }
+strikethroughNode
+ cruxFromId
+ extends abstractMarkupNode
+ javascript
+  tag = "s"
+linkifyNode
+ description Use this to disable linkify on the text.
+ extends abstractAftertextDirectiveNode
+ cruxFromId
+ cells keywordCell booleanCell
+wrapsOnNode
+ cruxFromId
+ description Enable `code`, *bold*, and _italics_ rules.
+ extends abstractAftertextDirectiveNode
+ javascript
+  get shouldMatchAll() {
+   return true
+  }
+  getMatches(text) {
+   return [this.runPattern(text, "`", "code"), this.runPattern(text, "*", "strong"), this.runPattern(text, "_", "em")].filter(i => i).flat()
+  }
+  runPattern(text, delimiter, tag, attributes = "") {
+   const escapedDelimiter = delimiter.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+   const pattern = new RegExp(`${escapedDelimiter}[^${escapedDelimiter}]+${escapedDelimiter}`, "g")
+   const delimiterLength = delimiter.length
+   return [...text.matchAll(pattern)].map(match => {
+    const { index } = match
+    const endIndex = index + match[0].length
+    return [
+     { index, string: `<${tag + (attributes ? " " + attributes : "")}>`, endIndex, consumeStartCharacters: delimiterLength },
+     { index: endIndex, endIndex, string: `</${tag}>`, consumeEndCharacters: delimiterLength }
+    ]
+   })
+  }
+wrapNode
+ cruxFromId
+ cells keywordCell delimiterCell tagOrUrlCell
+ catchAllCellType htmlAttributesCell
+ extends wrapsOnNode
+ description Define a custom wrap, for example "wrap _ em" would support: _italics_.
+ javascript
+  getMatches(text) {
+   try {
+    const delimiter = this.getWord(1)
+    const tag = this.getWord(2)
+    const attributes = this.getWordsFrom(3).join(" ")
+    if (tag.startsWith("https:")) return this.runPattern(text, delimiter, "a", `href="${tag}"` + attributes)
+    return this.runPattern(text, delimiter, tag, attributes)
+   } catch (err) {
+    console.error(err)
+    return []
+   }
+   // Note: doubling up doesn't work because of the consumption characters.
+  }
+datelineNode
+ cruxFromId
+ description Gives your paragraph a dateline like "December 15, 2021 — The..."
+ extends abstractAftertextDirectiveNode
+ javascript
+  getInserts() {
+   let day = this.content || this.root.get("date")
+   if (!day) return false
+   try {
+    const dayjs = require("dayjs")
+    day = dayjs(day).format(`MMMM D, YYYY`)
+   } catch (err) {
+    console.error(err)
+   }
+   return [{ index: 0, string: `<span class="scrollDateComponent">${day} — </span>` }]
+  }
+dayjsNode
+ description Advanced directive that evals some Javascript code in an environment including "dayjs".
+ cruxFromId
+ extends abstractAftertextDirectiveNode
+ javascript
+  getInserts() {
+   const dayjs = require("dayjs")
+   const days = eval(this.content)
+   const index = this.parent.originalTextPostLinkify.indexOf("days")
+   return [{ index, string: `${days} ` }]
+  }
+abstractMarkupParameterNode
+ cells keywordCell
+ cruxFromId
+matchAllNode
+ description Use this to match all occurrences of the text.
+ extends abstractMarkupParameterNode
+matchNode
+ catchAllCellType integerCell
+ description Use this to specify which index(es) to match.
+ javascript
+  get indexes() {
+   return this.getWordsFrom(1).map(num => parseInt(num))
+  }
+ example
+  aftertext
+   hello ello ello
+   bold ello
+    match 0 2
+ extends abstractMarkupParameterNode
+abstractHtmlAttributeNode
+ javascript
+  compile() {
+   return ""
+  }
+linkTargetNode
+ extends abstractHtmlAttributeNode
+ description If you want to set the target of the link. To "_blank", for example.
+ crux target
+ cells keywordCell anyCell
+linkTitleNode
+ description If you want to set the title of the link.
+ crux title
+ cells keywordCell
+ catchAllCellType anyCell
+ example
+  * This report showed the treatment had a big impact.
+   https://example.com/report This report.
+    title The average growth in the treatment group was 14.2x higher than the control group.
+blankLineNode
+ description Blank lines compile to nothing in the HTML.
+ cells blankCell
+ javascript
+  compile() {
+   return this.parent.clearSectionStack()
+  }
+ pattern ^$
+ tags doNotSynthesize
+errorNode
+ baseNodeType errorNode
+chatLineNode
+ catchAllCellType anyCell
+ catchAllNodeType chatLineNode
+lineOfCodeNode
+ catchAllCellType codeCell
+ catchAllNodeType lineOfCodeNode
+commentLineNode
+ catchAllCellType commentCell
+cssLineNode
+ catchAllCellType cssAnyCell
+ catchAllNodeType cssLineNode
+lineOfTextNode
+ catchAllCellType stringCell
+ boolean isTextNode true
+htmlLineNode
+ catchAllCellType htmlAnyCell
+ catchAllNodeType htmlLineNode
+stumpContentNode
+ catchAllCellType anyCell
+abstractLoopConfigNode
+ cells keywordCell
+ cruxFromId
+ catchAllCellType stringCell
+abstractItemsProviderNode
+ cells keywordCell
+loopLinesNode
+ crux lines
+ extends abstractItemsProviderNode
+ description Iterate over the provided lines.
+ catchAllNodeType loopLineNode
+ loopLineNode
+  catchAllCellType stringCell
+ javascript
+  get items() {
+   return this.map(node => node.asString)
+  }
+loopWordsNode
+ crux words
+ extends abstractItemsProviderNode
+ catchAllCellType stringCell
+ description Iterate over the provided words.
+ javascript
+  get items() {
+   return this.getWordsFrom(1)
+  }
+loopGroupsNode
+ crux groups
+ extends abstractItemsProviderNode
+ catchAllCellType groupNameWithOptionalFolderCell
+ description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[groupName]
+ javascript
+  get items() {
+   return this.root.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+  }
+abstractPointConfigNode
+ // todo: scoped parsers should support abstract types
+ cruxFromId
+ cells keywordCell
+ catchAllCellType stringCell
+ single
+latNode
+ cells keywordCell floatCell
+ cruxFromId
+ single
+longNode
+ cells keywordCell floatCell
+ cruxFromId
+ single
+quoteLineNode
+ catchAllCellType anyCell
+ catchAllNodeType quoteLineNode
+readingListItemNode
+ cells urlCell
+ catchAllCellType stringCell
+ javascript
+  compile() {
+   const url = this.firstWord
+   const [title, author] = this.content.split(" by ")
+   return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
+  }
+scrollNode
+ extensions scroll
+ description Tools for thought that compile to HTML.
+ root
+ inScope abstractScrollNode blankLineNode
+ catchAllNodeType catchAllParagraphNode
+ compilesTo html
+ javascript
+  setFile(file) {
+   this.file = file
+   return this
+  }
+  compile(compileSettings) {
+    this.sectionStack = []
+    return this.map(child => child.compile(compileSettings)).filter(i => i).join("\n") + this.clearSectionStack()
+  }
+  sectionStack = []
+  clearSectionStack() {
+   const result = this.sectionStack.join("")
+   this.sectionStack = []
+   return result
+  }
+  alreadyRequired = new Set()
+  compileEmbeddedVersion(compileSettings) {
+   this.sectionStack = []
+   return this.map(child => (child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+     .filter(i => i)
+     .join("\n")
+     .trim() + this.clearSectionStack()
+  }
+  get footnotes() {
+   if (this._footnotes === undefined) this._footnotes = this.filter(node => node.isFootnote)
+   return this._footnotes
+  }
+  file = {}
+  get permalink() {
+   return this.get("permalink") || this.file.permalink || ""
+  }
+ example
+  # Hello world
+  ## This is Scroll
+  * It compiles to HTML.
+  
+  code
+   // You can add code as well.
+   print("Hello world")
+rowNode
+ catchAllCellType stringCell
+ javascript
+  toRow(columns, delimiter) {
+   const words = this.getLine().split(delimiter)
+   let str = ""
+   let column = 0
+   const columnCount = columns.length
+   while (column < columnCount) {
+    const col = columns[column]
+    column++
+    const content = columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]
+    if (col.isLink) continue
+    let tagged = content
+    const link = words[col.linkIndex]
+    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
+    else if (content && content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
+    str += `<td>${tagged}</td>\n`
+   }
+   return str
+  }
+treeRowContentNode
+ description Any blob content in a cell.
+ cells stringCell
+ catchAllCellType stringCell
+treeRowColumnNode
+ catchAllNodeType treeRowContentNode
+ description A columnName value pair, or just a columnName if the value is a text blob.
+ cells idCell
+ catchAllCellType stringCell
+treeRowNode
+ cells idCell
+ description The root node of a row.
+ catchAllNodeType treeRowColumnNode
+ javascript
+  toRow(columns) {
+   let str = ""
+   columns.forEach(col => {
+    const node = this.getNode(col.name)
+    if (col.isLink) return
+    if (!node) {
+     str += "<td></td>\n"
+     return
+    }
+    const content = node.length ? node.childrenToString() : node.content
+    let tagged = ""
+    const link = this.get(col.name + "Link")
+    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
+    else if (node.length) tagged = `<pre>${content ?? ""}</pre>`
+    else tagged = content ?? ""
+    str += `<td>${tagged}</td>\n`
+   })
+   return str
+  }
