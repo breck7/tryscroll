@@ -1,6 +1,6 @@
 const { TreeNode } = require("jtree/products/TreeNode.js")
 const { HandGrammarProgram } = require("jtree/products/GrammarLanguage.js")
-const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
@@ -27,12 +27,12 @@ aboveAsCode
 * Who knows. Perhaps a large ontology of types of thought?
 
 spaceTable
- Format NodeTypes
+ Format Types
  HTML ~142
  Markdown ~192
  Scroll 1,000,000's`
 
-class BrowserGlue extends AbstractTreeComponent {
+class BrowserGlue extends AbstractTreeComponentParser {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
     const code = await this.fetchText(url)
     return code
@@ -67,7 +67,7 @@ class BrowserGlue extends AbstractTreeComponent {
   }
 
   async init(grammarCode, styleCode) {
-    window.programCompiler = new HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
+    window.scrollParser = new HandGrammarProgram(grammarCode).compileAndReturnRootParser()
     const scrollCode = await this.fetchCode()
 
     window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight, styleCode)

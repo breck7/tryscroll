@@ -1,5 +1,5 @@
 // prettier-ignore
-/*NODE_JS_ONLY*/ const { AbstractTreeComponent, TreeComponentFrameworkDebuggerComponent } = require("jtree/products/TreeComponentFramework.node.js")
+/*NODE_JS_ONLY*/ const { AbstractTreeComponentParser, TreeComponentFrameworkDebuggerComponent } = require("jtree/products/TreeComponentFramework.node.js")
 const { TreeNode } = require("jtree/products/TreeNode.js")
 
 const { TopBarComponent } = require("./TopBar.js")
@@ -12,9 +12,9 @@ const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const programCompiler = new (require("scroll-cli").DefaultScrollCompiler)
+/*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollCompiler)
 
-class githubTriangleComponent extends AbstractTreeComponent {
+class githubTriangleComponent extends AbstractTreeComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
     return `.AbstractGithubTriangleComponent
@@ -35,14 +35,12 @@ class githubTriangleComponent extends AbstractTreeComponent {
   }
 }
 
-class ErrorNode extends AbstractTreeComponent {
-  _isErrorNodeType() {
+class ErrorNode extends AbstractTreeComponentParser {
+  _isErrorParser() {
     return true
   }
   toStumpCode() {
-    console.error(
-      `Warning: EditorApp does not have a node type for "${this.getLine()}"`
-    )
+    console.error(`Warning: EditorApp does not have a node type for "${this.getLine()}"`)
     return `span
  style display: none;`
   }
@@ -54,16 +52,16 @@ const newSeed = () => {
   return _defaultSeed
 }
 
-class EditorApp extends AbstractTreeComponent {
-  createParser() {
-    return new TreeNode.Parser(ErrorNode, {
+class EditorApp extends AbstractTreeComponentParser {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(ErrorNode, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
-      ShowcaseComponent,
+      ShowcaseComponent
     })
   }
 
@@ -110,14 +108,12 @@ class EditorApp extends AbstractTreeComponent {
   }
 
   dumpErrorsCommand() {
-    const errs = new programCompiler(this.scrollCode).getAllErrors()
-    console.log(
-      new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200)
-    )
+    const errs = new scrollParser(this.scrollCode).getAllErrors()
+    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
   }
 
   get mainDocument() {
-    return new programCompiler(this.scrollCode)
+    return new scrollParser(this.scrollCode)
   }
 
   refreshHtml() {
@@ -130,7 +126,7 @@ class EditorApp extends AbstractTreeComponent {
     this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
-    Object.keys(keyboardShortcuts).forEach((key) => {
+    Object.keys(keyboardShortcuts).forEach(key => {
       willowBrowser.getMousetrap().bind(key, function(evt) {
         keyboardShortcuts[key]()
         // todo: handle the below when we need to
@@ -157,15 +153,14 @@ class EditorApp extends AbstractTreeComponent {
   _getKeyboardShortcuts() {
     return {
       d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
-      w: () => this.resizeEditorCommand(),
+      w: () => this.resizeEditorCommand()
     }
   }
 
   resizeEditorCommand(newSize = SIZES.EDITOR_WIDTH) {
     this.editor.setWord(1, newSize)
 
-    if (!this.isNodeJs())
-      localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
+    if (!this.isNodeJs()) localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
     this.renderAndGetRenderReport()
   }
 }
@@ -175,25 +170,16 @@ const SIZES = {}
 SIZES.BOARD_MARGIN = 20
 SIZES.TOP_BAR_HEIGHT = 28
 SIZES.BOTTOM_BAR_HEIGHT = 40
-SIZES.CHROME_HEIGHT =
-  SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
+SIZES.CHROME_HEIGHT = SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
 SIZES.TITLE_HEIGHT = 20
 
-SIZES.EDITOR_WIDTH = Math.floor(
-  typeof window !== "undefined" ? window.innerWidth / 2 : 400
-)
+SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (
-  simojiCode,
-  windowWidth = 1000,
-  windowHeight = 1000,
-  styleCode = ""
-) => {
+EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, styleCode = "") => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
-      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ??
-        SIZES.EDITOR_WIDTH
+      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
   const startState = new TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}

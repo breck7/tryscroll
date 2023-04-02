@@ -1,6 +1,6 @@
-const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
 
-class EditorHandleComponent extends AbstractTreeComponent {
+class EditorHandleComponent extends AbstractTreeComponentParser {
   get left() {
     return this.root.editor.width
   }

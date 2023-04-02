@@ -1,6 +1,6 @@
-const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
 
-class ExportComponent extends AbstractTreeComponent {
+class ExportComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
  class ExportComponent

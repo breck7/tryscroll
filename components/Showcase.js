@@ -1,6 +1,6 @@
-const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
 
-class ShowcaseComponent extends AbstractTreeComponent {
+class ShowcaseComponent extends AbstractTreeComponentParser {
   get html() {
     return this.root.completeHtml
   }

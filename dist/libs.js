@@ -11018,9 +11018,9 @@ var TreeNotationConstants
 ;(function(TreeNotationConstants) {
   TreeNotationConstants["extends"] = "extends"
 })(TreeNotationConstants || (TreeNotationConstants = {}))
-class Parser {
-  constructor(catchAllNodeConstructor, firstWordMap = {}, regexTests = undefined) {
-    this._catchAllNodeConstructor = catchAllNodeConstructor
+class ParserCombinator {
+  constructor(catchAllParser, firstWordMap = {}, regexTests = undefined) {
+    this._catchAllParser = catchAllParser
     this._firstWordMap = new Map(Object.entries(firstWordMap))
     this._regexTests = regexTests
   }
@@ -11040,19 +11040,19 @@ class Parser {
     }
     return obj
   }
-  _getNodeConstructor(line, contextNode, wordBreakSymbol = " ") {
-    return this._getFirstWordMap().get(this._getFirstWord(line, wordBreakSymbol)) || this._getConstructorFromRegexTests(line) || this._getCatchAllNodeConstructor(contextNode)
+  _getParser(line, contextNode, wordBreakSymbol = " ") {
+    return this._getFirstWordMap().get(this._getFirstWord(line, wordBreakSymbol)) || this._getParserFromRegexTests(line) || this._getCatchAllParser(contextNode)
   }
-  _getCatchAllNodeConstructor(contextNode) {
-    if (this._catchAllNodeConstructor) return this._catchAllNodeConstructor
+  _getCatchAllParser(contextNode) {
+    if (this._catchAllParser) return this._catchAllParser
     const parent = contextNode.parent
-    if (parent) return parent._getParser()._getCatchAllNodeConstructor(parent)
+    if (parent) return parent._getParser()._getCatchAllParser(parent)
     return contextNode.constructor
   }
-  _getConstructorFromRegexTests(line) {
+  _getParserFromRegexTests(line) {
     if (!this._regexTests) return undefined
     const hit = this._regexTests.find(test => test.regex.test(line))
-    if (hit) return hit.nodeConstructor
+    if (hit) return hit.parser
     return undefined
   }
   _getFirstWord(line, wordBreakSymbol) {
@@ -11256,7 +11256,7 @@ class TreeNode extends AbstractNode {
   get words() {
     return this._getWords(0)
   }
-  doesExtend(nodeTypeId) {
+  doesExtend(parserId) {
     return false
   }
   require(moduleName, filePath) {
@@ -12338,8 +12338,8 @@ class TreeNode extends AbstractNode {
     this._insertLineAndChildren(line, children)
   }
   _insertLineAndChildren(line, children, index = this.length) {
-    const nodeConstructor = this._getParser()._getNodeConstructor(line, this)
-    const newNode = new nodeConstructor(children, line, this)
+    const parser = this._getParser()._getParser(line, this)
+    const newNode = new parser(children, line, this)
     const adjustedIndex = index < 0 ? this.length + index : index
     this._getChildrenArray().splice(adjustedIndex, 0, newNode)
     if (this._index) this._makeIndex(adjustedIndex)
@@ -12365,8 +12365,8 @@ class TreeNode extends AbstractNode {
       }
       const lineContent = line.substr(currentIndentCount)
       const parent = parentStack[parentStack.length - 1]
-      const nodeConstructor = parent._getParser()._getNodeConstructor(lineContent, parent)
-      lastNode = new nodeConstructor(undefined, lineContent, parent)
+      const parser = parent._getParser()._getParser(lineContent, parent)
+      lastNode = new parser(undefined, lineContent, parent)
       parent._getChildrenArray().push(lastNode)
     })
   }
@@ -12379,19 +12379,17 @@ class TreeNode extends AbstractNode {
   getContentsArray() {
     return this.map(node => node.content)
   }
-  // todo: rename to getChildrenByConstructor(?)
-  getChildrenByNodeConstructor(constructor) {
-    return this.filter(child => child instanceof constructor)
+  getChildrenByParser(parser) {
+    return this.filter(child => child instanceof parser)
   }
-  getAncestorByNodeConstructor(constructor) {
-    if (this instanceof constructor) return this
+  getAncestorByParser(parser) {
+    if (this instanceof parser) return this
     if (this.isRoot()) return undefined
     const parent = this.parent
-    return parent instanceof constructor ? parent : parent.getAncestorByNodeConstructor(constructor)
+    return parent instanceof parser ? parent : parent.getAncestorByParser(parser)
   }
-  // todo: rename to getNodeByConstructor(?)
-  getNodeByType(constructor) {
-    return this.find(child => child instanceof constructor)
+  getNodeByParser(parser) {
+    return this.find(child => child instanceof parser)
   }
   indexOfLast(firstWord) {
     const result = this._getIndex()[firstWord]
@@ -12532,11 +12530,11 @@ class TreeNode extends AbstractNode {
     return this.isRoot() || this.parent.isRoot() ? undefined : this.parent.parent
   }
   _getParser() {
-    if (!TreeNode._parsers.has(this.constructor)) TreeNode._parsers.set(this.constructor, this.createParser())
-    return TreeNode._parsers.get(this.constructor)
+    if (!TreeNode._parserCombinators.has(this.constructor)) TreeNode._parserCombinators.set(this.constructor, this.createParserCombinator())
+    return TreeNode._parserCombinators.get(this.constructor)
   }
-  createParser() {
-    return new Parser(this.constructor)
+  createParserCombinator() {
+    return new ParserCombinator(this.constructor)
   }
   static _makeUniqueId() {
     if (this._uniqueId === undefined) this._uniqueId = 0
@@ -13499,8 +13497,8 @@ class TreeNode extends AbstractNode {
     return tree
   }
 }
-TreeNode._parsers = new Map()
-TreeNode.Parser = Parser
+TreeNode._parserCombinators = new Map()
+TreeNode.ParserCombinator = ParserCombinator
 TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 6.1,3,4.9,1.8,virginica
 5.6,2.7,4.2,1.3,versicolor
@@ -13512,7 +13510,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "71.0.0"
+TreeNode.getVersion = () => "73.0.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13528,8 +13526,8 @@ class AbstractExtendibleTreeNode extends TreeNode {
     return tree
   }
   // todo: be more specific with the param
-  _getChildrenByNodeConstructorInExtended(constructor) {
-    return Utils.flatten(this._getAncestorsArray().map(node => node.getChildrenByNodeConstructor(constructor)))
+  _getChildrenByParserInExtended(parser) {
+    return Utils.flatten(this._getAncestorsArray().map(node => node.getChildrenByParser(parser)))
   }
   _getExtendedParent() {
     return this._getAncestorsArray()[1]
@@ -13547,8 +13545,8 @@ class AbstractExtendibleTreeNode extends TreeNode {
       .reverse()
       .join("\n")
   }
-  _doesExtend(nodeTypeId) {
-    return this._getAncestorSet().has(nodeTypeId)
+  _doesExtend(parserId) {
+    return this._getAncestorSet().has(parserId)
   }
   _getAncestorSet() {
     if (!this._cache_ancestorSet) this._cache_ancestorSet = new Set(this._getAncestorsArray().map(def => def.id))
@@ -13614,16 +13612,9 @@ var GrammarConstantsCompiler
   GrammarConstantsCompiler["joinChildrenWith"] = "joinChildrenWith"
   GrammarConstantsCompiler["closeChildren"] = "closeChildren"
 })(GrammarConstantsCompiler || (GrammarConstantsCompiler = {}))
-var SQLiteTypes
-;(function(SQLiteTypes) {
-  SQLiteTypes["integer"] = "INTEGER"
-  SQLiteTypes["float"] = "FLOAT"
-  SQLiteTypes["text"] = "TEXT"
-})(SQLiteTypes || (SQLiteTypes = {}))
 var GrammarConstantsMisc
 ;(function(GrammarConstantsMisc) {
   GrammarConstantsMisc["doNotSynthesize"] = "doNotSynthesize"
-  GrammarConstantsMisc["tableName"] = "tableName"
 })(GrammarConstantsMisc || (GrammarConstantsMisc = {}))
 var PreludeCellTypeIds
 ;(function(PreludeCellTypeIds) {
@@ -13663,11 +13654,11 @@ var GrammarConstants
   GrammarConstants["extensions"] = "extensions"
   GrammarConstants["comment"] = "//"
   GrammarConstants["version"] = "version"
-  GrammarConstants["nodeType"] = "nodeType"
+  GrammarConstants["parser"] = "parser"
   GrammarConstants["cellType"] = "cellType"
   GrammarConstants["grammarFileExtension"] = "grammar"
-  GrammarConstants["abstractNodeTypePrefix"] = "abstract"
-  GrammarConstants["nodeTypeSuffix"] = "Node"
+  GrammarConstants["abstractParserPrefix"] = "abstract"
+  GrammarConstants["parserSuffix"] = "Parser"
   GrammarConstants["cellTypeSuffix"] = "Cell"
   // error check time
   GrammarConstants["regex"] = "regex"
@@ -13677,10 +13668,10 @@ var GrammarConstants
   GrammarConstants["examples"] = "examples"
   GrammarConstants["min"] = "min"
   GrammarConstants["max"] = "max"
-  // baseNodeTypes
-  GrammarConstants["baseNodeType"] = "baseNodeType"
-  GrammarConstants["blobNode"] = "blobNode"
-  GrammarConstants["errorNode"] = "errorNode"
+  // baseParsers
+  GrammarConstants["baseParser"] = "baseParser"
+  GrammarConstants["blobParser"] = "blobParser"
+  GrammarConstants["errorParser"] = "errorParser"
   // parse time
   GrammarConstants["extends"] = "extends"
   GrammarConstants["root"] = "root"
@@ -13695,7 +13686,7 @@ var GrammarConstants
   GrammarConstants["uniqueFirstWord"] = "uniqueFirstWord"
   GrammarConstants["catchAllCellType"] = "catchAllCellType"
   GrammarConstants["cellParser"] = "cellParser"
-  GrammarConstants["catchAllNodeType"] = "catchAllNodeType"
+  GrammarConstants["catchAllParser"] = "catchAllParser"
   GrammarConstants["constants"] = "constants"
   GrammarConstants["required"] = "required"
   GrammarConstants["single"] = "single"
@@ -13703,13 +13694,13 @@ var GrammarConstants
   GrammarConstants["tags"] = "tags"
   GrammarConstants["_extendsJsClass"] = "_extendsJsClass"
   GrammarConstants["_rootNodeJsHeader"] = "_rootNodeJsHeader"
-  // default catchAll nodeType
-  GrammarConstants["BlobNode"] = "BlobNode"
-  GrammarConstants["defaultRootNode"] = "defaultRootNode"
+  // default catchAll parser
+  GrammarConstants["BlobParser"] = "BlobParser"
+  GrammarConstants["DefaultRootParser"] = "DefaultRootParser"
   // code
   GrammarConstants["javascript"] = "javascript"
   // compile time
-  GrammarConstants["compilerNodeType"] = "compiler"
+  GrammarConstants["compilerParser"] = "compiler"
   GrammarConstants["compilesTo"] = "compilesTo"
   // develop time
   GrammarConstants["description"] = "description"
@@ -13734,29 +13725,11 @@ class TypedWord extends TreeWord {
 class GrammarBackedNode extends TreeNode {
   get definition() {
     if (this._definition) return this._definition
-    this._definition = this.isRoot() ? this.handGrammarProgram : this.parent.definition.getNodeTypeDefinitionByNodeTypeId(this.constructor.name)
+    this._definition = this.isRoot() ? this.handGrammarProgram : this.parent.definition.getParserDefinitionByParserId(this.constructor.name)
     return this._definition
   }
   get rootGrammarTree() {
     return this.definition.root
-  }
-  toSQLiteInsertStatement(id) {
-    const def = this.definition
-    const tableName = this.tableName || def.tableNameIfAny || def.id
-    const columns = def.sqliteTableColumns
-    const hits = columns.filter(colDef => this.has(colDef.columnName))
-    const values = hits.map(colDef => {
-      const node = this.getNode(colDef.columnName)
-      let content = node.content
-      const hasChildren = node.length
-      const isText = colDef.type === SQLiteTypes.text
-      if (content && hasChildren) content = node.contentWithChildren.replace(/\n/g, "\\n")
-      else if (hasChildren) content = node.childrenToString().replace(/\n/g, "\\n")
-      return isText || hasChildren ? `"${content}"` : content
-    })
-    hits.unshift({ columnName: "id", type: SQLiteTypes.text })
-    values.unshift(`"${id}"`)
-    return `INSERT INTO ${tableName} (${hits.map(col => col.columnName).join(",")}) VALUES (${values.join(",")});`
   }
   getAutocompleteResults(partialWord, cellIndex) {
     return cellIndex === 0 ? this._getAutocompleteResultsForFirstWord(partialWord) : this._getAutocompleteResultsForCell(partialWord, cellIndex)
@@ -13789,17 +13762,17 @@ class GrammarBackedNode extends TreeNode {
     }
     return newIndex
   }
-  getChildInstancesOfNodeTypeId(nodeTypeId) {
-    return this.nodeIndex[nodeTypeId] || []
+  getChildInstancesOfParserId(parserId) {
+    return this.nodeIndex[parserId] || []
   }
-  doesExtend(nodeTypeId) {
-    return this.definition._doesExtend(nodeTypeId)
+  doesExtend(parserId) {
+    return this.definition._doesExtend(parserId)
   }
-  _getErrorNodeErrors() {
-    return [this.firstWord ? new UnknownNodeTypeError(this) : new BlankLineError(this)]
+  _getErrorParserErrors() {
+    return [this.firstWord ? new UnknownParserError(this) : new BlankLineError(this)]
   }
-  _getBlobNodeCatchAllNodeType() {
-    return BlobNode
+  _getBlobParserCatchAllParser() {
+    return BlobParser
   }
   _getAutocompleteResultsForFirstWord(partialWord) {
     const keywordMap = this.definition.firstWordMapWithDefinitions
@@ -13832,23 +13805,17 @@ class GrammarBackedNode extends TreeNode {
     return undefined
   }
   _sortNodesByInScopeOrder() {
-    const nodeTypeOrder = this.definition._getMyInScopeNodeTypeIds()
-    if (!nodeTypeOrder.length) return this
+    const parserOrder = this.definition._getMyInScopeParserIds()
+    if (!parserOrder.length) return this
     const orderMap = {}
-    nodeTypeOrder.forEach((word, index) => {
-      orderMap[word] = index
-    })
-    this.sort(
-      Utils.makeSortByFn(runtimeNode => {
-        return orderMap[runtimeNode.definition.nodeTypeIdFromDefinition]
-      })
-    )
+    parserOrder.forEach((word, index) => (orderMap[word] = index))
+    this.sort(Utils.makeSortByFn(runtimeNode => orderMap[runtimeNode.definition.parserIdFromDefinition]))
     return this
   }
   get requiredNodeErrors() {
     const errors = []
     Object.values(this.definition.firstWordMapWithDefinitions).forEach(def => {
-      if (def.isRequired() && !this.nodeIndex[def.id]) errors.push(new MissingRequiredNodeTypeError(this, def.id))
+      if (def.isRequired() && !this.nodeIndex[def.id]) errors.push(new MissingRequiredParserError(this, def.id))
     })
     return errors
   }
@@ -13875,8 +13842,8 @@ class GrammarBackedNode extends TreeNode {
   findAllWordsWithCellType(cellTypeId) {
     return this.allTypedWords.filter(typedWord => typedWord.type === cellTypeId)
   }
-  findAllNodesWithNodeType(nodeTypeId) {
-    return this.topDownArray.filter(node => node.definition.nodeTypeIdFromDefinition === nodeTypeId)
+  findAllNodesWithParser(parserId) {
+    return this.topDownArray.filter(node => node.definition.parserIdFromDefinition === parserId)
   }
   toCellTypeTree() {
     return this.topDownArray.map(child => child.indentation + child.lineCellTypes).join("\n")
@@ -13891,7 +13858,7 @@ class GrammarBackedNode extends TreeNode {
         const obj = {
           lineNumber: lineNumber,
           source: sourceNode.indentation + sourceNode.getLine(),
-          nodeType: sourceNode.constructor.name,
+          parser: sourceNode.constructor.name,
           cellTypes: node.content,
           errorCount: errorCount
         }
@@ -13900,12 +13867,12 @@ class GrammarBackedNode extends TreeNode {
       })
     ).toFormattedTable(maxColumnWidth)
   }
-  // Helper method for selecting potential nodeTypes needed to update grammar file.
-  get invalidNodeTypes() {
+  // Helper method for selecting potential parsers needed to update grammar file.
+  get invalidParsers() {
     return Array.from(
       new Set(
         this.getAllErrors()
-          .filter(err => err instanceof UnknownNodeTypeError)
+          .filter(err => err instanceof UnknownParserError)
           .map(err => err.getNode().firstWord)
       )
     )
@@ -13956,8 +13923,8 @@ class GrammarBackedNode extends TreeNode {
       matches: nodeInScope.getAutocompleteResults(wordProperties.word, wordIndex)
     }
   }
-  _sortWithParentNodeTypesUpTop() {
-    const familyTree = new HandGrammarProgram(this.toString()).nodeTypeFamilyTree
+  _sortWithParentParsersUpTop() {
+    const familyTree = new HandGrammarProgram(this.toString()).parserFamilyTree
     const rank = {}
     familyTree.topDownArray.forEach((node, index) => {
       rank[node.getWord(0)] = index
@@ -13975,7 +13942,7 @@ class GrammarBackedNode extends TreeNode {
     if (this.isRoot()) {
       this._sortNodesByInScopeOrder()
       try {
-        this._sortWithParentNodeTypesUpTop()
+        this._sortWithParentParsersUpTop()
       } catch (err) {
         console.log(`Warning: ${err}`)
       }
@@ -13989,14 +13956,15 @@ class GrammarBackedNode extends TreeNode {
     if (!this.length) return this
     // Recurse
     this.forEach(node => node.sortFromSortTemplate())
-    const def = this.isRoot() ? this.definition.rootNodeTypeDefinitionNode : this.definition
+    const def = this.isRoot() ? this.definition.rootParserDefinition : this.definition
     const { sortIndices, sortSections } = def.sortSpec
     // Sort and insert section breaks
     if (sortIndices.size) {
       // Sort keywords
       this.sort((nodeA, nodeB) => {
-        const aIndex = sortIndices.get(nodeA.firstWord)
-        const bIndex = sortIndices.get(nodeB.firstWord)
+        var _a, _b
+        const aIndex = (_a = sortIndices.get(nodeA.firstWord)) !== null && _a !== void 0 ? _a : sortIndices.get(nodeA.sortKey)
+        const bIndex = (_b = sortIndices.get(nodeB.firstWord)) !== null && _b !== void 0 ? _b : sortIndices.get(nodeB.sortKey)
         if (aIndex === undefined) console.error(`sortTemplate is missing "${nodeA.firstWord}"`)
         const a = aIndex !== null && aIndex !== void 0 ? aIndex : 1000
         const b = bIndex !== null && bIndex !== void 0 ? bIndex : 1000
@@ -14005,7 +13973,8 @@ class GrammarBackedNode extends TreeNode {
       // pad sections
       let currentSection = 0
       this.forEach(node => {
-        const nodeSection = sortSections.get(node.firstWord)
+        var _a
+        const nodeSection = (_a = sortSections.get(node.firstWord)) !== null && _a !== void 0 ? _a : sortSections.get(node.sortKey)
         const sectionHasAdvanced = nodeSection > currentSection
         if (sectionHasAdvanced) {
           currentSection = nodeSection
@@ -14015,16 +13984,16 @@ class GrammarBackedNode extends TreeNode {
     }
     return this
   }
-  getNodeTypeUsage(filepath = "") {
-    // returns a report on what nodeTypes from its language the program uses
+  getParserUsage(filepath = "") {
+    // returns a report on what parsers from its language the program uses
     const usage = new TreeNode()
     const handGrammarProgram = this.handGrammarProgram
-    handGrammarProgram.validConcreteAndAbstractNodeTypeDefinitions.forEach(def => {
+    handGrammarProgram.validConcreteAndAbstractParserDefinitions.forEach(def => {
       const requiredCellTypeIds = def.cellParser.getRequiredCellTypeIds()
-      usage.appendLine([def.nodeTypeIdFromDefinition, "line-id", "nodeType", requiredCellTypeIds.join(" ")].join(" "))
+      usage.appendLine([def.parserIdFromDefinition, "line-id", "parser", requiredCellTypeIds.join(" ")].join(" "))
     })
     this.topDownArray.forEach((node, lineNumber) => {
-      const stats = usage.getNode(node.nodeTypeId)
+      const stats = usage.getNode(node.parserId)
       stats.appendLine([filepath + "-" + lineNumber, node.words.join(" ")].join(" "))
     })
     return usage
@@ -14035,13 +14004,13 @@ class GrammarBackedNode extends TreeNode {
   toDefinitionLineNumberTree() {
     return this.topDownArray.map(child => child.definition.lineNumber + " " + child.indentation + child.cellDefinitionLineNumbers.join(" ")).join("\n")
   }
-  get asCellTypeTreeWithNodeConstructorNames() {
+  get asCellTypeTreeWithParserIds() {
     return this.topDownArray.map(child => child.constructor.name + this.wordBreakSymbol + child.indentation + child.lineCellTypes).join("\n")
   }
-  toPreludeCellTypeTreeWithNodeConstructorNames() {
+  toPreludeCellTypeTreeWithParserIds() {
     return this.topDownArray.map(child => child.constructor.name + this.wordBreakSymbol + child.indentation + child.getLineCellPreludeTypes()).join("\n")
   }
-  get asTreeWithNodeTypes() {
+  get asTreeWithParsers() {
     return this.topDownArray.map(child => child.constructor.name + this.wordBreakSymbol + child.indentation + child.getLine()).join("\n")
   }
   getCellHighlightScopeAtPosition(lineIndex, wordIndex) {
@@ -14056,11 +14025,11 @@ class GrammarBackedNode extends TreeNode {
     this._cache_highlightScopeTree = new TreeNode(this.toHighlightScopeTree())
     this._cache_programCellTypeStringMTime = treeMTime
   }
-  createParser() {
-    return this.isRoot() ? new TreeNode.Parser(BlobNode) : new TreeNode.Parser(this.parent._getParser()._getCatchAllNodeConstructor(this.parent), {})
+  createParserCombinator() {
+    return this.isRoot() ? new TreeNode.ParserCombinator(BlobParser) : new TreeNode.ParserCombinator(this.parent._getParser()._getCatchAllParser(this.parent), {})
   }
-  get nodeTypeId() {
-    return this.definition.nodeTypeIdFromDefinition
+  get parserId() {
+    return this.definition.parserIdFromDefinition
   }
   get wordTypes() {
     return this.parsedCells.filter(cell => cell.getWord() !== undefined)
@@ -14068,25 +14037,25 @@ class GrammarBackedNode extends TreeNode {
   get cellErrors() {
     return this.parsedCells.map(check => check.getErrorIfAny()).filter(identity => identity)
   }
-  get singleNodeUsedTwiceErrors() {
+  get singleParserUsedTwiceErrors() {
     const errors = []
     const parent = this.parent
-    const hits = parent.getChildInstancesOfNodeTypeId(this.definition.id)
+    const hits = parent.getChildInstancesOfParserId(this.definition.id)
     if (hits.length > 1)
       hits.forEach((node, index) => {
-        if (node === this) errors.push(new NodeTypeUsedMultipleTimesError(node))
+        if (node === this) errors.push(new ParserUsedMultipleTimesError(node))
       })
     return errors
   }
   get uniqueLineAppearsTwiceErrors() {
     const errors = []
     const parent = this.parent
-    const hits = parent.getChildInstancesOfNodeTypeId(this.definition.id)
+    const hits = parent.getChildInstancesOfParserId(this.definition.id)
     if (hits.length > 1) {
       const set = new Set()
       hits.forEach((node, index) => {
         const line = node.getLine()
-        if (set.has(line)) errors.push(new NodeTypeUsedMultipleTimesError(node))
+        if (set.has(line)) errors.push(new ParserUsedMultipleTimesError(node))
         set.add(line)
       })
     }
@@ -14095,7 +14064,7 @@ class GrammarBackedNode extends TreeNode {
   get scopeErrors() {
     let errors = []
     const def = this.definition
-    if (def.isSingle) errors = errors.concat(this.singleNodeUsedTwiceErrors)
+    if (def.isSingle) errors = errors.concat(this.singleParserUsedTwiceErrors)
     if (def.isUniqueLine) errors = errors.concat(this.uniqueLineAppearsTwiceErrors)
     const { requiredNodeErrors } = this
     if (requiredNodeErrors.length) errors = errors.concat(requiredNodeErrors)
@@ -14156,7 +14125,7 @@ class GrammarBackedNode extends TreeNode {
     return this.definition._getFromExtended(GrammarConstants.childrenKey)
   }
   get childrenAreTextBlob() {
-    return this.definition._isBlobNodeType()
+    return this.definition._isBlobParser()
   }
   get isArrayElement() {
     return this.definition._hasFromExtended(GrammarConstants.uniqueFirstWord) ? false : !this.definition.isSingle
@@ -14219,7 +14188,7 @@ class GrammarBackedNode extends TreeNode {
     const def = this.definition
     const indent = this._getCompiledIndentation()
     const compiledLine = this._getCompiledLine()
-    if (def.isTerminalNodeType()) return indent + compiledLine
+    if (def.isTerminalParser()) return indent + compiledLine
     const compiler = def._getCompilerObject()
     const openChildrenString = compiler[GrammarConstantsCompiler.openChildren] || ""
     const closeChildrenString = compiler[GrammarConstantsCompiler.closeChildren] || ""
@@ -14243,43 +14212,40 @@ ${indent}${closeChildrenString}`
     return cells
   }
 }
-class BlobNode extends GrammarBackedNode {
-  createParser() {
-    return new TreeNode.Parser(BlobNode, {})
+class BlobParser extends GrammarBackedNode {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(BlobParser, {})
   }
   getErrors() {
     return []
   }
 }
 // todo: can we remove this? hard to extend.
-class UnknownNodeTypeNode extends GrammarBackedNode {
-  createParser() {
-    return new TreeNode.Parser(UnknownNodeTypeNode, {})
+class UnknownParserNode extends GrammarBackedNode {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(UnknownParserNode, {})
   }
   getErrors() {
-    return [new UnknownNodeTypeError(this)]
+    return [new UnknownParserError(this)]
   }
 }
 /*
 A cell contains a word but also the type information for that word.
 */
 class AbstractGrammarBackedCell {
-  constructor(node, index, typeDef, cellTypeId, isCatchAll, nodeTypeDef) {
+  constructor(node, index, typeDef, cellTypeId, isCatchAll, parserDefinitionParser) {
     this._typeDef = typeDef
     this._node = node
     this._isCatchAll = isCatchAll
     this._index = index
     this._cellTypeId = cellTypeId
-    this._nodeTypeDefinition = nodeTypeDef
+    this._parserDefinitionParser = parserDefinitionParser
   }
   getWord() {
     return this._node.getWord(this._index)
   }
   get definitionLineNumber() {
     return this._typeDef.lineNumber
-  }
-  getSQLiteType() {
-    return SQLiteTypes.text
   }
   get cellTypeId() {
     return this._cellTypeId
@@ -14411,9 +14377,6 @@ class GrammarIntCell extends GrammarNumericCell {
   get regexString() {
     return "-?[0-9]+"
   }
-  getSQLiteType() {
-    return SQLiteTypes.integer
-  }
   get parsed() {
     const word = this.getWord()
     return parseInt(word)
@@ -14426,9 +14389,6 @@ class GrammarFloatCell extends GrammarNumericCell {
     const word = this.getWord()
     const num = parseFloat(word)
     return !isNaN(num) && /^-?\d*(\.\d+)?$/.test(word)
-  }
-  getSQLiteType() {
-    return SQLiteTypes.float
   }
   _synthesizeCell(seed) {
     return Utils.randomUniformFloat(parseFloat(this.min), parseFloat(this.max), seed).toString()
@@ -14455,9 +14415,6 @@ class GrammarBoolCell extends AbstractGrammarBackedCell {
     const str = word.toLowerCase()
     return this._trues.has(str) || this._falses.has(str)
   }
-  getSQLiteType() {
-    return SQLiteTypes.integer
-  }
   _synthesizeCell() {
     return Utils.getRandomString(1, ["1", "true", "t", "yes", "0", "false", "f", "no"])
   }
@@ -14480,7 +14437,7 @@ class GrammarAnyCell extends AbstractGrammarBackedCell {
   _synthesizeCell() {
     const examples = this.cellTypeDefinition._getFromExtended(GrammarConstants.examples)
     if (examples) return Utils.getRandomString(1, examples.split(" "))
-    return this._nodeTypeDefinition.nodeTypeIdFromDefinition + "-" + this.constructor.name
+    return this._parserDefinitionParser.parserIdFromDefinition + "-" + this.constructor.name
   }
   get regexString() {
     return "[^ ]+"
@@ -14491,7 +14448,7 @@ class GrammarAnyCell extends AbstractGrammarBackedCell {
 }
 class GrammarKeywordCell extends GrammarAnyCell {
   _synthesizeCell() {
-    return this._nodeTypeDefinition.cruxIfAny
+    return this._parserDefinitionParser.cruxIfAny
   }
 }
 GrammarKeywordCell.defaultHighlightScope = "keyword"
@@ -14564,8 +14521,8 @@ class AbstractTreeError {
     if (suggestion) return this._getCodeMirrorLineWidgetElementWithSuggestion(onApplySuggestionCallBack, suggestion)
     return this._getCodeMirrorLineWidgetElementWithoutSuggestion()
   }
-  get nodeTypeId() {
-    return this.getNode().definition.nodeTypeIdFromDefinition
+  get parserId() {
+    return this.getNode().definition.parserIdFromDefinition
   }
   _getCodeMirrorLineWidgetElementCellTypeHints() {
     const el = document.createElement("div")
@@ -14646,12 +14603,12 @@ class AbstractCellError extends AbstractTreeError {
     )
   }
 }
-class UnknownNodeTypeError extends AbstractTreeError {
+class UnknownParserError extends AbstractTreeError {
   get message() {
     const node = this.getNode()
     const parentNode = node.parent
     const options = parentNode._getParser().getFirstWordOptions()
-    return super.message + ` Invalid nodeType "${node.firstWord}". Valid nodeTypes are: ${Utils._listToEnglishText(options, 7)}.`
+    return super.message + ` Invalid parser "${node.firstWord}". Valid parsers are: ${Utils._listToEnglishText(options, 7)}.`
   }
   get wordSuggestion() {
     const node = this.getNode()
@@ -14673,7 +14630,7 @@ class UnknownNodeTypeError extends AbstractTreeError {
     return this
   }
 }
-class BlankLineError extends UnknownNodeTypeError {
+class BlankLineError extends UnknownParserError {
   get message() {
     return super.message + ` Line: "${this.getNode().getLine()}". Blank lines are errors.`
   }
@@ -14689,16 +14646,16 @@ class BlankLineError extends UnknownNodeTypeError {
     return this
   }
 }
-class MissingRequiredNodeTypeError extends AbstractTreeError {
-  constructor(node, missingNodeTypeId) {
+class MissingRequiredParserError extends AbstractTreeError {
+  constructor(node, missingParserId) {
     super(node)
-    this._missingNodeTypeId = missingNodeTypeId
+    this._missingParserId = missingParserId
   }
   get message() {
-    return super.message + ` A "${this._missingNodeTypeId}" is required.`
+    return super.message + ` A "${this._missingParserId}" is required.`
   }
 }
-class NodeTypeUsedMultipleTimesError extends AbstractTreeError {
+class ParserUsedMultipleTimesError extends AbstractTreeError {
   get message() {
     return super.message + ` Multiple "${this.getNode().firstWord}" found.`
   }
@@ -14742,7 +14699,7 @@ class InvalidWordError extends AbstractCellError {
 }
 class ExtraWordError extends AbstractCellError {
   get message() {
-    return super.message + ` Extra word "${this.cell.getWord()}" in ${this.nodeTypeId}.`
+    return super.message + ` Extra word "${this.cell.getWord()}" in ${this.parserId}.`
   }
   get suggestionMessage() {
     return `Delete word "${this.cell.getWord()}" at cell ${this.cellIndex}`
@@ -14761,21 +14718,21 @@ class MissingWordError extends AbstractCellError {
   }
 }
 // todo: add standard types, enum types, from disk types
-class AbstractGrammarWordTestNode extends TreeNode {}
-class GrammarRegexTestNode extends AbstractGrammarWordTestNode {
+class AbstractGrammarWordTestParser extends TreeNode {}
+class GrammarRegexTestParser extends AbstractGrammarWordTestParser {
   isValid(str) {
     if (!this._regex) this._regex = new RegExp("^" + this.content + "$")
     return !!str.match(this._regex)
   }
 }
-class GrammarReservedWordsTestNode extends AbstractGrammarWordTestNode {
+class GrammarReservedWordsTestParser extends AbstractGrammarWordTestParser {
   isValid(str) {
     if (!this._set) this._set = new Set(this.content.split(" "))
     return !this._set.has(str)
   }
 }
 // todo: remove in favor of custom word type constructors
-class EnumFromCellTypesTestNode extends AbstractGrammarWordTestNode {
+class EnumFromCellTypesTestParser extends AbstractGrammarWordTestParser {
   _getEnumFromCellTypes(programRootNode) {
     const cellTypeIds = this.getWordsFrom(1)
     const enumGroup = cellTypeIds.join(" ")
@@ -14799,7 +14756,7 @@ class EnumFromCellTypesTestNode extends AbstractGrammarWordTestNode {
     return this._getEnumFromCellTypes(programRootNode)[str] === true
   }
 }
-class GrammarEnumTestNode extends AbstractGrammarWordTestNode {
+class GrammarEnumTestNode extends AbstractGrammarWordTestParser {
   isValid(str) {
     // enum c c++ java
     return !!this.getOptions()[str]
@@ -14809,12 +14766,12 @@ class GrammarEnumTestNode extends AbstractGrammarWordTestNode {
     return this._map
   }
 }
-class cellTypeDefinitionNode extends AbstractExtendibleTreeNode {
-  createParser() {
+class cellTypeDefinitionParser extends AbstractExtendibleTreeNode {
+  createParserCombinator() {
     const types = {}
-    types[GrammarConstants.regex] = GrammarRegexTestNode
-    types[GrammarConstants.reservedWords] = GrammarReservedWordsTestNode
-    types[GrammarConstants.enumFromCellTypes] = EnumFromCellTypesTestNode
+    types[GrammarConstants.regex] = GrammarRegexTestParser
+    types[GrammarConstants.reservedWords] = GrammarReservedWordsTestParser
+    types[GrammarConstants.enumFromCellTypes] = EnumFromCellTypesTestParser
     types[GrammarConstants.enum] = GrammarEnumTestNode
     types[GrammarConstants.highlightScope] = TreeNode
     types[GrammarConstants.comment] = TreeNode
@@ -14823,7 +14780,7 @@ class cellTypeDefinitionNode extends AbstractExtendibleTreeNode {
     types[GrammarConstants.max] = TreeNode
     types[GrammarConstants.description] = TreeNode
     types[GrammarConstants.extends] = TreeNode
-    return new TreeNode.Parser(undefined, types)
+    return new TreeNode.ParserCombinator(undefined, types)
   }
   get id() {
     return this.getWord(0)
@@ -14887,7 +14844,7 @@ class cellTypeDefinitionNode extends AbstractExtendibleTreeNode {
     return this._getFromExtended(GrammarConstants.regex) || (enumOptions ? "(?:" + enumOptions.join("|") + ")" : "[^ ]*")
   }
   _getAllTests() {
-    return this._getChildrenByNodeConstructorInExtended(AbstractGrammarWordTestNode)
+    return this._getChildrenByParserInExtended(AbstractGrammarWordTestParser)
   }
   isValid(str, programRootNode) {
     return this._getAllTests().every(node => node.isValid(str, programRootNode))
@@ -14906,8 +14863,8 @@ class AbstractCellParser {
   // todo: improve layout (use bold?)
   get lineHints() {
     const catchAllCellTypeId = this.catchAllCellTypeId
-    const nodeTypeId = this._definition.cruxIfAny || this._definition.id // todo: cleanup
-    return `${nodeTypeId}: ${this.getRequiredCellTypeIds().join(" ")}${catchAllCellTypeId ? ` ${catchAllCellTypeId}...` : ""}`
+    const parserId = this._definition.cruxIfAny || this._definition.id // todo: cleanup
+    return `${parserId}: ${this.getRequiredCellTypeIds().join(" ")}${catchAllCellTypeId ? ` ${catchAllCellTypeId}...` : ""}`
   }
   getRequiredCellTypeIds() {
     if (!this._requiredCellTypeIds) {
@@ -14996,9 +14953,9 @@ class OmnifixCellParser extends AbstractCellParser {
     return cells
   }
 }
-class GrammarExampleNode extends TreeNode {}
-class GrammarCompilerNode extends TreeNode {
-  createParser() {
+class GrammarExampleParser extends TreeNode {}
+class GrammarCompilerParser extends TreeNode {
+  createParserCombinator() {
     const types = [
       GrammarConstantsCompiler.stringTemplate,
       GrammarConstantsCompiler.indentCharacter,
@@ -15011,10 +14968,10 @@ class GrammarCompilerNode extends TreeNode {
     types.forEach(type => {
       map[type] = TreeNode
     })
-    return new TreeNode.Parser(undefined, map)
+    return new TreeNode.ParserCombinator(undefined, map)
   }
 }
-class GrammarNodeTypeConstant extends TreeNode {
+class AbstractParserConstantParser extends TreeNode {
   constructor(children, line, parent) {
     super(children, line, parent)
     parent[this.identifier] = this.constantValue
@@ -15033,8 +14990,8 @@ class GrammarNodeTypeConstant extends TreeNode {
     return JSON.parse(this.constantValueAsJsText)
   }
 }
-class GrammarNodeTypeConstantInt extends GrammarNodeTypeConstant {}
-class GrammarNodeTypeConstantString extends GrammarNodeTypeConstant {
+class GrammarParserConstantInt extends AbstractParserConstantParser {}
+class GrammarParserConstantString extends AbstractParserConstantParser {
   get constantValueAsJsText() {
     return "`" + Utils.escapeBackTicks(this.constantValue) + "`"
   }
@@ -15042,10 +14999,10 @@ class GrammarNodeTypeConstantString extends GrammarNodeTypeConstant {
     return this.length ? this.childrenToString() : this.getWordsFrom(2).join(" ")
   }
 }
-class GrammarNodeTypeConstantFloat extends GrammarNodeTypeConstant {}
-class GrammarNodeTypeConstantBoolean extends GrammarNodeTypeConstant {}
-class AbstractGrammarDefinitionNode extends AbstractExtendibleTreeNode {
-  createParser() {
+class GrammarParserConstantFloat extends AbstractParserConstantParser {}
+class GrammarParserConstantBoolean extends AbstractParserConstantParser {}
+class AbstractParserDefinitionParser extends AbstractExtendibleTreeNode {
+  createParserCombinator() {
     // todo: some of these should just be on nonRootNodes
     const types = [
       GrammarConstants.frequency,
@@ -15053,7 +15010,7 @@ class AbstractGrammarDefinitionNode extends AbstractExtendibleTreeNode {
       GrammarConstants.cells,
       GrammarConstants.extends,
       GrammarConstants.description,
-      GrammarConstants.catchAllNodeType,
+      GrammarConstants.catchAllParser,
       GrammarConstants.catchAllCellType,
       GrammarConstants.cellParser,
       GrammarConstants.extensions,
@@ -15068,7 +15025,7 @@ class AbstractGrammarDefinitionNode extends AbstractExtendibleTreeNode {
       GrammarConstants.uniqueFirstWord,
       GrammarConstants.uniqueLine,
       GrammarConstants.pattern,
-      GrammarConstants.baseNodeType,
+      GrammarConstants.baseParser,
       GrammarConstants.required,
       GrammarConstants.root,
       GrammarConstants._extendsJsClass,
@@ -15083,13 +15040,13 @@ class AbstractGrammarDefinitionNode extends AbstractExtendibleTreeNode {
     types.forEach(type => {
       map[type] = TreeNode
     })
-    map[GrammarConstantsConstantTypes.boolean] = GrammarNodeTypeConstantBoolean
-    map[GrammarConstantsConstantTypes.int] = GrammarNodeTypeConstantInt
-    map[GrammarConstantsConstantTypes.string] = GrammarNodeTypeConstantString
-    map[GrammarConstantsConstantTypes.float] = GrammarNodeTypeConstantFloat
-    map[GrammarConstants.compilerNodeType] = GrammarCompilerNode
-    map[GrammarConstants.example] = GrammarExampleNode
-    return new TreeNode.Parser(undefined, map, [{ regex: HandGrammarProgram.nodeTypeFullRegex, nodeConstructor: nodeTypeDefinitionNode }])
+    map[GrammarConstantsConstantTypes.boolean] = GrammarParserConstantBoolean
+    map[GrammarConstantsConstantTypes.int] = GrammarParserConstantInt
+    map[GrammarConstantsConstantTypes.string] = GrammarParserConstantString
+    map[GrammarConstantsConstantTypes.float] = GrammarParserConstantFloat
+    map[GrammarConstants.compilerParser] = GrammarCompilerParser
+    map[GrammarConstants.example] = GrammarExampleParser
+    return new TreeNode.ParserCombinator(undefined, map, [{ regex: HandGrammarProgram.parserFullRegex, parser: parserDefinitionParser }])
   }
   get sortSpec() {
     const sortSections = new Map()
@@ -15127,33 +15084,11 @@ interface ${thisId} {
 ${properties.join("\n")}
 }`.trim()
   }
-  get tableNameIfAny() {
-    return this.getFrom(`${GrammarConstantsConstantTypes.string} ${GrammarConstantsMisc.tableName}`)
-  }
-  get sqliteTableColumns() {
-    return this._getConcreteNonErrorInScopeNodeDefinitions(this._getInScopeNodeTypeIds()).map(def => {
-      const firstNonKeywordCellType = def.cellParser.getCellArray()[1]
-      let type = firstNonKeywordCellType ? firstNonKeywordCellType.getSQLiteType() : SQLiteTypes.text
-      // For now if it can have children serialize it as text in SQLite
-      if (!def.isTerminalNodeType()) type = SQLiteTypes.text
-      return {
-        columnName: def.idWithoutSuffix,
-        type
-      }
-    })
-  }
-  toSQLiteTableSchema() {
-    const columns = this.sqliteTableColumns.map(columnDef => `${columnDef.columnName} ${columnDef.type}`)
-    return `create table ${this.tableNameIfAny || this.id} (
- id TEXT NOT NULL PRIMARY KEY,
- ${columns.join(",\n ")}
-);`
-  }
   get id() {
     return this.getWord(0)
   }
   get idWithoutSuffix() {
-    return this.id.replace(HandGrammarProgram.nodeTypeSuffixRegex, "")
+    return this.id.replace(HandGrammarProgram.parserSuffixRegex, "")
   }
   get constantsObject() {
     const obj = this._getUniqueConstantNodes()
@@ -15162,28 +15097,26 @@ ${properties.join("\n")}
   }
   _getUniqueConstantNodes(extended = true) {
     const obj = {}
-    const items = extended ? this._getChildrenByNodeConstructorInExtended(GrammarNodeTypeConstant) : this.getChildrenByNodeConstructor(GrammarNodeTypeConstant)
+    const items = extended ? this._getChildrenByParserInExtended(AbstractParserConstantParser) : this.getChildrenByParser(AbstractParserConstantParser)
     items.reverse() // Last definition wins.
-    items.forEach(node => {
-      obj[node.identifier] = node
-    })
+    items.forEach(node => (obj[node.identifier] = node))
     return obj
   }
   get examples() {
-    return this._getChildrenByNodeConstructorInExtended(GrammarExampleNode)
+    return this._getChildrenByParserInExtended(GrammarExampleParser)
   }
-  get nodeTypeIdFromDefinition() {
+  get parserIdFromDefinition() {
     return this.getWord(0)
   }
-  // todo: remove? just reused nodeTypeId
+  // todo: remove? just reused parserId
   get generatedClassName() {
-    return this.nodeTypeIdFromDefinition
+    return this.parserIdFromDefinition
   }
-  _hasValidNodeTypeId() {
+  _hasValidParserId() {
     return !!this.generatedClassName
   }
   _isAbstract() {
-    return this.id.startsWith(GrammarConstants.abstractNodeTypePrefix)
+    return this.id.startsWith(GrammarConstants.abstractParserPrefix)
   }
   get cruxIfAny() {
     return this.get(GrammarConstants.crux) || (this._hasFromExtended(GrammarConstants.cruxFromId) ? this.idWithoutSuffix : undefined)
@@ -15203,7 +15136,7 @@ ${properties.join("\n")}
     return hasJsCode ? this.getNode(GrammarConstants.javascript).childrenToString() : ""
   }
   get firstWordMapWithDefinitions() {
-    if (!this._cache_firstWordToNodeDefMap) this._cache_firstWordToNodeDefMap = this._createParserInfo(this._getInScopeNodeTypeIds()).firstWordMap
+    if (!this._cache_firstWordToNodeDefMap) this._cache_firstWordToNodeDefMap = this._createParserInfo(this._getInScopeParserIds()).firstWordMap
     return this._cache_firstWordToNodeDefMap
   }
   // todo: remove
@@ -15221,7 +15154,7 @@ ${properties.join("\n")}
     })
   }
   // todo: what happens when you have a cell getter and constant with same name?
-  get cellGettersAndNodeTypeConstants() {
+  get cellGettersAndParserConstants() {
     // todo: add cellType parsings
     const grammarProgram = this.languageDefinitionProgram
     const getters = this._getMyCellTypeDefs().map((cellTypeDef, index) => cellTypeDef.getGetter(index))
@@ -15231,24 +15164,24 @@ ${properties.join("\n")}
     Object.values(this._getUniqueConstantNodes(false)).forEach(node => getters.push(node.getGetter()))
     return getters.join("\n")
   }
-  _createParserInfo(nodeTypeIdsInScope) {
+  _createParserInfo(parserIdsInScope) {
     const result = {
       firstWordMap: {},
       regexTests: []
     }
-    if (!nodeTypeIdsInScope.length) return result
-    const allProgramNodeTypeDefinitionsMap = this.programNodeTypeDefinitionCache
-    Object.keys(allProgramNodeTypeDefinitionsMap)
-      .filter(nodeTypeId => {
-        const def = allProgramNodeTypeDefinitionsMap[nodeTypeId]
-        return def.isOrExtendsANodeTypeInScope(nodeTypeIdsInScope) && !def._isAbstract()
+    if (!parserIdsInScope.length) return result
+    const allProgramParserDefinitionsMap = this.programParserDefinitionCache
+    Object.keys(allProgramParserDefinitionsMap)
+      .filter(parserId => {
+        const def = allProgramParserDefinitionsMap[parserId]
+        return def.isOrExtendsAParserInScope(parserIdsInScope) && !def._isAbstract()
       })
-      .forEach(nodeTypeId => {
-        const def = allProgramNodeTypeDefinitionsMap[nodeTypeId]
+      .forEach(parserId => {
+        const def = allProgramParserDefinitionsMap[parserId]
         const regex = def.regexMatch
         const crux = def.cruxIfAny
         const enumOptions = def.firstCellEnumOptions
-        if (regex) result.regexTests.push({ regex: regex, nodeConstructor: def.nodeTypeIdFromDefinition })
+        if (regex) result.regexTests.push({ regex: regex, parser: def.parserIdFromDefinition })
         else if (crux) result.firstWordMap[crux] = def
         else if (enumOptions) {
           enumOptions.forEach(option => (result.firstWordMap[option] = def))
@@ -15256,22 +15189,22 @@ ${properties.join("\n")}
       })
     return result
   }
-  get topNodeTypeDefinitions() {
+  get topParserDefinitions() {
     const arr = Object.values(this.firstWordMapWithDefinitions)
     arr.sort(Utils.makeSortByFn(definition => definition.frequency))
     arr.reverse()
     return arr
   }
-  _getMyInScopeNodeTypeIds(target = this) {
-    const nodeTypesNode = target.getNode(GrammarConstants.inScope)
+  _getMyInScopeParserIds(target = this) {
+    const parsersNode = target.getNode(GrammarConstants.inScope)
     const scopedDefinitionIds = target.myScopedParserDefinitions.map(def => def.id)
-    return nodeTypesNode ? nodeTypesNode.getWordsFrom(1).concat(scopedDefinitionIds) : scopedDefinitionIds
+    return parsersNode ? parsersNode.getWordsFrom(1).concat(scopedDefinitionIds) : scopedDefinitionIds
   }
-  _getInScopeNodeTypeIds() {
+  _getInScopeParserIds() {
     // todo: allow multiple of these if we allow mixins?
-    const ids = this._getMyInScopeNodeTypeIds()
+    const ids = this._getMyInScopeParserIds()
     const parentDef = this._getExtendedParent()
-    return parentDef ? ids.concat(parentDef._getInScopeNodeTypeIds()) : ids
+    return parentDef ? ids.concat(parentDef._getInScopeParserIds()) : ids
   }
   get isSingle() {
     const hit = this._getNodeFromExtended(GrammarConstants.single)
@@ -15284,88 +15217,88 @@ ${properties.join("\n")}
   isRequired() {
     return this._hasFromExtended(GrammarConstants.required)
   }
-  getNodeTypeDefinitionByNodeTypeId(nodeTypeId) {
+  getParserDefinitionByParserId(parserId) {
     // todo: return catch all?
-    const def = this.programNodeTypeDefinitionCache[nodeTypeId]
+    const def = this.programParserDefinitionCache[parserId]
     if (def) return def
-    // todo: cleanup
-    this.languageDefinitionProgram._addDefaultCatchAllBlobNode()
-    return this.programNodeTypeDefinitionCache[nodeTypeId]
+    this.languageDefinitionProgram._addDefaultCatchAllBlobParser() // todo: cleanup. Why did I do this? Needs to be removed or documented.
+    const nodeDef = this.languageDefinitionProgram.programParserDefinitionCache[parserId]
+    if (!nodeDef) throw new Error(`No definition found for parser id "${parserId}". Node: \n---\n${this.asString}\n---`)
+    return nodeDef
   }
-  isDefined(nodeTypeId) {
-    return !!this.programNodeTypeDefinitionCache[nodeTypeId]
+  isDefined(parserId) {
+    return !!this.programParserDefinitionCache[parserId]
   }
   get idToNodeMap() {
-    return this.programNodeTypeDefinitionCache
+    return this.programParserDefinitionCache
   }
   _amIRoot() {
     if (this._cache_isRoot === undefined) this._cache_isRoot = this._languageRootNode === this
     return this._cache_isRoot
   }
   get _languageRootNode() {
-    return this.root.rootNodeTypeDefinitionNode
+    return this.root.rootParserDefinition
   }
-  _isErrorNodeType() {
-    return this.get(GrammarConstants.baseNodeType) === GrammarConstants.errorNode
+  _isErrorParser() {
+    return this.get(GrammarConstants.baseParser) === GrammarConstants.errorParser
   }
-  _isBlobNodeType() {
+  _isBlobParser() {
     // Do not check extended classes. Only do once.
-    return this._getFromExtended(GrammarConstants.baseNodeType) === GrammarConstants.blobNode
+    return this._getFromExtended(GrammarConstants.baseParser) === GrammarConstants.blobParser
   }
   get errorMethodToJavascript() {
-    if (this._isBlobNodeType()) return "getErrors() { return [] }" // Skips parsing child nodes for perf gains.
-    if (this._isErrorNodeType()) return "getErrors() { return this._getErrorNodeErrors() }"
+    if (this._isBlobParser()) return "getErrors() { return [] }" // Skips parsing child nodes for perf gains.
+    if (this._isErrorParser()) return "getErrors() { return this._getErrorParserErrors() }"
     return ""
   }
   get parserAsJavascript() {
-    if (this._isBlobNodeType())
+    if (this._isBlobParser())
       // todo: do we need this?
-      return "createParser() { return new TreeNode.Parser(this._getBlobNodeCatchAllNodeType())}"
-    const parserInfo = this._createParserInfo(this._getMyInScopeNodeTypeIds())
+      return "createParserCombinator() { return new TreeNode.ParserCombinator(this._getBlobParserCatchAllParser())}"
+    const parserInfo = this._createParserInfo(this._getMyInScopeParserIds())
     const myFirstWordMap = parserInfo.firstWordMap
     const regexRules = parserInfo.regexTests
     // todo: use constants in first word maps?
     // todo: cache the super extending?
     const firstWords = Object.keys(myFirstWordMap)
     const hasFirstWords = firstWords.length
-    const catchAllConstructor = this.catchAllNodeConstructorToJavascript
-    if (!hasFirstWords && !catchAllConstructor && !regexRules.length) return ""
+    const catchAllParser = this.catchAllParserToJavascript
+    if (!hasFirstWords && !catchAllParser && !regexRules.length) return ""
     const firstWordsStr = hasFirstWords
-      ? `Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {` + firstWords.map(firstWord => `"${firstWord}" : ${myFirstWordMap[firstWord].nodeTypeIdFromDefinition}`).join(",\n") + "})"
+      ? `Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), {` + firstWords.map(firstWord => `"${firstWord}" : ${myFirstWordMap[firstWord].parserIdFromDefinition}`).join(",\n") + "})"
       : "undefined"
     const regexStr = regexRules.length
       ? `[${regexRules
           .map(rule => {
-            return `{regex: /${rule.regex}/, nodeConstructor: ${rule.nodeConstructor}}`
+            return `{regex: /${rule.regex}/, parser: ${rule.parser}}`
           })
           .join(",")}]`
       : "undefined"
-    const catchAllStr = catchAllConstructor ? catchAllConstructor : this._amIRoot() ? `this._getBlobNodeCatchAllNodeType()` : "undefined"
+    const catchAllStr = catchAllParser ? catchAllParser : this._amIRoot() ? `this._getBlobParserCatchAllParser()` : "undefined"
     const scopedParserJavascript = this.myScopedParserDefinitions.map(def => def.asJavascriptClass).join("\n\n")
-    return `createParser() {${scopedParserJavascript}
-  return new TreeNode.Parser(${catchAllStr}, ${firstWordsStr}, ${regexStr})
+    return `createParserCombinator() {${scopedParserJavascript}
+  return new TreeNode.ParserCombinator(${catchAllStr}, ${firstWordsStr}, ${regexStr})
   }`
   }
   get myScopedParserDefinitions() {
-    return this.getChildrenByNodeConstructor(nodeTypeDefinitionNode)
+    return this.getChildrenByParser(parserDefinitionParser)
   }
-  get catchAllNodeConstructorToJavascript() {
-    if (this._isBlobNodeType()) return "this._getBlobNodeCatchAllNodeType()"
-    const nodeTypeId = this.get(GrammarConstants.catchAllNodeType)
-    if (!nodeTypeId) return ""
-    const nodeDef = this.getNodeTypeDefinitionByNodeTypeId(nodeTypeId)
-    if (!nodeDef) throw new Error(`No definition found for nodeType id "${nodeTypeId}"`)
+  get catchAllParserToJavascript() {
+    if (this._isBlobParser()) return "this._getBlobParserCatchAllParser()"
+    const parserId = this.get(GrammarConstants.catchAllParser)
+    if (!parserId) return ""
+    const nodeDef = this.getParserDefinitionByParserId(parserId)
     return nodeDef.generatedClassName
   }
   get asJavascriptClass() {
-    const components = [this.parserAsJavascript, this.errorMethodToJavascript, this.cellGettersAndNodeTypeConstants, this.customJavascriptMethods].filter(identity => identity)
+    const components = [this.parserAsJavascript, this.errorMethodToJavascript, this.cellGettersAndParserConstants, this.customJavascriptMethods].filter(identity => identity)
     const thisClassName = this.generatedClassName
     if (this._amIRoot()) {
       components.push(`static cachedHandGrammarProgramRoot = new HandGrammarProgram(\`${Utils.escapeBackTicks(this.parent.toString().replace(/\\/g, "\\\\"))}\`)
         get handGrammarProgram() {
           return this.constructor.cachedHandGrammarProgramRoot
       }`)
-      components.push(`static rootNodeTypeConstructor = ${thisClassName}`)
+      components.push(`static rootParser = ${thisClassName}`)
     }
     return `class ${thisClassName} extends ${this._getExtendsClassName()} {
       ${components.join("\n")}
@@ -15380,7 +15313,7 @@ ${properties.join("\n")}
   }
   _getCompilerObject() {
     let obj = {}
-    const items = this._getChildrenByNodeConstructorInExtended(GrammarCompilerNode)
+    const items = this._getChildrenByParserInExtended(GrammarCompilerParser)
     items.reverse() // Last definition wins.
     items.forEach(node => {
       obj = Object.assign(obj, node.toObject()) // todo: what about multiline strings?
@@ -15391,12 +15324,12 @@ ${properties.join("\n")}
   get lineHints() {
     return this.cellParser.lineHints
   }
-  isOrExtendsANodeTypeInScope(firstWordsInScope) {
-    const chain = this._getNodeTypeInheritanceSet()
+  isOrExtendsAParserInScope(firstWordsInScope) {
+    const chain = this._getParserInheritanceSet()
     return firstWordsInScope.some(firstWord => chain.has(firstWord))
   }
-  isTerminalNodeType() {
-    return !this._getFromExtended(GrammarConstants.inScope) && !this._getFromExtended(GrammarConstants.catchAllNodeType)
+  isTerminalParser() {
+    return !this._getFromExtended(GrammarConstants.inScope) && !this._getFromExtended(GrammarConstants.catchAllParser)
   }
   get sublimeMatchLine() {
     const regexMatch = this.regexMatch
@@ -15414,8 +15347,8 @@ ${properties.join("\n")}
     const requiredCellTypeIds = cellParser.getRequiredCellTypeIds()
     const catchAllCellTypeId = cellParser.catchAllCellTypeId
     const firstCellTypeDef = program.getCellTypeDefinitionById(requiredCellTypeIds[0])
-    const firstWordHighlightScope = (firstCellTypeDef ? firstCellTypeDef.highlightScope : defaultHighlightScope) + "." + this.nodeTypeIdFromDefinition
-    const topHalf = ` '${this.nodeTypeIdFromDefinition}':
+    const firstWordHighlightScope = (firstCellTypeDef ? firstCellTypeDef.highlightScope : defaultHighlightScope) + "." + this.parserIdFromDefinition
+    const topHalf = ` '${this.parserIdFromDefinition}':
   - match: ${this.sublimeMatchLine}
     scope: ${firstWordHighlightScope}`
     if (catchAllCellTypeId) requiredCellTypeIds.push(catchAllCellTypeId)
@@ -15436,28 +15369,29 @@ ${captures}
      - match: $
        pop: true`
   }
-  _getNodeTypeInheritanceSet() {
-    if (!this._cache_nodeTypeInheritanceSet) this._cache_nodeTypeInheritanceSet = new Set(this.ancestorNodeTypeIdsArray)
-    return this._cache_nodeTypeInheritanceSet
+  _getParserInheritanceSet() {
+    if (!this._cache_parserInheritanceSet) this._cache_parserInheritanceSet = new Set(this.ancestorParserIdsArray)
+    return this._cache_parserInheritanceSet
   }
-  get ancestorNodeTypeIdsArray() {
-    if (!this._cache_ancestorNodeTypeIdsArray) {
-      this._cache_ancestorNodeTypeIdsArray = this._getAncestorsArray().map(def => def.nodeTypeIdFromDefinition)
-      this._cache_ancestorNodeTypeIdsArray.reverse()
+  get ancestorParserIdsArray() {
+    if (!this._cache_ancestorParserIdsArray) {
+      this._cache_ancestorParserIdsArray = this._getAncestorsArray().map(def => def.parserIdFromDefinition)
+      this._cache_ancestorParserIdsArray.reverse()
     }
-    return this._cache_ancestorNodeTypeIdsArray
+    return this._cache_ancestorParserIdsArray
   }
-  get programNodeTypeDefinitionCache() {
-    if (this._cache_nodeTypeDefinitions) return this._cache_nodeTypeDefinitions
-    const scopedParsers = this.getChildrenByNodeConstructor(nodeTypeDefinitionNode)
-    if (!scopedParsers.length) {
-      this._cache_nodeTypeDefinitions = this.languageDefinitionProgram.programNodeTypeDefinitionCache
-      return this._cache_nodeTypeDefinitions
-    }
-    const cache = Object.assign({}, this.languageDefinitionProgram.programNodeTypeDefinitionCache)
-    this._cache_nodeTypeDefinitions = cache
-    scopedParsers.forEach(nodeTypeDefinitionNode => (cache[nodeTypeDefinitionNode.nodeTypeIdFromDefinition] = nodeTypeDefinitionNode))
-    return this._cache_nodeTypeDefinitions
+  get programParserDefinitionCache() {
+    if (!this._cache_parserDefinitionParsers) this._cache_parserDefinitionParsers = this.isRoot || this.hasParserDefinitions ? this.makeProgramParserDefinitionCache() : this.parent.programParserDefinitionCache
+    return this._cache_parserDefinitionParsers
+  }
+  get hasParserDefinitions() {
+    return !!this.getChildrenByParser(parserDefinitionParser).length
+  }
+  makeProgramParserDefinitionCache() {
+    const scopedParsers = this.getChildrenByParser(parserDefinitionParser)
+    const cache = Object.assign({}, this.parent.programParserDefinitionCache) // todo. We don't really need this. we should just lookup the parent if no local hits.
+    scopedParsers.forEach(parserDefinitionParser => (cache[parserDefinitionParser.parserIdFromDefinition] = parserDefinitionParser))
+    return cache
   }
   get description() {
     return this._getFromExtended(GrammarConstants.description) || ""
@@ -15466,8 +15400,8 @@ ${captures}
     const val = this._getFromExtended(GrammarConstants.frequency)
     return val ? parseFloat(val) : 0
   }
-  _getExtendedNodeTypeId() {
-    const ancestorIds = this.ancestorNodeTypeIdsArray
+  _getExtendedParserId() {
+    const ancestorIds = this.ancestorParserIdsArray
     if (ancestorIds.length > 1) return ancestorIds[ancestorIds.length - 2]
   }
   _toStumpString() {
@@ -15483,7 +15417,7 @@ ${cells.toString(1)}`
   }
   toStumpString() {
     const nodeBreakSymbol = "\n"
-    return this._getConcreteNonErrorInScopeNodeDefinitions(this._getInScopeNodeTypeIds())
+    return this._getConcreteNonErrorInScopeNodeDefinitions(this._getInScopeParserIds())
       .map(def => def._toStumpString())
       .filter(identity => identity)
       .join(nodeBreakSymbol)
@@ -15496,43 +15430,67 @@ ${cells.toString(1)}`
       .map((cell, index) => (!index && crux ? crux : cell.synthesizeCell(seed)))
       .join(" ")
   }
-  _shouldSynthesize(def, nodeTypeChain) {
-    if (def._isErrorNodeType() || def._isAbstract()) return false
-    if (nodeTypeChain.includes(def.id)) return false
+  _shouldSynthesize(def, parserChain) {
+    if (def._isErrorParser() || def._isAbstract()) return false
+    if (parserChain.includes(def.id)) return false
     const tags = def.get(GrammarConstants.tags)
     if (tags && tags.includes(GrammarConstantsMisc.doNotSynthesize)) return false
     return true
   }
+  // Get all definitions in this current scope down, even ones that are scoped inside other definitions.
+  get inScopeAndDescendantDefinitions() {
+    return this.languageDefinitionProgram._collectAllDefinitions(Object.values(this.programParserDefinitionCache), [])
+  }
+  _collectAllDefinitions(defs, collection = []) {
+    defs.forEach(def => {
+      collection.push(def)
+      def._collectAllDefinitions(def.getChildrenByParser(parserDefinitionParser), collection)
+    })
+    return collection
+  }
+  get cruxPath() {
+    const parentPath = this.parent.cruxPath
+    return (parentPath ? parentPath + " " : "") + this.cruxIfAny
+  }
+  get cruxPathAsColumnName() {
+    return this.cruxPath.replace(/ /g, "_")
+  }
+  // Get every definition that extends from this one, even ones that are scoped inside other definitions.
   get concreteDescendantDefinitions() {
-    const defs = this.programNodeTypeDefinitionCache
+    const { inScopeAndDescendantDefinitions, id } = this
+    return Object.values(inScopeAndDescendantDefinitions).filter(def => def._doesExtend(id) && !def._isAbstract())
+  }
+  get concreteInScopeDescendantDefinitions() {
+    // Note: non-recursive.
+    const defs = this.programParserDefinitionCache
     const id = this.id
     return Object.values(defs).filter(def => def._doesExtend(id) && !def._isAbstract())
   }
-  _getConcreteNonErrorInScopeNodeDefinitions(nodeTypeIds) {
+  _getConcreteNonErrorInScopeNodeDefinitions(parserIds) {
     const defs = []
-    nodeTypeIds.forEach(nodeTypeId => {
-      const def = this.getNodeTypeDefinitionByNodeTypeId(nodeTypeId)
-      if (def._isErrorNodeType()) return
-      else if (def._isAbstract()) def.concreteDescendantDefinitions.forEach(def => defs.push(def))
+    parserIds.forEach(parserId => {
+      const def = this.getParserDefinitionByParserId(parserId)
+      if (def._isErrorParser()) return
+      else if (def._isAbstract()) def.concreteInScopeDescendantDefinitions.forEach(def => defs.push(def))
       else defs.push(def)
     })
     return defs
   }
   // todo: refactor
-  synthesizeNode(nodeCount = 1, indentCount = -1, nodeTypesAlreadySynthesized = [], seed = Date.now()) {
-    let inScopeNodeTypeIds = this._getInScopeNodeTypeIds()
-    const catchAllNodeTypeId = this._getFromExtended(GrammarConstants.catchAllNodeType)
-    if (catchAllNodeTypeId) inScopeNodeTypeIds.push(catchAllNodeTypeId)
+  synthesizeNode(nodeCount = 1, indentCount = -1, parsersAlreadySynthesized = [], seed = Date.now()) {
+    let inScopeParserIds = this._getInScopeParserIds()
+    const catchAllParserId = this._getFromExtended(GrammarConstants.catchAllParser)
+    if (catchAllParserId) inScopeParserIds.push(catchAllParserId)
     const thisId = this.id
-    if (!nodeTypesAlreadySynthesized.includes(thisId)) nodeTypesAlreadySynthesized.push(thisId)
+    if (!parsersAlreadySynthesized.includes(thisId)) parsersAlreadySynthesized.push(thisId)
     const lines = []
     while (nodeCount) {
       const line = this._generateSimulatedLine(seed)
       if (line) lines.push(" ".repeat(indentCount >= 0 ? indentCount : 0) + line)
-      this._getConcreteNonErrorInScopeNodeDefinitions(inScopeNodeTypeIds.filter(nodeTypeId => !nodeTypesAlreadySynthesized.includes(nodeTypeId)))
-        .filter(def => this._shouldSynthesize(def, nodeTypesAlreadySynthesized))
+      this._getConcreteNonErrorInScopeNodeDefinitions(inScopeParserIds.filter(parserId => !parsersAlreadySynthesized.includes(parserId)))
+        .filter(def => this._shouldSynthesize(def, parsersAlreadySynthesized))
         .forEach(def => {
-          const chain = nodeTypesAlreadySynthesized // .slice(0)
+          const chain = parsersAlreadySynthesized // .slice(0)
           chain.push(def.id)
           def.synthesizeNode(1, indentCount + 1, chain, seed).forEach(line => lines.push(line))
         })
@@ -15551,43 +15509,46 @@ ${cells.toString(1)}`
   }
 }
 // todo: remove?
-class nodeTypeDefinitionNode extends AbstractGrammarDefinitionNode {}
+class parserDefinitionParser extends AbstractParserDefinitionParser {}
 // HandGrammarProgram is a constructor that takes a grammar file, and builds a new
 // constructor for new language that takes files in that language to execute, compile, etc.
-class HandGrammarProgram extends AbstractGrammarDefinitionNode {
-  createParser() {
+class HandGrammarProgram extends AbstractParserDefinitionParser {
+  createParserCombinator() {
     const map = {}
     map[GrammarConstants.comment] = TreeNode
-    return new TreeNode.Parser(UnknownNodeTypeNode, map, [
-      { regex: HandGrammarProgram.blankLineRegex, nodeConstructor: TreeNode },
-      { regex: HandGrammarProgram.nodeTypeFullRegex, nodeConstructor: nodeTypeDefinitionNode },
-      { regex: HandGrammarProgram.cellTypeFullRegex, nodeConstructor: cellTypeDefinitionNode }
+    return new TreeNode.ParserCombinator(UnknownParserNode, map, [
+      { regex: HandGrammarProgram.blankLineRegex, parser: TreeNode },
+      { regex: HandGrammarProgram.parserFullRegex, parser: parserDefinitionParser },
+      { regex: HandGrammarProgram.cellTypeFullRegex, parser: cellTypeDefinitionParser }
     ])
   }
-  // rootNodeTypeConstructor
+  // rootParser
   // Note: this is some so far unavoidable tricky code. We need to eval the transpiled JS, in a NodeJS or browser environment.
-  _compileAndReturnRootNodeTypeConstructor() {
-    if (this._cache_rootNodeTypeConstructor) return this._cache_rootNodeTypeConstructor
+  _compileAndReturnRootParser() {
+    if (this._cache_rootParser) return this._cache_rootParser
     if (!this.isNodeJs()) {
-      this._cache_rootNodeTypeConstructor = Utils.appendCodeAndReturnValueOnWindow(this.toBrowserJavascript(), this.rootNodeTypeId).rootNodeTypeConstructor
-      return this._cache_rootNodeTypeConstructor
+      this._cache_rootParser = Utils.appendCodeAndReturnValueOnWindow(this.toBrowserJavascript(), this.rootParserId).rootParser
+      return this._cache_rootParser
     }
     const path = require("path")
     const code = this.toNodeJsJavascript(__dirname)
     try {
-      const rootNode = this._requireInVmNodeJsRootNodeTypeConstructor(code)
-      this._cache_rootNodeTypeConstructor = rootNode.rootNodeTypeConstructor
-      if (!this._cache_rootNodeTypeConstructor) throw new Error(`Failed to rootNodeTypeConstructor`)
+      const rootNode = this._requireInVmNodeJsRootParser(code)
+      this._cache_rootParser = rootNode.rootParser
+      if (!this._cache_rootParser) throw new Error(`Failed to rootParser`)
     } catch (err) {
       // todo: figure out best error pattern here for debugging
       console.log(err)
       // console.log(`Error in code: `)
       // console.log(new TreeNode(code).toStringWithLineNumbers())
     }
-    return this._cache_rootNodeTypeConstructor
+    return this._cache_rootParser
   }
-  trainModel(programs, programConstructor = this.compileAndReturnRootConstructor()) {
-    const nodeDefs = this.validConcreteAndAbstractNodeTypeDefinitions
+  get cruxPath() {
+    return ""
+  }
+  trainModel(programs, rootParser = this.compileAndReturnRootParser()) {
+    const nodeDefs = this.validConcreteAndAbstractParserDefinitions
     const nodeDefCountIncludingRoot = nodeDefs.length + 1
     const matrix = Utils.makeMatrix(nodeDefCountIncludingRoot, nodeDefCountIncludingRoot, 0)
     const idToIndex = {}
@@ -15598,7 +15559,7 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
       indexToId[index + 1] = id
     })
     programs.forEach(code => {
-      const exampleProgram = new programConstructor(code)
+      const exampleProgram = new rootParser(code)
       exampleProgram.topDownArray.forEach(node => {
         const nodeIndex = idToIndex[node.definition.id]
         const parentNode = node.parent
@@ -15622,8 +15583,8 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
     const predictions = predictionsVector.slice(1).map((count, index) => {
       const id = model.indexToId[index + 1]
       return {
-        id: id,
-        def: this.getNodeTypeDefinitionByNodeTypeId(id),
+        id,
+        def: this.getParserDefinitionByParserId(id),
         count,
         prob: count / total
       }
@@ -15649,7 +15610,7 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
     this._dirName = name
     return this
   }
-  _requireInVmNodeJsRootNodeTypeConstructor(code) {
+  _requireInVmNodeJsRootParser(code) {
     const vm = require("vm")
     const path = require("path")
     // todo: cleanup up
@@ -15669,13 +15630,13 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
       throw err
     }
   }
-  examplesToTestBlocks(programConstructor = this.compileAndReturnRootConstructor(), expectedErrorMessage = "") {
+  examplesToTestBlocks(rootParser = this.compileAndReturnRootParser(), expectedErrorMessage = "") {
     const testBlocks = {}
-    this.validConcreteAndAbstractNodeTypeDefinitions.forEach(def =>
+    this.validConcreteAndAbstractParserDefinitions.forEach(def =>
       def.examples.forEach(example => {
         const id = def.id + example.content
         testBlocks[id] = equal => {
-          const exampleProgram = new programConstructor(example.childrenToString())
+          const exampleProgram = new rootParser(example.childrenToString())
           const errors = exampleProgram.getAllErrors(example._getLineNumber() + 1)
           equal(errors.join("\n"), expectedErrorMessage, `Expected no errors in ${id}`)
         }
@@ -15685,9 +15646,9 @@ class HandGrammarProgram extends AbstractGrammarDefinitionNode {
   }
   toReadMe() {
     const languageName = this.extensionName
-    const rootNodeDef = this.rootNodeTypeDefinitionNode
+    const rootNodeDef = this.rootParserDefinition
     const cellTypes = this.cellTypeDefinitions
-    const nodeTypeFamilyTree = this.nodeTypeFamilyTree
+    const parserFamilyTree = this.parserFamilyTree
     const exampleNode = rootNodeDef.examples[0]
     return `title ${languageName} Readme
 
@@ -15701,7 +15662,7 @@ ${exampleNode ? exampleNode.childrenToString(1) : ""}
 subtitle Quick facts about ${languageName}
 
 list
- - ${languageName} has ${nodeTypeFamilyTree.topDownArray.length} node types.
+ - ${languageName} has ${parserFamilyTree.topDownArray.length} node types.
  - ${languageName} has ${Object.keys(cellTypes).length} cell types
  - The source code for ${languageName} is ${this.topDownArray.length} lines long.
 
@@ -15718,7 +15679,7 @@ code
 subtitle Node Types
 
 code
-${nodeTypeFamilyTree.toString(1)}
+${parserFamilyTree.toString(1)}
 
 subtitle Cell Types
 
@@ -15740,7 +15701,7 @@ paragraph This readme was auto-generated using the
   }
   toBundle() {
     const files = {}
-    const rootNodeDef = this.rootNodeTypeDefinitionNode
+    const rootNodeDef = this.rootParserDefinition
     const languageName = this.extensionName
     const example = rootNodeDef.examples[0]
     const sampleCode = example ? example.childrenToString() : ""
@@ -15782,13 +15743,13 @@ ${testCode}`
     return files
   }
   get targetExtension() {
-    return this.rootNodeTypeDefinitionNode.get(GrammarConstants.compilesTo)
+    return this.rootParserDefinition.get(GrammarConstants.compilesTo)
   }
   get cellTypeDefinitions() {
     if (this._cache_cellTypes) return this._cache_cellTypes
     const types = {}
     // todo: add built in word types?
-    this.getChildrenByNodeConstructor(cellTypeDefinitionNode).forEach(type => (types[type.cellTypeId] = type))
+    this.getChildrenByParser(cellTypeDefinitionParser).forEach(type => (types[type.cellTypeId] = type))
     this._cache_cellTypes = types
     return types
   }
@@ -15796,77 +15757,77 @@ ${testCode}`
     // todo: return unknownCellTypeDefinition? or is that handled somewhere else?
     return this.cellTypeDefinitions[cellTypeId]
   }
-  get nodeTypeFamilyTree() {
+  get parserFamilyTree() {
     const tree = new TreeNode()
-    Object.values(this.validConcreteAndAbstractNodeTypeDefinitions).forEach(node => tree.touchNode(node.ancestorNodeTypeIdsArray.join(" ")))
+    Object.values(this.validConcreteAndAbstractParserDefinitions).forEach(node => tree.touchNode(node.ancestorParserIdsArray.join(" ")))
     return tree
   }
   get languageDefinitionProgram() {
     return this
   }
-  get validConcreteAndAbstractNodeTypeDefinitions() {
-    return this.getChildrenByNodeConstructor(nodeTypeDefinitionNode).filter(node => node._hasValidNodeTypeId())
+  get validConcreteAndAbstractParserDefinitions() {
+    return this.getChildrenByParser(parserDefinitionParser).filter(node => node._hasValidParserId())
   }
-  get lastRootNodeTypeDefinitionNode() {
-    return this.findLast(def => def instanceof AbstractGrammarDefinitionNode && def.has(GrammarConstants.root) && def._hasValidNodeTypeId())
+  get lastRootParserDefinitionNode() {
+    return this.findLast(def => def instanceof AbstractParserDefinitionParser && def.has(GrammarConstants.root) && def._hasValidParserId())
   }
-  _initRootNodeTypeDefinitionNode() {
-    if (this._cache_rootNodeTypeNode) return
-    if (!this._cache_rootNodeTypeNode) this._cache_rootNodeTypeNode = this.lastRootNodeTypeDefinitionNode
+  _initRootParserDefinitionNode() {
+    if (this._cache_rootParserNode) return
+    if (!this._cache_rootParserNode) this._cache_rootParserNode = this.lastRootParserDefinitionNode
     // By default, have a very permissive basic root node.
     // todo: whats the best design pattern to use for this sort of thing?
-    if (!this._cache_rootNodeTypeNode) {
-      this._cache_rootNodeTypeNode = this.concat(`${GrammarConstants.defaultRootNode}
+    if (!this._cache_rootParserNode) {
+      this._cache_rootParserNode = this.concat(`${GrammarConstants.DefaultRootParser}
  ${GrammarConstants.root}
- ${GrammarConstants.catchAllNodeType} ${GrammarConstants.BlobNode}`)[0]
-      this._addDefaultCatchAllBlobNode()
+ ${GrammarConstants.catchAllParser} ${GrammarConstants.BlobParser}`)[0]
+      this._addDefaultCatchAllBlobParser()
     }
   }
-  get rootNodeTypeDefinitionNode() {
-    this._initRootNodeTypeDefinitionNode()
-    return this._cache_rootNodeTypeNode
+  get rootParserDefinition() {
+    this._initRootParserDefinitionNode()
+    return this._cache_rootParserNode
   }
-  // todo: whats the best design pattern to use for this sort of thing?
-  _addDefaultCatchAllBlobNode() {
-    delete this._cache_nodeTypeDefinitions
-    this.concat(`${GrammarConstants.BlobNode}
- ${GrammarConstants.baseNodeType} ${GrammarConstants.blobNode}`)
+  _addDefaultCatchAllBlobParser() {
+    if (this._addedCatchAll) return
+    this._addedCatchAll = true
+    delete this._cache_parserDefinitionParsers
+    this.concat(`${GrammarConstants.BlobParser}
+ ${GrammarConstants.baseParser} ${GrammarConstants.blobParser}`)
   }
   get extensionName() {
     return this.grammarName
   }
   get id() {
-    return this.rootNodeTypeId
+    return this.rootParserId
   }
-  get rootNodeTypeId() {
-    return this.rootNodeTypeDefinitionNode.nodeTypeIdFromDefinition
+  get rootParserId() {
+    return this.rootParserDefinition.parserIdFromDefinition
   }
   get grammarName() {
-    return this.rootNodeTypeId.replace(HandGrammarProgram.nodeTypeSuffixRegex, "")
+    return this.rootParserId.replace(HandGrammarProgram.parserSuffixRegex, "")
   }
-  _getMyInScopeNodeTypeIds() {
-    return super._getMyInScopeNodeTypeIds(this.rootNodeTypeDefinitionNode)
+  _getMyInScopeParserIds() {
+    return super._getMyInScopeParserIds(this.rootParserDefinition)
   }
-  _getInScopeNodeTypeIds() {
-    const nodeTypesNode = this.rootNodeTypeDefinitionNode.getNode(GrammarConstants.inScope)
-    return nodeTypesNode ? nodeTypesNode.getWordsFrom(1) : []
+  _getInScopeParserIds() {
+    const parsersNode = this.rootParserDefinition.getNode(GrammarConstants.inScope)
+    return parsersNode ? parsersNode.getWordsFrom(1) : []
   }
-  get programNodeTypeDefinitionCache() {
-    if (this._cache_nodeTypeDefinitions) return this._cache_nodeTypeDefinitions
-    this._cache_nodeTypeDefinitions = {}
-    this.getChildrenByNodeConstructor(nodeTypeDefinitionNode).forEach(nodeTypeDefinitionNode => (this._cache_nodeTypeDefinitions[nodeTypeDefinitionNode.nodeTypeIdFromDefinition] = nodeTypeDefinitionNode))
-    return this._cache_nodeTypeDefinitions
+  makeProgramParserDefinitionCache() {
+    const cache = {}
+    this.getChildrenByParser(parserDefinitionParser).forEach(parserDefinitionParser => (cache[parserDefinitionParser.parserIdFromDefinition] = parserDefinitionParser))
+    return cache
   }
-  compileAndReturnRootConstructor() {
-    if (!this._cache_rootConstructorClass) {
-      const rootDef = this.rootNodeTypeDefinitionNode
-      this._cache_rootConstructorClass = rootDef.languageDefinitionProgram._compileAndReturnRootNodeTypeConstructor()
+  compileAndReturnRootParser() {
+    if (!this._cached_rootParser) {
+      const rootDef = this.rootParserDefinition
+      this._cached_rootParser = rootDef.languageDefinitionProgram._compileAndReturnRootParser()
     }
-    return this._cache_rootConstructorClass
+    return this._cached_rootParser
   }
   get fileExtensions() {
-    return this.rootNodeTypeDefinitionNode.get(GrammarConstants.extensions)
-      ? this.rootNodeTypeDefinitionNode
+    return this.rootParserDefinition.get(GrammarConstants.extensions)
+      ? this.rootParserDefinition
           .get(GrammarConstants.extensions)
           .split(" ")
           .join(",")
@@ -15879,10 +15840,10 @@ ${testCode}`
     return this._rootNodeDefToJavascriptClass("", false).trim()
   }
   _rootNodeDefToJavascriptClass(jtreeProductsPath, forNodeJs = true) {
-    const defs = this.validConcreteAndAbstractNodeTypeDefinitions
+    const defs = this.validConcreteAndAbstractParserDefinitions
     // todo: throw if there is no root node defined
-    const nodeTypeClasses = defs.map(def => def.asJavascriptClass).join("\n\n")
-    const rootDef = this.rootNodeTypeDefinitionNode
+    const parserClasses = defs.map(def => def.asJavascriptClass).join("\n\n")
+    const rootDef = this.rootParserDefinition
     const rootNodeJsHeader = forNodeJs && rootDef._getConcatBlockStringFromExtended(GrammarConstants._rootNodeJsHeader)
     const rootName = rootDef.generatedClassName
     if (!rootName) throw new Error(`Root Node Type Has No Name`)
@@ -15900,7 +15861,7 @@ ${rootName}`
     return `{
 ${nodeJsImports}
 ${rootNodeJsHeader ? rootNodeJsHeader : ""}
-${nodeTypeClasses}
+${parserClasses}
 
 ${exportScript}
 }
@@ -15911,9 +15872,9 @@ ${exportScript}
     const variables = Object.keys(cellTypeDefs)
       .map(name => ` ${name}: '${cellTypeDefs[name].regexString}'`)
       .join("\n")
-    const defs = this.validConcreteAndAbstractNodeTypeDefinitions.filter(kw => !kw._isAbstract())
-    const nodeTypeContexts = defs.map(def => def._toSublimeMatchBlock()).join("\n\n")
-    const includes = defs.map(nodeTypeDef => `  - include: '${nodeTypeDef.nodeTypeIdFromDefinition}'`).join("\n")
+    const defs = this.validConcreteAndAbstractParserDefinitions.filter(kw => !kw._isAbstract())
+    const parserContexts = defs.map(def => def._toSublimeMatchBlock()).join("\n\n")
+    const includes = defs.map(parserDef => `  - include: '${parserDef.parserIdFromDefinition}'`).join("\n")
     return `%YAML 1.2
 ---
 name: ${this.extensionName}
@@ -15927,18 +15888,18 @@ contexts:
  main:
 ${includes}
 
-${nodeTypeContexts}`
+${parserContexts}`
   }
 }
-HandGrammarProgram.makeNodeTypeId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandGrammarProgram.nodeTypeSuffixRegex, "") + GrammarConstants.nodeTypeSuffix
+HandGrammarProgram.makeParserId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandGrammarProgram.parserSuffixRegex, "") + GrammarConstants.parserSuffix
 HandGrammarProgram.makeCellTypeId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandGrammarProgram.cellTypeSuffixRegex, "") + GrammarConstants.cellTypeSuffix
-HandGrammarProgram.nodeTypeSuffixRegex = new RegExp(GrammarConstants.nodeTypeSuffix + "$")
-HandGrammarProgram.nodeTypeFullRegex = new RegExp("^[a-zA-Z0-9_]+" + GrammarConstants.nodeTypeSuffix + "$")
+HandGrammarProgram.parserSuffixRegex = new RegExp(GrammarConstants.parserSuffix + "$")
+HandGrammarProgram.parserFullRegex = new RegExp("^[a-zA-Z0-9_]+" + GrammarConstants.parserSuffix + "$")
 HandGrammarProgram.blankLineRegex = new RegExp("^$")
 HandGrammarProgram.cellTypeSuffixRegex = new RegExp(GrammarConstants.cellTypeSuffix + "$")
 HandGrammarProgram.cellTypeFullRegex = new RegExp("^[a-zA-Z0-9_]+" + GrammarConstants.cellTypeSuffix + "$")
 HandGrammarProgram._languages = {}
-HandGrammarProgram._nodeTypes = {}
+HandGrammarProgram._parsers = {}
 const PreludeKinds = {}
 PreludeKinds[PreludeCellTypeIds.anyCell] = GrammarAnyCell
 PreludeKinds[PreludeCellTypeIds.keywordCell] = GrammarKeywordCell
@@ -15949,13 +15910,13 @@ PreludeKinds[PreludeCellTypeIds.boolCell] = GrammarBoolCell
 PreludeKinds[PreludeCellTypeIds.intCell] = GrammarIntCell
 class UnknownGrammarProgram extends TreeNode {
   _inferRootNodeForAPrefixLanguage(grammarName) {
-    grammarName = HandGrammarProgram.makeNodeTypeId(grammarName)
+    grammarName = HandGrammarProgram.makeParserId(grammarName)
     const rootNode = new TreeNode(`${grammarName}
  ${GrammarConstants.root}`)
-    // note: right now we assume 1 global cellTypeMap and nodeTypeMap per grammar. But we may have scopes in the future?
+    // note: right now we assume 1 global cellTypeMap and parserMap per grammar. But we may have scopes in the future?
     const rootNodeNames = this.getFirstWords()
       .filter(identity => identity)
-      .map(word => HandGrammarProgram.makeNodeTypeId(word))
+      .map(word => HandGrammarProgram.makeParserId(word))
     rootNode
       .nodeAt(0)
       .touchNode(GrammarConstants.inScope)
@@ -15967,7 +15928,7 @@ class UnknownGrammarProgram extends TreeNode {
     for (let node of clone.getTopDownArrayIterator()) {
       const firstWordIsAnInteger = !!node.firstWord.match(/^\d+$/)
       const parentFirstWord = node.parent.firstWord
-      if (firstWordIsAnInteger && parentFirstWord) node.setFirstWord(HandGrammarProgram.makeNodeTypeId(parentFirstWord + UnknownGrammarProgram._childSuffix))
+      if (firstWordIsAnInteger && parentFirstWord) node.setFirstWord(HandGrammarProgram.makeParserId(parentFirstWord + UnknownGrammarProgram._childSuffix))
     }
   }
   _getKeywordMaps(clone) {
@@ -15978,18 +15939,16 @@ class UnknownGrammarProgram extends TreeNode {
       if (!keywordsToChildKeywords[firstWord]) keywordsToChildKeywords[firstWord] = {}
       if (!keywordsToNodeInstances[firstWord]) keywordsToNodeInstances[firstWord] = []
       keywordsToNodeInstances[firstWord].push(node)
-      node.forEach(child => {
-        keywordsToChildKeywords[firstWord][child.firstWord] = true
-      })
+      node.forEach(child => (keywordsToChildKeywords[firstWord][child.firstWord] = true))
     }
     return { keywordsToChildKeywords: keywordsToChildKeywords, keywordsToNodeInstances: keywordsToNodeInstances }
   }
-  _inferNodeTypeDef(firstWord, globalCellTypeMap, childFirstWords, instances) {
+  _inferParserDef(firstWord, globalCellTypeMap, childFirstWords, instances) {
     const edgeSymbol = this.edgeSymbol
-    const nodeTypeId = HandGrammarProgram.makeNodeTypeId(firstWord)
-    const nodeDefNode = new TreeNode(nodeTypeId).nodeAt(0)
-    const childNodeTypeIds = childFirstWords.map(word => HandGrammarProgram.makeNodeTypeId(word))
-    if (childNodeTypeIds.length) nodeDefNode.touchNode(GrammarConstants.inScope).setWordsFrom(1, childNodeTypeIds)
+    const parserId = HandGrammarProgram.makeParserId(firstWord)
+    const nodeDefNode = new TreeNode(parserId).nodeAt(0)
+    const childParserIds = childFirstWords.map(word => HandGrammarProgram.makeParserId(word))
+    if (childParserIds.length) nodeDefNode.touchNode(GrammarConstants.inScope).setWordsFrom(1, childParserIds)
     const cellsForAllInstances = instances
       .map(line => line.content)
       .filter(identity => identity)
@@ -16016,7 +15975,7 @@ class UnknownGrammarProgram extends TreeNode {
         cellTypeIds.pop()
       }
     }
-    const needsCruxProperty = !firstWord.endsWith(UnknownGrammarProgram._childSuffix + "Node") // todo: cleanup
+    const needsCruxProperty = !firstWord.endsWith(UnknownGrammarProgram._childSuffix + GrammarConstants.parserSuffix) // todo: cleanup
     if (needsCruxProperty) nodeDefNode.set(GrammarConstants.crux, firstWord)
     if (catchAllCellType) nodeDefNode.set(GrammarConstants.catchAllCellType, catchAllCellType)
     const cellLine = cellTypeIds.slice()
@@ -16027,11 +15986,11 @@ class UnknownGrammarProgram extends TreeNode {
     return nodeDefNode.parent.toString()
   }
   //  inferGrammarFileForAnSSVLanguage(grammarName: string): string {
-  //     grammarName = HandGrammarProgram.makeNodeTypeId(grammarName)
+  //     grammarName = HandGrammarProgram.makeParserId(grammarName)
   //    const rootNode = new TreeNode(`${grammarName}
   // ${GrammarConstants.root}`)
-  //    // note: right now we assume 1 global cellTypeMap and nodeTypeMap per grammar. But we may have scopes in the future?
-  //    const rootNodeNames = this.getFirstWords().map(word => HandGrammarProgram.makeNodeTypeId(word))
+  //    // note: right now we assume 1 global cellTypeMap and parserMap per grammar. But we may have scopes in the future?
+  //    const rootNodeNames = this.getFirstWords().map(word => HandGrammarProgram.makeParserId(word))
   //    rootNode
   //      .nodeAt(0)
   //      .touchNode(GrammarConstants.inScope)
@@ -16044,20 +16003,20 @@ class UnknownGrammarProgram extends TreeNode {
     const { keywordsToChildKeywords, keywordsToNodeInstances } = this._getKeywordMaps(clone)
     const globalCellTypeMap = new Map()
     globalCellTypeMap.set(PreludeCellTypeIds.keywordCell, undefined)
-    const nodeTypeDefs = Object.keys(keywordsToChildKeywords)
+    const parserDefs = Object.keys(keywordsToChildKeywords)
       .filter(identity => identity)
-      .map(firstWord => this._inferNodeTypeDef(firstWord, globalCellTypeMap, Object.keys(keywordsToChildKeywords[firstWord]), keywordsToNodeInstances[firstWord]))
+      .map(firstWord => this._inferParserDef(firstWord, globalCellTypeMap, Object.keys(keywordsToChildKeywords[firstWord]), keywordsToNodeInstances[firstWord]))
     const cellTypeDefs = []
     globalCellTypeMap.forEach((def, id) => cellTypeDefs.push(def ? def : id))
     const nodeBreakSymbol = this.nodeBreakSymbol
-    return this._formatCode([this._inferRootNodeForAPrefixLanguage(grammarName).toString(), cellTypeDefs.join(nodeBreakSymbol), nodeTypeDefs.join(nodeBreakSymbol)].filter(identity => identity).join("\n"))
+    return this._formatCode([this._inferRootNodeForAPrefixLanguage(grammarName).toString(), cellTypeDefs.join(nodeBreakSymbol), parserDefs.join(nodeBreakSymbol)].filter(identity => identity).join("\n"))
   }
   _formatCode(code) {
     // todo: make this run in browser too
     if (!this.isNodeJs()) return code
     const grammarProgram = new HandGrammarProgram(TreeNode.fromDisk(__dirname + "/../langs/grammar/grammar.grammar"))
-    const programConstructor = grammarProgram.compileAndReturnRootConstructor()
-    const program = new programConstructor(code)
+    const rootParser = grammarProgram.compileAndReturnRootParser()
+    const program = new rootParser(code)
     return program.format().toString()
   }
   _getBestCellType(firstWord, instanceCount, maxCellsOnLine, allValues) {
@@ -16099,7 +16058,7 @@ window.GrammarConstants = GrammarConstants
 window.PreludeCellTypeIds = PreludeCellTypeIds
 window.HandGrammarProgram = HandGrammarProgram
 window.GrammarBackedNode = GrammarBackedNode
-window.UnknownNodeTypeError = UnknownNodeTypeError
+window.UnknownParserError = UnknownParserError
 window.UnknownGrammarProgram = UnknownGrammarProgram
 
 
@@ -16285,9 +16244,9 @@ const textMateScopeToCodeMirrorStyle = (scopeSegments, styleTree = tmToCm) => {
   return matchingBranch ? textMateScopeToCodeMirrorStyle(scopeSegments, matchingBranch) || matchingBranch.$ || null : null
 }
 class GrammarCodeMirrorMode {
-  constructor(name, getProgramConstructorFn, getProgramCodeFn, codeMirrorLib = undefined) {
+  constructor(name, getRootParserFn, getProgramCodeFn, codeMirrorLib = undefined) {
     this._name = name
-    this._getProgramConstructorFn = getProgramConstructorFn
+    this._getRootParserFn = getRootParserFn
     this._getProgramCodeFn = getProgramCodeFn || (instance => (instance ? instance.getValue() : this._originalValue))
     this._codeMirrorLib = codeMirrorLib
   }
@@ -16295,7 +16254,7 @@ class GrammarCodeMirrorMode {
     const source = this._getProgramCodeFn(this._cmInstance) || ""
     if (!this._cachedProgram || this._cachedSource !== source) {
       this._cachedSource = source
-      this._cachedProgram = new (this._getProgramConstructorFn())(source)
+      this._cachedProgram = new (this._getRootParserFn())(source)
     }
     return this._cachedProgram
   }
@@ -16443,125 +16402,125 @@ window.GrammarCodeMirrorMode = GrammarCodeMirrorMode
 
 
 {
-  class stumpNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(
-        errorNode,
-        Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {
-          blockquote: htmlTagNode,
-          colgroup: htmlTagNode,
-          datalist: htmlTagNode,
-          fieldset: htmlTagNode,
-          menuitem: htmlTagNode,
-          noscript: htmlTagNode,
-          optgroup: htmlTagNode,
-          progress: htmlTagNode,
-          styleTag: htmlTagNode,
-          template: htmlTagNode,
-          textarea: htmlTagNode,
-          titleTag: htmlTagNode,
-          address: htmlTagNode,
-          article: htmlTagNode,
-          caption: htmlTagNode,
-          details: htmlTagNode,
-          section: htmlTagNode,
-          summary: htmlTagNode,
-          button: htmlTagNode,
-          canvas: htmlTagNode,
-          dialog: htmlTagNode,
-          figure: htmlTagNode,
-          footer: htmlTagNode,
-          header: htmlTagNode,
-          hgroup: htmlTagNode,
-          iframe: htmlTagNode,
-          keygen: htmlTagNode,
-          legend: htmlTagNode,
-          object: htmlTagNode,
-          option: htmlTagNode,
-          output: htmlTagNode,
-          script: htmlTagNode,
-          select: htmlTagNode,
-          source: htmlTagNode,
-          strong: htmlTagNode,
-          aside: htmlTagNode,
-          embed: htmlTagNode,
-          input: htmlTagNode,
-          label: htmlTagNode,
-          meter: htmlTagNode,
-          param: htmlTagNode,
-          small: htmlTagNode,
-          table: htmlTagNode,
-          tbody: htmlTagNode,
-          tfoot: htmlTagNode,
-          thead: htmlTagNode,
-          track: htmlTagNode,
-          video: htmlTagNode,
-          abbr: htmlTagNode,
-          area: htmlTagNode,
-          base: htmlTagNode,
-          body: htmlTagNode,
-          code: htmlTagNode,
-          form: htmlTagNode,
-          head: htmlTagNode,
-          html: htmlTagNode,
-          link: htmlTagNode,
-          main: htmlTagNode,
-          mark: htmlTagNode,
-          menu: htmlTagNode,
-          meta: htmlTagNode,
-          ruby: htmlTagNode,
-          samp: htmlTagNode,
-          span: htmlTagNode,
-          time: htmlTagNode,
-          bdi: htmlTagNode,
-          bdo: htmlTagNode,
-          col: htmlTagNode,
-          del: htmlTagNode,
-          dfn: htmlTagNode,
-          div: htmlTagNode,
-          img: htmlTagNode,
-          ins: htmlTagNode,
-          kbd: htmlTagNode,
-          map: htmlTagNode,
-          nav: htmlTagNode,
-          pre: htmlTagNode,
-          rtc: htmlTagNode,
-          sub: htmlTagNode,
-          sup: htmlTagNode,
-          var: htmlTagNode,
-          wbr: htmlTagNode,
-          br: htmlTagNode,
-          dd: htmlTagNode,
-          dl: htmlTagNode,
-          dt: htmlTagNode,
-          em: htmlTagNode,
-          h1: htmlTagNode,
-          h2: htmlTagNode,
-          h3: htmlTagNode,
-          h4: htmlTagNode,
-          h5: htmlTagNode,
-          h6: htmlTagNode,
-          hr: htmlTagNode,
-          li: htmlTagNode,
-          ol: htmlTagNode,
-          rb: htmlTagNode,
-          rp: htmlTagNode,
-          rt: htmlTagNode,
-          td: htmlTagNode,
-          th: htmlTagNode,
-          tr: htmlTagNode,
-          ul: htmlTagNode,
-          a: htmlTagNode,
-          b: htmlTagNode,
-          i: htmlTagNode,
-          p: htmlTagNode,
-          q: htmlTagNode,
-          s: htmlTagNode,
-          u: htmlTagNode
+  class stumpParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(
+        errorParser,
+        Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), {
+          blockquote: htmlTagParser,
+          colgroup: htmlTagParser,
+          datalist: htmlTagParser,
+          fieldset: htmlTagParser,
+          menuitem: htmlTagParser,
+          noscript: htmlTagParser,
+          optgroup: htmlTagParser,
+          progress: htmlTagParser,
+          styleTag: htmlTagParser,
+          template: htmlTagParser,
+          textarea: htmlTagParser,
+          titleTag: htmlTagParser,
+          address: htmlTagParser,
+          article: htmlTagParser,
+          caption: htmlTagParser,
+          details: htmlTagParser,
+          section: htmlTagParser,
+          summary: htmlTagParser,
+          button: htmlTagParser,
+          canvas: htmlTagParser,
+          dialog: htmlTagParser,
+          figure: htmlTagParser,
+          footer: htmlTagParser,
+          header: htmlTagParser,
+          hgroup: htmlTagParser,
+          iframe: htmlTagParser,
+          keygen: htmlTagParser,
+          legend: htmlTagParser,
+          object: htmlTagParser,
+          option: htmlTagParser,
+          output: htmlTagParser,
+          script: htmlTagParser,
+          select: htmlTagParser,
+          source: htmlTagParser,
+          strong: htmlTagParser,
+          aside: htmlTagParser,
+          embed: htmlTagParser,
+          input: htmlTagParser,
+          label: htmlTagParser,
+          meter: htmlTagParser,
+          param: htmlTagParser,
+          small: htmlTagParser,
+          table: htmlTagParser,
+          tbody: htmlTagParser,
+          tfoot: htmlTagParser,
+          thead: htmlTagParser,
+          track: htmlTagParser,
+          video: htmlTagParser,
+          abbr: htmlTagParser,
+          area: htmlTagParser,
+          base: htmlTagParser,
+          body: htmlTagParser,
+          code: htmlTagParser,
+          form: htmlTagParser,
+          head: htmlTagParser,
+          html: htmlTagParser,
+          link: htmlTagParser,
+          main: htmlTagParser,
+          mark: htmlTagParser,
+          menu: htmlTagParser,
+          meta: htmlTagParser,
+          ruby: htmlTagParser,
+          samp: htmlTagParser,
+          span: htmlTagParser,
+          time: htmlTagParser,
+          bdi: htmlTagParser,
+          bdo: htmlTagParser,
+          col: htmlTagParser,
+          del: htmlTagParser,
+          dfn: htmlTagParser,
+          div: htmlTagParser,
+          img: htmlTagParser,
+          ins: htmlTagParser,
+          kbd: htmlTagParser,
+          map: htmlTagParser,
+          nav: htmlTagParser,
+          pre: htmlTagParser,
+          rtc: htmlTagParser,
+          sub: htmlTagParser,
+          sup: htmlTagParser,
+          var: htmlTagParser,
+          wbr: htmlTagParser,
+          br: htmlTagParser,
+          dd: htmlTagParser,
+          dl: htmlTagParser,
+          dt: htmlTagParser,
+          em: htmlTagParser,
+          h1: htmlTagParser,
+          h2: htmlTagParser,
+          h3: htmlTagParser,
+          h4: htmlTagParser,
+          h5: htmlTagParser,
+          h6: htmlTagParser,
+          hr: htmlTagParser,
+          li: htmlTagParser,
+          ol: htmlTagParser,
+          rb: htmlTagParser,
+          rp: htmlTagParser,
+          rt: htmlTagParser,
+          td: htmlTagParser,
+          th: htmlTagParser,
+          tr: htmlTagParser,
+          ul: htmlTagParser,
+          a: htmlTagParser,
+          b: htmlTagParser,
+          i: htmlTagParser,
+          p: htmlTagParser,
+          q: htmlTagParser,
+          s: htmlTagParser,
+          u: htmlTagParser
         }),
         [
-          { regex: /^$/, nodeConstructor: blankLineNode },
-          { regex: /^[a-zA-Z0-9_]+Component/, nodeConstructor: componentDefinitionNode }
+          { regex: /^$/, parser: blankLineParser },
+          { regex: /^[a-zA-Z0-9_]+Component/, parser: componentDefinitionParser }
         ]
       )
     }
@@ -16597,11 +16556,11 @@ bernKeywordCell
  extends keywordCell
 
 // Line parsers
-stumpNode
+stumpParser
  root
  description A prefix Tree Language that compiles to HTML.
- catchAllNodeType errorNode
- inScope htmlTagNode blankLineNode
+ catchAllParser errorParser
+ inScope htmlTagParser blankLineParser
  example
   div
    h1 hello world
@@ -16613,7 +16572,7 @@ stumpNode
   _getHtmlJoinByCharacter() {
     return ""
   }
-blankLineNode
+blankLineParser
  pattern ^$
  tags doNotSynthesize
  cells emptyCell
@@ -16622,12 +16581,12 @@ blankLineNode
    return ""
   }
   getTextContent() {return ""}
-htmlTagNode
- inScope bernNode htmlTagNode htmlAttributeNode blankLineNode
+htmlTagParser
+ inScope bernParser htmlTagParser htmlAttributeParser blankLineParser
  catchAllCellType anyHtmlContentCell
  cells htmlTagNameCell
  javascript
-  isHtmlTagNode = true
+  isHtmlTagParser = true
   getTag() {
    // we need to remove the "Tag" bit to handle the style and title attribute/tag conflict.
    const firstWord = this.firstWord
@@ -16656,25 +16615,25 @@ htmlTagNode
   get domElement() {
     var elem = document.createElement(this.getTag())
     elem.setAttribute("stumpUid", this._getUid())
-    this.filter(node => node.isAttributeNode)
+    this.filter(node => node.isAttributeParser)
       .forEach(child => elem.setAttribute(child.firstWord, child.content))
     elem.innerHTML = this.has("bern") ? this.getNode("bern").childrenToString() : this._getOneLiner()
-    this.filter(node => node.isHtmlTagNode)
+    this.filter(node => node.isHtmlTagParser)
       .forEach(child => elem.appendChild(child.domElement))
     return elem
   }
   _toHtml(indentCount, withSuid) {
    const tag = this.getTag()
    const children = this.map(child => child._toHtml(indentCount + 1, withSuid)).join("")
-   const attributesStr = this.filter(node => node.isAttributeNode)
+   const attributesStr = this.filter(node => node.isAttributeParser)
     .map(child => child.getAttribute())
     .join("")
    const indent = " ".repeat(indentCount)
    const collapse = this.shouldCollapse()
-   const indentForChildNodes = !collapse && this.getChildInstancesOfNodeTypeId("htmlTagNode").length > 0
+   const indentForChildParsers = !collapse && this.getChildInstancesOfParserId("htmlTagParser").length > 0
    const suid = withSuid ? \` stumpUid="\${this._getUid()}"\` : ""
    const oneLiner = this._getOneLiner()
-   return \`\${!collapse ? indent : ""}<\${tag}\${attributesStr}\${suid}>\${oneLiner}\${indentForChildNodes ? "\\n" : ""}\${children}</\${tag}>\${collapse ? "" : "\\n"}\`
+   return \`\${!collapse ? indent : ""}<\${tag}\${attributesStr}\${suid}>\${oneLiner}\${indentForChildParsers ? "\\n" : ""}\${children}</\${tag}>\${collapse ? "" : "\\n"}\`
   }
   removeCssStumpNode() {
    return this.removeStumpNode()
@@ -16687,28 +16646,28 @@ htmlTagNode
    return this.topDownArray.find(node => node._getUid() === guid)
   }
   addClassToStumpNode(className) {
-   const classNode = this.touchNode("class")
-   const words = classNode.getWordsFrom(1)
+   const classParser = this.touchNode("class")
+   const words = classParser.getWordsFrom(1)
    // note: we call add on shadow regardless, because at the moment stump may have gotten out of
    // sync with shadow, if things modified the dom. todo: cleanup.
    this.getShadow().addClassToShadow(className)
    if (words.includes(className)) return this
    words.push(className)
-   classNode.setContent(words.join(this.wordBreakSymbol))
+   classParser.setContent(words.join(this.wordBreakSymbol))
    return this
   }
   removeClassFromStumpNode(className) {
-   const classNode = this.getNode("class")
-   if (!classNode) return this
-   const newClasses = classNode.words.filter(word => word !== className)
-   if (!newClasses.length) classNode.destroy()
-   else classNode.setContent(newClasses.join(" "))
+   const classParser = this.getNode("class")
+   if (!classParser) return this
+   const newClasses = classParser.words.filter(word => word !== className)
+   if (!newClasses.length) classParser.destroy()
+   else classParser.setContent(newClasses.join(" "))
    this.getShadow().removeClassFromShadow(className)
    return this
   }
   stumpNodeHasClass(className) {
-   const classNode = this.getNode("class")
-   return classNode && classNode.words.includes(className) ? true : false
+   const classParser = this.getNode("class")
+   return classParser && classParser.words.includes(className) ? true : false
   }
   isStumpNodeCheckbox() {
    return this.get("type") === "checkbox"
@@ -16726,8 +16685,8 @@ htmlTagNode
   insertChildNode(text, index) {
    const singleNode = new TreeNode(text).getChildren()[0]
    const newNode = this.insertLineAndChildren(singleNode.getLine(), singleNode.childrenToString(), index)
-   const stumpNodeIndex = this.filter(node => node.isHtmlTagNode).indexOf(newNode)
-   this.getShadow().insertHtmlNode(newNode, stumpNodeIndex)
+   const stumpParserIndex = this.filter(node => node.isHtmlTagParser).indexOf(newNode)
+   this.getShadow().insertHtmlNode(newNode, stumpParserIndex)
    return newNode
   }
   isInputType() {
@@ -16748,18 +16707,18 @@ htmlTagNode
    return this._findStumpNodesByBase(firstWord)[0]
   }
   _findStumpNodesByBase(firstWord) {
-   return this.topDownArray.filter(node => node.doesExtend("htmlTagNode") && node.firstWord === firstWord)
+   return this.topDownArray.filter(node => node.doesExtend("htmlTagParser") && node.firstWord === firstWord)
   }
   hasLine(line) {
    return this.getChildren().some(node => node.getLine() === line)
   }
   findStumpNodesByChild(line) {
-   return this.topDownArray.filter(node => node.doesExtend("htmlTagNode") && node.hasLine(line))
+   return this.topDownArray.filter(node => node.doesExtend("htmlTagParser") && node.hasLine(line))
   }
   findStumpNodesWithClass(className) {
    return this.topDownArray.filter(
     node =>
-     node.doesExtend("htmlTagNode") &&
+     node.doesExtend("htmlTagParser") &&
      node.has("class") &&
      node
       .getNode("class")
@@ -16792,17 +16751,17 @@ htmlTagNode
   get asHtml() {
    return this._toHtml()
   }
-errorNode
- baseNodeType errorNode
-componentDefinitionNode
- extends htmlTagNode
+errorParser
+ baseParser errorParser
+componentDefinitionParser
+ extends htmlTagParser
  pattern ^[a-zA-Z0-9_]+Component
  cells componentTagNameCell
  javascript
   getTag() {
    return "div"
   }
-htmlAttributeNode
+htmlAttributeParser
  javascript
   _toHtml() {
    return ""
@@ -16811,29 +16770,29 @@ htmlAttributeNode
   getAttribute() {
    return \` \${this.firstWord}="\${this.content}"\`
   }
- boolean isAttributeNode true
+ boolean isAttributeParser true
  boolean isTileAttribute true
- catchAllNodeType errorNode
+ catchAllParser errorParser
  catchAllCellType attributeValueCell
  cells htmlAttributeNameCell
 stumpExtendedAttributeNameCell
  extends htmlAttributeNameCell
  enum collapse blurCommand changeCommand clickCommand contextMenuCommand doubleClickCommand keyUpCommand lineClickCommand lineShiftClickCommand shiftClickCommand
-stumpExtendedAttributeNode
- description Node types not present in HTML but included in stump.
- extends htmlAttributeNode
+stumpExtendedAttributeParser
+ description Parser types not present in HTML but included in stump.
+ extends htmlAttributeParser
  cells stumpExtendedAttributeNameCell
-lineOfHtmlContentNode
+lineOfHtmlContentParser
  boolean isTileAttribute true
- catchAllNodeType lineOfHtmlContentNode
+ catchAllParser lineOfHtmlContentParser
  catchAllCellType anyHtmlContentCell
  javascript
   getTextContent() {return this.getLine()}
-bernNode
+bernParser
  boolean isTileAttribute true
  // todo Rename this node type
  description This is a node where you can put any HTML content. It is called "bern" until someone comes up with a better name.
- catchAllNodeType lineOfHtmlContentNode
+ catchAllParser lineOfHtmlContentParser
  javascript
   _toHtml() {
    return this.childrenToString()
@@ -16843,10 +16802,10 @@ bernNode
     get handGrammarProgram() {
       return this.constructor.cachedHandGrammarProgramRoot
     }
-    static rootNodeTypeConstructor = stumpNode
+    static rootParser = stumpParser
   }
 
-  class blankLineNode extends GrammarBackedNode {
+  class blankLineParser extends GrammarBackedNode {
     get emptyCell() {
       return this.getWord(0)
     }
@@ -16858,299 +16817,299 @@ bernNode
     }
   }
 
-  class htmlTagNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(
+  class htmlTagParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(
         undefined,
-        Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {
-          blockquote: htmlTagNode,
-          colgroup: htmlTagNode,
-          datalist: htmlTagNode,
-          fieldset: htmlTagNode,
-          menuitem: htmlTagNode,
-          noscript: htmlTagNode,
-          optgroup: htmlTagNode,
-          progress: htmlTagNode,
-          styleTag: htmlTagNode,
-          template: htmlTagNode,
-          textarea: htmlTagNode,
-          titleTag: htmlTagNode,
-          address: htmlTagNode,
-          article: htmlTagNode,
-          caption: htmlTagNode,
-          details: htmlTagNode,
-          section: htmlTagNode,
-          summary: htmlTagNode,
-          button: htmlTagNode,
-          canvas: htmlTagNode,
-          dialog: htmlTagNode,
-          figure: htmlTagNode,
-          footer: htmlTagNode,
-          header: htmlTagNode,
-          hgroup: htmlTagNode,
-          iframe: htmlTagNode,
-          keygen: htmlTagNode,
-          legend: htmlTagNode,
-          object: htmlTagNode,
-          option: htmlTagNode,
-          output: htmlTagNode,
-          script: htmlTagNode,
-          select: htmlTagNode,
-          source: htmlTagNode,
-          strong: htmlTagNode,
-          aside: htmlTagNode,
-          embed: htmlTagNode,
-          input: htmlTagNode,
-          label: htmlTagNode,
-          meter: htmlTagNode,
-          param: htmlTagNode,
-          small: htmlTagNode,
-          table: htmlTagNode,
-          tbody: htmlTagNode,
-          tfoot: htmlTagNode,
-          thead: htmlTagNode,
-          track: htmlTagNode,
-          video: htmlTagNode,
-          abbr: htmlTagNode,
-          area: htmlTagNode,
-          base: htmlTagNode,
-          body: htmlTagNode,
-          code: htmlTagNode,
-          form: htmlTagNode,
-          head: htmlTagNode,
-          html: htmlTagNode,
-          link: htmlTagNode,
-          main: htmlTagNode,
-          mark: htmlTagNode,
-          menu: htmlTagNode,
-          meta: htmlTagNode,
-          ruby: htmlTagNode,
-          samp: htmlTagNode,
-          span: htmlTagNode,
-          time: htmlTagNode,
-          bdi: htmlTagNode,
-          bdo: htmlTagNode,
-          col: htmlTagNode,
-          del: htmlTagNode,
-          dfn: htmlTagNode,
-          div: htmlTagNode,
-          img: htmlTagNode,
-          ins: htmlTagNode,
-          kbd: htmlTagNode,
-          map: htmlTagNode,
-          nav: htmlTagNode,
-          pre: htmlTagNode,
-          rtc: htmlTagNode,
-          sub: htmlTagNode,
-          sup: htmlTagNode,
-          var: htmlTagNode,
-          wbr: htmlTagNode,
-          br: htmlTagNode,
-          dd: htmlTagNode,
-          dl: htmlTagNode,
-          dt: htmlTagNode,
-          em: htmlTagNode,
-          h1: htmlTagNode,
-          h2: htmlTagNode,
-          h3: htmlTagNode,
-          h4: htmlTagNode,
-          h5: htmlTagNode,
-          h6: htmlTagNode,
-          hr: htmlTagNode,
-          li: htmlTagNode,
-          ol: htmlTagNode,
-          rb: htmlTagNode,
-          rp: htmlTagNode,
-          rt: htmlTagNode,
-          td: htmlTagNode,
-          th: htmlTagNode,
-          tr: htmlTagNode,
-          ul: htmlTagNode,
-          a: htmlTagNode,
-          b: htmlTagNode,
-          i: htmlTagNode,
-          p: htmlTagNode,
-          q: htmlTagNode,
-          s: htmlTagNode,
-          u: htmlTagNode,
-          oncanplaythrough: htmlAttributeNode,
-          ondurationchange: htmlAttributeNode,
-          onloadedmetadata: htmlAttributeNode,
-          contenteditable: htmlAttributeNode,
-          "accept-charset": htmlAttributeNode,
-          onbeforeunload: htmlAttributeNode,
-          onvolumechange: htmlAttributeNode,
-          onbeforeprint: htmlAttributeNode,
-          oncontextmenu: htmlAttributeNode,
-          autocomplete: htmlAttributeNode,
-          onafterprint: htmlAttributeNode,
-          onhashchange: htmlAttributeNode,
-          onloadeddata: htmlAttributeNode,
-          onmousewheel: htmlAttributeNode,
-          onratechange: htmlAttributeNode,
-          ontimeupdate: htmlAttributeNode,
-          oncuechange: htmlAttributeNode,
-          ondragenter: htmlAttributeNode,
-          ondragleave: htmlAttributeNode,
-          ondragstart: htmlAttributeNode,
-          onloadstart: htmlAttributeNode,
-          onmousedown: htmlAttributeNode,
-          onmousemove: htmlAttributeNode,
-          onmouseover: htmlAttributeNode,
-          placeholder: htmlAttributeNode,
-          formaction: htmlAttributeNode,
-          "http-equiv": htmlAttributeNode,
-          novalidate: htmlAttributeNode,
-          ondblclick: htmlAttributeNode,
-          ondragover: htmlAttributeNode,
-          onkeypress: htmlAttributeNode,
-          onmouseout: htmlAttributeNode,
-          onpagehide: htmlAttributeNode,
-          onpageshow: htmlAttributeNode,
-          onpopstate: htmlAttributeNode,
-          onprogress: htmlAttributeNode,
-          spellcheck: htmlAttributeNode,
-          accesskey: htmlAttributeNode,
-          autofocus: htmlAttributeNode,
-          draggable: htmlAttributeNode,
-          maxlength: htmlAttributeNode,
-          oncanplay: htmlAttributeNode,
-          ondragend: htmlAttributeNode,
-          onemptied: htmlAttributeNode,
-          oninvalid: htmlAttributeNode,
-          onkeydown: htmlAttributeNode,
-          onmouseup: htmlAttributeNode,
-          onoffline: htmlAttributeNode,
-          onplaying: htmlAttributeNode,
-          onseeking: htmlAttributeNode,
-          onstalled: htmlAttributeNode,
-          onstorage: htmlAttributeNode,
-          onsuspend: htmlAttributeNode,
-          onwaiting: htmlAttributeNode,
-          translate: htmlAttributeNode,
-          autoplay: htmlAttributeNode,
-          controls: htmlAttributeNode,
-          datetime: htmlAttributeNode,
-          disabled: htmlAttributeNode,
-          download: htmlAttributeNode,
-          dropzone: htmlAttributeNode,
-          hreflang: htmlAttributeNode,
-          multiple: htmlAttributeNode,
-          onchange: htmlAttributeNode,
-          ononline: htmlAttributeNode,
-          onresize: htmlAttributeNode,
-          onscroll: htmlAttributeNode,
-          onsearch: htmlAttributeNode,
-          onseeked: htmlAttributeNode,
-          onselect: htmlAttributeNode,
-          onsubmit: htmlAttributeNode,
-          ontoggle: htmlAttributeNode,
-          onunload: htmlAttributeNode,
-          property: htmlAttributeNode,
-          readonly: htmlAttributeNode,
-          required: htmlAttributeNode,
-          reversed: htmlAttributeNode,
-          selected: htmlAttributeNode,
-          tabindex: htmlAttributeNode,
-          bgcolor: htmlAttributeNode,
-          charset: htmlAttributeNode,
-          checked: htmlAttributeNode,
-          colspan: htmlAttributeNode,
-          content: htmlAttributeNode,
-          default: htmlAttributeNode,
-          dirname: htmlAttributeNode,
-          enctype: htmlAttributeNode,
-          headers: htmlAttributeNode,
-          onabort: htmlAttributeNode,
-          onclick: htmlAttributeNode,
-          onended: htmlAttributeNode,
-          onerror: htmlAttributeNode,
-          onfocus: htmlAttributeNode,
-          oninput: htmlAttributeNode,
-          onkeyup: htmlAttributeNode,
-          onpaste: htmlAttributeNode,
-          onpause: htmlAttributeNode,
-          onreset: htmlAttributeNode,
-          onwheel: htmlAttributeNode,
-          optimum: htmlAttributeNode,
-          pattern: htmlAttributeNode,
-          preload: htmlAttributeNode,
-          rowspan: htmlAttributeNode,
-          sandbox: htmlAttributeNode,
-          srclang: htmlAttributeNode,
-          accept: htmlAttributeNode,
-          action: htmlAttributeNode,
-          border: htmlAttributeNode,
-          coords: htmlAttributeNode,
-          height: htmlAttributeNode,
-          hidden: htmlAttributeNode,
-          method: htmlAttributeNode,
-          onblur: htmlAttributeNode,
-          oncopy: htmlAttributeNode,
-          ondrag: htmlAttributeNode,
-          ondrop: htmlAttributeNode,
-          onload: htmlAttributeNode,
-          onplay: htmlAttributeNode,
-          poster: htmlAttributeNode,
-          srcdoc: htmlAttributeNode,
-          srcset: htmlAttributeNode,
-          target: htmlAttributeNode,
-          usemap: htmlAttributeNode,
-          align: htmlAttributeNode,
-          async: htmlAttributeNode,
-          class: htmlAttributeNode,
-          color: htmlAttributeNode,
-          defer: htmlAttributeNode,
-          ismap: htmlAttributeNode,
-          media: htmlAttributeNode,
-          muted: htmlAttributeNode,
-          oncut: htmlAttributeNode,
-          scope: htmlAttributeNode,
-          shape: htmlAttributeNode,
-          sizes: htmlAttributeNode,
-          start: htmlAttributeNode,
-          style: htmlAttributeNode,
-          title: htmlAttributeNode,
-          value: htmlAttributeNode,
-          width: htmlAttributeNode,
-          cols: htmlAttributeNode,
-          high: htmlAttributeNode,
-          href: htmlAttributeNode,
-          kind: htmlAttributeNode,
-          lang: htmlAttributeNode,
-          list: htmlAttributeNode,
-          loop: htmlAttributeNode,
-          name: htmlAttributeNode,
-          open: htmlAttributeNode,
-          rows: htmlAttributeNode,
-          size: htmlAttributeNode,
-          step: htmlAttributeNode,
-          type: htmlAttributeNode,
-          wrap: htmlAttributeNode,
-          alt: htmlAttributeNode,
-          dir: htmlAttributeNode,
-          for: htmlAttributeNode,
-          low: htmlAttributeNode,
-          max: htmlAttributeNode,
-          min: htmlAttributeNode,
-          rel: htmlAttributeNode,
-          src: htmlAttributeNode,
-          id: htmlAttributeNode,
-          lineShiftClickCommand: stumpExtendedAttributeNode,
-          contextMenuCommand: stumpExtendedAttributeNode,
-          doubleClickCommand: stumpExtendedAttributeNode,
-          shiftClickCommand: stumpExtendedAttributeNode,
-          lineClickCommand: stumpExtendedAttributeNode,
-          changeCommand: stumpExtendedAttributeNode,
-          clickCommand: stumpExtendedAttributeNode,
-          keyUpCommand: stumpExtendedAttributeNode,
-          blurCommand: stumpExtendedAttributeNode,
-          collapse: stumpExtendedAttributeNode,
-          bern: bernNode
+        Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), {
+          blockquote: htmlTagParser,
+          colgroup: htmlTagParser,
+          datalist: htmlTagParser,
+          fieldset: htmlTagParser,
+          menuitem: htmlTagParser,
+          noscript: htmlTagParser,
+          optgroup: htmlTagParser,
+          progress: htmlTagParser,
+          styleTag: htmlTagParser,
+          template: htmlTagParser,
+          textarea: htmlTagParser,
+          titleTag: htmlTagParser,
+          address: htmlTagParser,
+          article: htmlTagParser,
+          caption: htmlTagParser,
+          details: htmlTagParser,
+          section: htmlTagParser,
+          summary: htmlTagParser,
+          button: htmlTagParser,
+          canvas: htmlTagParser,
+          dialog: htmlTagParser,
+          figure: htmlTagParser,
+          footer: htmlTagParser,
+          header: htmlTagParser,
+          hgroup: htmlTagParser,
+          iframe: htmlTagParser,
+          keygen: htmlTagParser,
+          legend: htmlTagParser,
+          object: htmlTagParser,
+          option: htmlTagParser,
+          output: htmlTagParser,
+          script: htmlTagParser,
+          select: htmlTagParser,
+          source: htmlTagParser,
+          strong: htmlTagParser,
+          aside: htmlTagParser,
+          embed: htmlTagParser,
+          input: htmlTagParser,
+          label: htmlTagParser,
+          meter: htmlTagParser,
+          param: htmlTagParser,
+          small: htmlTagParser,
+          table: htmlTagParser,
+          tbody: htmlTagParser,
+          tfoot: htmlTagParser,
+          thead: htmlTagParser,
+          track: htmlTagParser,
+          video: htmlTagParser,
+          abbr: htmlTagParser,
+          area: htmlTagParser,
+          base: htmlTagParser,
+          body: htmlTagParser,
+          code: htmlTagParser,
+          form: htmlTagParser,
+          head: htmlTagParser,
+          html: htmlTagParser,
+          link: htmlTagParser,
+          main: htmlTagParser,
+          mark: htmlTagParser,
+          menu: htmlTagParser,
+          meta: htmlTagParser,
+          ruby: htmlTagParser,
+          samp: htmlTagParser,
+          span: htmlTagParser,
+          time: htmlTagParser,
+          bdi: htmlTagParser,
+          bdo: htmlTagParser,
+          col: htmlTagParser,
+          del: htmlTagParser,
+          dfn: htmlTagParser,
+          div: htmlTagParser,
+          img: htmlTagParser,
+          ins: htmlTagParser,
+          kbd: htmlTagParser,
+          map: htmlTagParser,
+          nav: htmlTagParser,
+          pre: htmlTagParser,
+          rtc: htmlTagParser,
+          sub: htmlTagParser,
+          sup: htmlTagParser,
+          var: htmlTagParser,
+          wbr: htmlTagParser,
+          br: htmlTagParser,
+          dd: htmlTagParser,
+          dl: htmlTagParser,
+          dt: htmlTagParser,
+          em: htmlTagParser,
+          h1: htmlTagParser,
+          h2: htmlTagParser,
+          h3: htmlTagParser,
+          h4: htmlTagParser,
+          h5: htmlTagParser,
+          h6: htmlTagParser,
+          hr: htmlTagParser,
+          li: htmlTagParser,
+          ol: htmlTagParser,
+          rb: htmlTagParser,
+          rp: htmlTagParser,
+          rt: htmlTagParser,
+          td: htmlTagParser,
+          th: htmlTagParser,
+          tr: htmlTagParser,
+          ul: htmlTagParser,
+          a: htmlTagParser,
+          b: htmlTagParser,
+          i: htmlTagParser,
+          p: htmlTagParser,
+          q: htmlTagParser,
+          s: htmlTagParser,
+          u: htmlTagParser,
+          oncanplaythrough: htmlAttributeParser,
+          ondurationchange: htmlAttributeParser,
+          onloadedmetadata: htmlAttributeParser,
+          contenteditable: htmlAttributeParser,
+          "accept-charset": htmlAttributeParser,
+          onbeforeunload: htmlAttributeParser,
+          onvolumechange: htmlAttributeParser,
+          onbeforeprint: htmlAttributeParser,
+          oncontextmenu: htmlAttributeParser,
+          autocomplete: htmlAttributeParser,
+          onafterprint: htmlAttributeParser,
+          onhashchange: htmlAttributeParser,
+          onloadeddata: htmlAttributeParser,
+          onmousewheel: htmlAttributeParser,
+          onratechange: htmlAttributeParser,
+          ontimeupdate: htmlAttributeParser,
+          oncuechange: htmlAttributeParser,
+          ondragenter: htmlAttributeParser,
+          ondragleave: htmlAttributeParser,
+          ondragstart: htmlAttributeParser,
+          onloadstart: htmlAttributeParser,
+          onmousedown: htmlAttributeParser,
+          onmousemove: htmlAttributeParser,
+          onmouseover: htmlAttributeParser,
+          placeholder: htmlAttributeParser,
+          formaction: htmlAttributeParser,
+          "http-equiv": htmlAttributeParser,
+          novalidate: htmlAttributeParser,
+          ondblclick: htmlAttributeParser,
+          ondragover: htmlAttributeParser,
+          onkeypress: htmlAttributeParser,
+          onmouseout: htmlAttributeParser,
+          onpagehide: htmlAttributeParser,
+          onpageshow: htmlAttributeParser,
+          onpopstate: htmlAttributeParser,
+          onprogress: htmlAttributeParser,
+          spellcheck: htmlAttributeParser,
+          accesskey: htmlAttributeParser,
+          autofocus: htmlAttributeParser,
+          draggable: htmlAttributeParser,
+          maxlength: htmlAttributeParser,
+          oncanplay: htmlAttributeParser,
+          ondragend: htmlAttributeParser,
+          onemptied: htmlAttributeParser,
+          oninvalid: htmlAttributeParser,
+          onkeydown: htmlAttributeParser,
+          onmouseup: htmlAttributeParser,
+          onoffline: htmlAttributeParser,
+          onplaying: htmlAttributeParser,
+          onseeking: htmlAttributeParser,
+          onstalled: htmlAttributeParser,
+          onstorage: htmlAttributeParser,
+          onsuspend: htmlAttributeParser,
+          onwaiting: htmlAttributeParser,
+          translate: htmlAttributeParser,
+          autoplay: htmlAttributeParser,
+          controls: htmlAttributeParser,
+          datetime: htmlAttributeParser,
+          disabled: htmlAttributeParser,
+          download: htmlAttributeParser,
+          dropzone: htmlAttributeParser,
+          hreflang: htmlAttributeParser,
+          multiple: htmlAttributeParser,
+          onchange: htmlAttributeParser,
+          ononline: htmlAttributeParser,
+          onresize: htmlAttributeParser,
+          onscroll: htmlAttributeParser,
+          onsearch: htmlAttributeParser,
+          onseeked: htmlAttributeParser,
+          onselect: htmlAttributeParser,
+          onsubmit: htmlAttributeParser,
+          ontoggle: htmlAttributeParser,
+          onunload: htmlAttributeParser,
+          property: htmlAttributeParser,
+          readonly: htmlAttributeParser,
+          required: htmlAttributeParser,
+          reversed: htmlAttributeParser,
+          selected: htmlAttributeParser,
+          tabindex: htmlAttributeParser,
+          bgcolor: htmlAttributeParser,
+          charset: htmlAttributeParser,
+          checked: htmlAttributeParser,
+          colspan: htmlAttributeParser,
+          content: htmlAttributeParser,
+          default: htmlAttributeParser,
+          dirname: htmlAttributeParser,
+          enctype: htmlAttributeParser,
+          headers: htmlAttributeParser,
+          onabort: htmlAttributeParser,
+          onclick: htmlAttributeParser,
+          onended: htmlAttributeParser,
+          onerror: htmlAttributeParser,
+          onfocus: htmlAttributeParser,
+          oninput: htmlAttributeParser,
+          onkeyup: htmlAttributeParser,
+          onpaste: htmlAttributeParser,
+          onpause: htmlAttributeParser,
+          onreset: htmlAttributeParser,
+          onwheel: htmlAttributeParser,
+          optimum: htmlAttributeParser,
+          pattern: htmlAttributeParser,
+          preload: htmlAttributeParser,
+          rowspan: htmlAttributeParser,
+          sandbox: htmlAttributeParser,
+          srclang: htmlAttributeParser,
+          accept: htmlAttributeParser,
+          action: htmlAttributeParser,
+          border: htmlAttributeParser,
+          coords: htmlAttributeParser,
+          height: htmlAttributeParser,
+          hidden: htmlAttributeParser,
+          method: htmlAttributeParser,
+          onblur: htmlAttributeParser,
+          oncopy: htmlAttributeParser,
+          ondrag: htmlAttributeParser,
+          ondrop: htmlAttributeParser,
+          onload: htmlAttributeParser,
+          onplay: htmlAttributeParser,
+          poster: htmlAttributeParser,
+          srcdoc: htmlAttributeParser,
+          srcset: htmlAttributeParser,
+          target: htmlAttributeParser,
+          usemap: htmlAttributeParser,
+          align: htmlAttributeParser,
+          async: htmlAttributeParser,
+          class: htmlAttributeParser,
+          color: htmlAttributeParser,
+          defer: htmlAttributeParser,
+          ismap: htmlAttributeParser,
+          media: htmlAttributeParser,
+          muted: htmlAttributeParser,
+          oncut: htmlAttributeParser,
+          scope: htmlAttributeParser,
+          shape: htmlAttributeParser,
+          sizes: htmlAttributeParser,
+          start: htmlAttributeParser,
+          style: htmlAttributeParser,
+          title: htmlAttributeParser,
+          value: htmlAttributeParser,
+          width: htmlAttributeParser,
+          cols: htmlAttributeParser,
+          high: htmlAttributeParser,
+          href: htmlAttributeParser,
+          kind: htmlAttributeParser,
+          lang: htmlAttributeParser,
+          list: htmlAttributeParser,
+          loop: htmlAttributeParser,
+          name: htmlAttributeParser,
+          open: htmlAttributeParser,
+          rows: htmlAttributeParser,
+          size: htmlAttributeParser,
+          step: htmlAttributeParser,
+          type: htmlAttributeParser,
+          wrap: htmlAttributeParser,
+          alt: htmlAttributeParser,
+          dir: htmlAttributeParser,
+          for: htmlAttributeParser,
+          low: htmlAttributeParser,
+          max: htmlAttributeParser,
+          min: htmlAttributeParser,
+          rel: htmlAttributeParser,
+          src: htmlAttributeParser,
+          id: htmlAttributeParser,
+          lineShiftClickCommand: stumpExtendedAttributeParser,
+          contextMenuCommand: stumpExtendedAttributeParser,
+          doubleClickCommand: stumpExtendedAttributeParser,
+          shiftClickCommand: stumpExtendedAttributeParser,
+          lineClickCommand: stumpExtendedAttributeParser,
+          changeCommand: stumpExtendedAttributeParser,
+          clickCommand: stumpExtendedAttributeParser,
+          keyUpCommand: stumpExtendedAttributeParser,
+          blurCommand: stumpExtendedAttributeParser,
+          collapse: stumpExtendedAttributeParser,
+          bern: bernParser
         }),
         [
-          { regex: /^$/, nodeConstructor: blankLineNode },
-          { regex: /^[a-zA-Z0-9_]+Component/, nodeConstructor: componentDefinitionNode }
+          { regex: /^$/, parser: blankLineParser },
+          { regex: /^[a-zA-Z0-9_]+Component/, parser: componentDefinitionParser }
         ]
       )
     }
@@ -17160,7 +17119,7 @@ bernNode
     get anyHtmlContentCell() {
       return this.getWordsFrom(1)
     }
-    isHtmlTagNode = true
+    isHtmlTagParser = true
     getTag() {
       // we need to remove the "Tag" bit to handle the style and title attribute/tag conflict.
       const firstWord = this.firstWord
@@ -17189,23 +17148,25 @@ bernNode
     get domElement() {
       var elem = document.createElement(this.getTag())
       elem.setAttribute("stumpUid", this._getUid())
-      this.filter(node => node.isAttributeNode).forEach(child => elem.setAttribute(child.firstWord, child.content))
+      this.filter(node => node.isAttributeParser).forEach(child => elem.setAttribute(child.firstWord, child.content))
       elem.innerHTML = this.has("bern") ? this.getNode("bern").childrenToString() : this._getOneLiner()
-      this.filter(node => node.isHtmlTagNode).forEach(child => elem.appendChild(child.domElement))
+      this.filter(node => node.isHtmlTagParser).forEach(child => elem.appendChild(child.domElement))
       return elem
     }
     _toHtml(indentCount, withSuid) {
       const tag = this.getTag()
       const children = this.map(child => child._toHtml(indentCount + 1, withSuid)).join("")
-      const attributesStr = this.filter(node => node.isAttributeNode)
+      const attributesStr = this.filter(node => node.isAttributeParser)
         .map(child => child.getAttribute())
         .join("")
       const indent = " ".repeat(indentCount)
       const collapse = this.shouldCollapse()
-      const indentForChildNodes = !collapse && this.getChildInstancesOfNodeTypeId("htmlTagNode").length > 0
+      const indentForChildParsers = !collapse && this.getChildInstancesOfParserId("htmlTagParser").length > 0
       const suid = withSuid ? ` stumpUid="${this._getUid()}"` : ""
       const oneLiner = this._getOneLiner()
-      return `${!collapse ? indent : ""}<${tag}${attributesStr}${suid}>${oneLiner}${indentForChildNodes ? "\n" : ""}${children}</${tag}>${collapse ? "" : "\n"}`
+      return `${!collapse ? indent : ""}<${tag}${attributesStr}${suid}>${oneLiner}${indentForChildParsers ? "\n" : ""}${children}</${tag}>${
+        collapse ? "" : "\n"
+      }`
     }
     removeCssStumpNode() {
       return this.removeStumpNode()
@@ -17218,28 +17179,28 @@ bernNode
       return this.topDownArray.find(node => node._getUid() === guid)
     }
     addClassToStumpNode(className) {
-      const classNode = this.touchNode("class")
-      const words = classNode.getWordsFrom(1)
+      const classParser = this.touchNode("class")
+      const words = classParser.getWordsFrom(1)
       // note: we call add on shadow regardless, because at the moment stump may have gotten out of
       // sync with shadow, if things modified the dom. todo: cleanup.
       this.getShadow().addClassToShadow(className)
       if (words.includes(className)) return this
       words.push(className)
-      classNode.setContent(words.join(this.wordBreakSymbol))
+      classParser.setContent(words.join(this.wordBreakSymbol))
       return this
     }
     removeClassFromStumpNode(className) {
-      const classNode = this.getNode("class")
-      if (!classNode) return this
-      const newClasses = classNode.words.filter(word => word !== className)
-      if (!newClasses.length) classNode.destroy()
-      else classNode.setContent(newClasses.join(" "))
+      const classParser = this.getNode("class")
+      if (!classParser) return this
+      const newClasses = classParser.words.filter(word => word !== className)
+      if (!newClasses.length) classParser.destroy()
+      else classParser.setContent(newClasses.join(" "))
       this.getShadow().removeClassFromShadow(className)
       return this
     }
     stumpNodeHasClass(className) {
-      const classNode = this.getNode("class")
-      return classNode && classNode.words.includes(className) ? true : false
+      const classParser = this.getNode("class")
+      return classParser && classParser.words.includes(className) ? true : false
     }
     isStumpNodeCheckbox() {
       return this.get("type") === "checkbox"
@@ -17257,8 +17218,8 @@ bernNode
     insertChildNode(text, index) {
       const singleNode = new TreeNode(text).getChildren()[0]
       const newNode = this.insertLineAndChildren(singleNode.getLine(), singleNode.childrenToString(), index)
-      const stumpNodeIndex = this.filter(node => node.isHtmlTagNode).indexOf(newNode)
-      this.getShadow().insertHtmlNode(newNode, stumpNodeIndex)
+      const stumpParserIndex = this.filter(node => node.isHtmlTagParser).indexOf(newNode)
+      this.getShadow().insertHtmlNode(newNode, stumpParserIndex)
       return newNode
     }
     isInputType() {
@@ -17279,16 +17240,16 @@ bernNode
       return this._findStumpNodesByBase(firstWord)[0]
     }
     _findStumpNodesByBase(firstWord) {
-      return this.topDownArray.filter(node => node.doesExtend("htmlTagNode") && node.firstWord === firstWord)
+      return this.topDownArray.filter(node => node.doesExtend("htmlTagParser") && node.firstWord === firstWord)
     }
     hasLine(line) {
       return this.getChildren().some(node => node.getLine() === line)
     }
     findStumpNodesByChild(line) {
-      return this.topDownArray.filter(node => node.doesExtend("htmlTagNode") && node.hasLine(line))
+      return this.topDownArray.filter(node => node.doesExtend("htmlTagParser") && node.hasLine(line))
     }
     findStumpNodesWithClass(className) {
-      return this.topDownArray.filter(node => node.doesExtend("htmlTagNode") && node.has("class") && node.getNode("class").words.includes(className))
+      return this.topDownArray.filter(node => node.doesExtend("htmlTagParser") && node.has("class") && node.getNode("class").words.includes(className))
     }
     getShadowClass() {
       return this.parent.getShadowClass()
@@ -17317,13 +17278,13 @@ bernNode
     }
   }
 
-  class errorNode extends GrammarBackedNode {
+  class errorParser extends GrammarBackedNode {
     getErrors() {
-      return this._getErrorNodeErrors()
+      return this._getErrorParserErrors()
     }
   }
 
-  class componentDefinitionNode extends htmlTagNode {
+  class componentDefinitionParser extends htmlTagParser {
     get componentTagNameCell() {
       return this.getWord(0)
     }
@@ -17332,9 +17293,9 @@ bernNode
     }
   }
 
-  class htmlAttributeNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(errorNode, undefined, undefined)
+  class htmlAttributeParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(errorParser, undefined, undefined)
     }
     get htmlAttributeNameCell() {
       return this.getWord(0)
@@ -17345,7 +17306,7 @@ bernNode
     get isTileAttribute() {
       return true
     }
-    get isAttributeNode() {
+    get isAttributeParser() {
       return true
     }
     _toHtml() {
@@ -17359,15 +17320,15 @@ bernNode
     }
   }
 
-  class stumpExtendedAttributeNode extends htmlAttributeNode {
+  class stumpExtendedAttributeParser extends htmlAttributeParser {
     get stumpExtendedAttributeNameCell() {
       return this.getWord(0)
     }
   }
 
-  class lineOfHtmlContentNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(lineOfHtmlContentNode, undefined, undefined)
+  class lineOfHtmlContentParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(lineOfHtmlContentParser, undefined, undefined)
     }
     get anyHtmlContentCell() {
       return this.getWordsFrom(0)
@@ -17380,9 +17341,9 @@ bernNode
     }
   }
 
-  class bernNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(lineOfHtmlContentNode, undefined, undefined)
+  class bernParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(lineOfHtmlContentParser, undefined, undefined)
     }
     get bernKeywordCell() {
       return this.getWord(0)
@@ -17398,16 +17359,16 @@ bernNode
     }
   }
 
-  window.stumpNode = stumpNode
+  window.stumpParser = stumpParser
 }
 
 
 {
-  class hakonNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(
-        selectorNode,
-        Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), { comment: commentNode }),
+  class hakonParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(
+        selectorParser,
+        Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), { comment: commentParser }),
         undefined
       )
     }
@@ -17416,7 +17377,7 @@ bernNode
     }
     compile() {
       return this.topDownArray
-        .filter(node => node.isSelectorNode)
+        .filter(node => node.isSelectorParser)
         .map(child => child.compile())
         .join("")
     }
@@ -17450,20 +17411,20 @@ commentCell
  highlightScope comment
 
 // Line Parsers
-hakonNode
+hakonParser
  root
  // todo Add variables?
  description A prefix Tree Language that compiles to CSS
  compilesTo css
- inScope commentNode
- catchAllNodeType selectorNode
+ inScope commentParser
+ catchAllParser selectorParser
  javascript
   getSelector() {
    return ""
   }
   compile() {
    return this.topDownArray
-    .filter(node => node.isSelectorNode)
+    .filter(node => node.isSelectorParser)
     .map(child => child.compile())
     .join("")
   }
@@ -17476,33 +17437,33 @@ hakonNode
    &:hover
     color blue
     font-size 17px
-propertyNode
+propertyParser
  catchAllCellType cssValueCell
- catchAllNodeType errorNode
+ catchAllParser errorParser
  javascript
   compile(spaces) {
    return \`\${spaces}\${this.firstWord}: \${this.content};\`
   }
  cells propertyKeywordCell
-variableNode
- extends propertyNode
+variableParser
+ extends propertyParser
  pattern --
-browserPrefixPropertyNode
- extends propertyNode
+browserPrefixPropertyParser
+ extends propertyParser
  pattern ^\\-\\w.+
  cells vendorPrefixPropertyKeywordCell
-errorNode
- catchAllNodeType errorNode
+errorParser
+ catchAllParser errorParser
  catchAllCellType errorCell
- baseNodeType errorNode
-commentNode
+ baseParser errorParser
+commentParser
  cells commentKeywordCell
  catchAllCellType commentCell
- catchAllNodeType commentNode
-selectorNode
- inScope propertyNode variableNode commentNode
- catchAllNodeType selectorNode
- boolean isSelectorNode true
+ catchAllParser commentParser
+selectorParser
+ inScope propertyParser variableParser commentParser
+ catchAllParser selectorParser
+ boolean isSelectorParser true
  javascript
   getSelector() {
    const parentSelector = this.parent.getSelector()
@@ -17515,23 +17476,23 @@ selectorNode
     .join(",")
   }
   compile() {
-   const propertyNodes = this.getChildren().filter(node => node.doesExtend("propertyNode"))
-   if (!propertyNodes.length) return ""
+   const propertyParsers = this.getChildren().filter(node => node.doesExtend("propertyParser"))
+   if (!propertyParsers.length) return ""
    const spaces = "  "
    return \`\${this.getSelector()} {
-  \${propertyNodes.map(child => child.compile(spaces)).join("\\n")}
+  \${propertyParsers.map(child => child.compile(spaces)).join("\\n")}
   }\\n\`
   }
  cells selectorCell`)
     get handGrammarProgram() {
       return this.constructor.cachedHandGrammarProgramRoot
     }
-    static rootNodeTypeConstructor = hakonNode
+    static rootParser = hakonParser
   }
 
-  class propertyNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(errorNode, undefined, undefined)
+  class propertyParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(errorParser, undefined, undefined)
     }
     get propertyKeywordCell() {
       return this.getWord(0)
@@ -17544,29 +17505,29 @@ selectorNode
     }
   }
 
-  class variableNode extends propertyNode {}
+  class variableParser extends propertyParser {}
 
-  class browserPrefixPropertyNode extends propertyNode {
+  class browserPrefixPropertyParser extends propertyParser {
     get vendorPrefixPropertyKeywordCell() {
       return this.getWord(0)
     }
   }
 
-  class errorNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(errorNode, undefined, undefined)
+  class errorParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(errorParser, undefined, undefined)
     }
     getErrors() {
-      return this._getErrorNodeErrors()
+      return this._getErrorParserErrors()
     }
     get errorCell() {
       return this.getWordsFrom(0)
     }
   }
 
-  class commentNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(commentNode, undefined, undefined)
+  class commentParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(commentParser, undefined, undefined)
     }
     get commentKeywordCell() {
       return this.getWord(0)
@@ -17576,231 +17537,231 @@ selectorNode
     }
   }
 
-  class selectorNode extends GrammarBackedNode {
-    createParser() {
-      return new TreeNode.Parser(
-        selectorNode,
-        Object.assign(Object.assign({}, super.createParser()._getFirstWordMapAsObject()), {
-          "border-bottom-right-radius": propertyNode,
-          "transition-timing-function": propertyNode,
-          "animation-iteration-count": propertyNode,
-          "animation-timing-function": propertyNode,
-          "border-bottom-left-radius": propertyNode,
-          "border-top-right-radius": propertyNode,
-          "border-top-left-radius": propertyNode,
-          "background-attachment": propertyNode,
-          "background-blend-mode": propertyNode,
-          "text-decoration-color": propertyNode,
-          "text-decoration-style": propertyNode,
-          "overscroll-behavior-x": propertyNode,
-          "-webkit-touch-callout": propertyNode,
-          "grid-template-columns": propertyNode,
-          "animation-play-state": propertyNode,
-          "text-decoration-line": propertyNode,
-          "animation-direction": propertyNode,
-          "animation-fill-mode": propertyNode,
-          "backface-visibility": propertyNode,
-          "background-position": propertyNode,
-          "border-bottom-color": propertyNode,
-          "border-bottom-style": propertyNode,
-          "border-bottom-width": propertyNode,
-          "border-image-outset": propertyNode,
-          "border-image-repeat": propertyNode,
-          "border-image-source": propertyNode,
-          "hanging-punctuation": propertyNode,
-          "list-style-position": propertyNode,
-          "transition-duration": propertyNode,
-          "transition-property": propertyNode,
-          "-webkit-user-select": propertyNode,
-          "animation-duration": propertyNode,
-          "border-image-slice": propertyNode,
-          "border-image-width": propertyNode,
-          "border-right-color": propertyNode,
-          "border-right-style": propertyNode,
-          "border-right-width": propertyNode,
-          "perspective-origin": propertyNode,
-          "-khtml-user-select": propertyNode,
-          "grid-template-rows": propertyNode,
-          "background-origin": propertyNode,
-          "background-repeat": propertyNode,
-          "border-left-color": propertyNode,
-          "border-left-style": propertyNode,
-          "border-left-width": propertyNode,
-          "column-rule-color": propertyNode,
-          "column-rule-style": propertyNode,
-          "column-rule-width": propertyNode,
-          "counter-increment": propertyNode,
-          "page-break-before": propertyNode,
-          "page-break-inside": propertyNode,
-          "grid-column-start": propertyNode,
-          "background-color": propertyNode,
-          "background-image": propertyNode,
-          "border-top-color": propertyNode,
-          "border-top-style": propertyNode,
-          "border-top-width": propertyNode,
-          "font-size-adjust": propertyNode,
-          "list-style-image": propertyNode,
-          "page-break-after": propertyNode,
-          "transform-origin": propertyNode,
-          "transition-delay": propertyNode,
-          "-ms-touch-action": propertyNode,
-          "-moz-user-select": propertyNode,
-          "animation-delay": propertyNode,
-          "background-clip": propertyNode,
-          "background-size": propertyNode,
-          "border-collapse": propertyNode,
-          "justify-content": propertyNode,
-          "list-style-type": propertyNode,
-          "text-align-last": propertyNode,
-          "text-decoration": propertyNode,
-          "transform-style": propertyNode,
-          "-ms-user-select": propertyNode,
-          "grid-column-end": propertyNode,
-          "grid-column-gap": propertyNode,
-          "animation-name": propertyNode,
-          "border-spacing": propertyNode,
-          "flex-direction": propertyNode,
-          "letter-spacing": propertyNode,
-          "outline-offset": propertyNode,
-          "padding-bottom": propertyNode,
-          "text-transform": propertyNode,
-          "vertical-align": propertyNode,
-          "grid-auto-flow": propertyNode,
-          "grid-row-start": propertyNode,
-          "align-content": propertyNode,
-          "border-bottom": propertyNode,
-          "border-radius": propertyNode,
-          "counter-reset": propertyNode,
-          "margin-bottom": propertyNode,
-          "outline-color": propertyNode,
-          "outline-style": propertyNode,
-          "outline-width": propertyNode,
-          "padding-right": propertyNode,
-          "text-overflow": propertyNode,
-          "justify-items": propertyNode,
-          "border-color": propertyNode,
-          "border-image": propertyNode,
-          "border-right": propertyNode,
-          "border-style": propertyNode,
-          "border-width": propertyNode,
-          "break-inside": propertyNode,
-          "caption-side": propertyNode,
-          "column-count": propertyNode,
-          "column-width": propertyNode,
-          "font-stretch": propertyNode,
-          "font-variant": propertyNode,
-          "margin-right": propertyNode,
-          "padding-left": propertyNode,
-          "table-layout": propertyNode,
-          "text-justify": propertyNode,
-          "unicode-bidi": propertyNode,
-          "word-spacing": propertyNode,
-          "touch-action": propertyNode,
-          "grid-row-end": propertyNode,
-          "grid-row-gap": propertyNode,
-          "justify-self": propertyNode,
-          "align-items": propertyNode,
-          "border-left": propertyNode,
-          "column-fill": propertyNode,
-          "column-rule": propertyNode,
-          "column-span": propertyNode,
-          "empty-cells": propertyNode,
-          "flex-shrink": propertyNode,
-          "font-family": propertyNode,
-          "font-weight": propertyNode,
-          "line-height": propertyNode,
-          "margin-left": propertyNode,
-          "padding-top": propertyNode,
-          perspective: propertyNode,
-          "text-indent": propertyNode,
-          "text-shadow": propertyNode,
-          "white-space": propertyNode,
-          "user-select": propertyNode,
-          "grid-column": propertyNode,
-          "align-self": propertyNode,
-          background: propertyNode,
-          "border-top": propertyNode,
-          "box-shadow": propertyNode,
-          "box-sizing": propertyNode,
-          "column-gap": propertyNode,
-          "flex-basis": propertyNode,
-          "@font-face": propertyNode,
-          "font-style": propertyNode,
-          "@keyframes": propertyNode,
-          "list-style": propertyNode,
-          "margin-top": propertyNode,
-          "max-height": propertyNode,
-          "min-height": propertyNode,
-          "overflow-x": propertyNode,
-          "overflow-y": propertyNode,
-          "text-align": propertyNode,
-          transition: propertyNode,
-          visibility: propertyNode,
-          "word-break": propertyNode,
-          animation: propertyNode,
-          direction: propertyNode,
-          "flex-flow": propertyNode,
-          "flex-grow": propertyNode,
-          "flex-wrap": propertyNode,
-          "font-size": propertyNode,
-          "max-width": propertyNode,
-          "min-width": propertyNode,
-          "nav-index": propertyNode,
-          "nav-right": propertyNode,
-          transform: propertyNode,
-          "word-wrap": propertyNode,
-          "nav-down": propertyNode,
-          "nav-left": propertyNode,
-          overflow: propertyNode,
-          position: propertyNode,
-          "tab-size": propertyNode,
-          "grid-gap": propertyNode,
-          "grid-row": propertyNode,
-          columns: propertyNode,
-          content: propertyNode,
-          display: propertyNode,
-          hyphens: propertyNode,
-          opacity: propertyNode,
-          outline: propertyNode,
-          padding: propertyNode,
-          "z-index": propertyNode,
-          border: propertyNode,
-          bottom: propertyNode,
-          cursor: propertyNode,
-          filter: propertyNode,
-          height: propertyNode,
-          margin: propertyNode,
-          "@media": propertyNode,
-          "nav-up": propertyNode,
-          quotes: propertyNode,
-          resize: propertyNode,
-          clear: propertyNode,
-          color: propertyNode,
-          float: propertyNode,
-          order: propertyNode,
-          right: propertyNode,
-          width: propertyNode,
-          clip: propertyNode,
-          fill: propertyNode,
-          flex: propertyNode,
-          font: propertyNode,
-          left: propertyNode,
-          all: propertyNode,
-          top: propertyNode,
-          gap: propertyNode,
-          "": propertyNode,
-          comment: commentNode
+  class selectorParser extends GrammarBackedNode {
+    createParserCombinator() {
+      return new TreeNode.ParserCombinator(
+        selectorParser,
+        Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), {
+          "border-bottom-right-radius": propertyParser,
+          "transition-timing-function": propertyParser,
+          "animation-iteration-count": propertyParser,
+          "animation-timing-function": propertyParser,
+          "border-bottom-left-radius": propertyParser,
+          "border-top-right-radius": propertyParser,
+          "border-top-left-radius": propertyParser,
+          "background-attachment": propertyParser,
+          "background-blend-mode": propertyParser,
+          "text-decoration-color": propertyParser,
+          "text-decoration-style": propertyParser,
+          "overscroll-behavior-x": propertyParser,
+          "-webkit-touch-callout": propertyParser,
+          "grid-template-columns": propertyParser,
+          "animation-play-state": propertyParser,
+          "text-decoration-line": propertyParser,
+          "animation-direction": propertyParser,
+          "animation-fill-mode": propertyParser,
+          "backface-visibility": propertyParser,
+          "background-position": propertyParser,
+          "border-bottom-color": propertyParser,
+          "border-bottom-style": propertyParser,
+          "border-bottom-width": propertyParser,
+          "border-image-outset": propertyParser,
+          "border-image-repeat": propertyParser,
+          "border-image-source": propertyParser,
+          "hanging-punctuation": propertyParser,
+          "list-style-position": propertyParser,
+          "transition-duration": propertyParser,
+          "transition-property": propertyParser,
+          "-webkit-user-select": propertyParser,
+          "animation-duration": propertyParser,
+          "border-image-slice": propertyParser,
+          "border-image-width": propertyParser,
+          "border-right-color": propertyParser,
+          "border-right-style": propertyParser,
+          "border-right-width": propertyParser,
+          "perspective-origin": propertyParser,
+          "-khtml-user-select": propertyParser,
+          "grid-template-rows": propertyParser,
+          "background-origin": propertyParser,
+          "background-repeat": propertyParser,
+          "border-left-color": propertyParser,
+          "border-left-style": propertyParser,
+          "border-left-width": propertyParser,
+          "column-rule-color": propertyParser,
+          "column-rule-style": propertyParser,
+          "column-rule-width": propertyParser,
+          "counter-increment": propertyParser,
+          "page-break-before": propertyParser,
+          "page-break-inside": propertyParser,
+          "grid-column-start": propertyParser,
+          "background-color": propertyParser,
+          "background-image": propertyParser,
+          "border-top-color": propertyParser,
+          "border-top-style": propertyParser,
+          "border-top-width": propertyParser,
+          "font-size-adjust": propertyParser,
+          "list-style-image": propertyParser,
+          "page-break-after": propertyParser,
+          "transform-origin": propertyParser,
+          "transition-delay": propertyParser,
+          "-ms-touch-action": propertyParser,
+          "-moz-user-select": propertyParser,
+          "animation-delay": propertyParser,
+          "background-clip": propertyParser,
+          "background-size": propertyParser,
+          "border-collapse": propertyParser,
+          "justify-content": propertyParser,
+          "list-style-type": propertyParser,
+          "text-align-last": propertyParser,
+          "text-decoration": propertyParser,
+          "transform-style": propertyParser,
+          "-ms-user-select": propertyParser,
+          "grid-column-end": propertyParser,
+          "grid-column-gap": propertyParser,
+          "animation-name": propertyParser,
+          "border-spacing": propertyParser,
+          "flex-direction": propertyParser,
+          "letter-spacing": propertyParser,
+          "outline-offset": propertyParser,
+          "padding-bottom": propertyParser,
+          "text-transform": propertyParser,
+          "vertical-align": propertyParser,
+          "grid-auto-flow": propertyParser,
+          "grid-row-start": propertyParser,
+          "align-content": propertyParser,
+          "border-bottom": propertyParser,
+          "border-radius": propertyParser,
+          "counter-reset": propertyParser,
+          "margin-bottom": propertyParser,
+          "outline-color": propertyParser,
+          "outline-style": propertyParser,
+          "outline-width": propertyParser,
+          "padding-right": propertyParser,
+          "text-overflow": propertyParser,
+          "justify-items": propertyParser,
+          "border-color": propertyParser,
+          "border-image": propertyParser,
+          "border-right": propertyParser,
+          "border-style": propertyParser,
+          "border-width": propertyParser,
+          "break-inside": propertyParser,
+          "caption-side": propertyParser,
+          "column-count": propertyParser,
+          "column-width": propertyParser,
+          "font-stretch": propertyParser,
+          "font-variant": propertyParser,
+          "margin-right": propertyParser,
+          "padding-left": propertyParser,
+          "table-layout": propertyParser,
+          "text-justify": propertyParser,
+          "unicode-bidi": propertyParser,
+          "word-spacing": propertyParser,
+          "touch-action": propertyParser,
+          "grid-row-end": propertyParser,
+          "grid-row-gap": propertyParser,
+          "justify-self": propertyParser,
+          "align-items": propertyParser,
+          "border-left": propertyParser,
+          "column-fill": propertyParser,
+          "column-rule": propertyParser,
+          "column-span": propertyParser,
+          "empty-cells": propertyParser,
+          "flex-shrink": propertyParser,
+          "font-family": propertyParser,
+          "font-weight": propertyParser,
+          "line-height": propertyParser,
+          "margin-left": propertyParser,
+          "padding-top": propertyParser,
+          perspective: propertyParser,
+          "text-indent": propertyParser,
+          "text-shadow": propertyParser,
+          "white-space": propertyParser,
+          "user-select": propertyParser,
+          "grid-column": propertyParser,
+          "align-self": propertyParser,
+          background: propertyParser,
+          "border-top": propertyParser,
+          "box-shadow": propertyParser,
+          "box-sizing": propertyParser,
+          "column-gap": propertyParser,
+          "flex-basis": propertyParser,
+          "@font-face": propertyParser,
+          "font-style": propertyParser,
+          "@keyframes": propertyParser,
+          "list-style": propertyParser,
+          "margin-top": propertyParser,
+          "max-height": propertyParser,
+          "min-height": propertyParser,
+          "overflow-x": propertyParser,
+          "overflow-y": propertyParser,
+          "text-align": propertyParser,
+          transition: propertyParser,
+          visibility: propertyParser,
+          "word-break": propertyParser,
+          animation: propertyParser,
+          direction: propertyParser,
+          "flex-flow": propertyParser,
+          "flex-grow": propertyParser,
+          "flex-wrap": propertyParser,
+          "font-size": propertyParser,
+          "max-width": propertyParser,
+          "min-width": propertyParser,
+          "nav-index": propertyParser,
+          "nav-right": propertyParser,
+          transform: propertyParser,
+          "word-wrap": propertyParser,
+          "nav-down": propertyParser,
+          "nav-left": propertyParser,
+          overflow: propertyParser,
+          position: propertyParser,
+          "tab-size": propertyParser,
+          "grid-gap": propertyParser,
+          "grid-row": propertyParser,
+          columns: propertyParser,
+          content: propertyParser,
+          display: propertyParser,
+          hyphens: propertyParser,
+          opacity: propertyParser,
+          outline: propertyParser,
+          padding: propertyParser,
+          "z-index": propertyParser,
+          border: propertyParser,
+          bottom: propertyParser,
+          cursor: propertyParser,
+          filter: propertyParser,
+          height: propertyParser,
+          margin: propertyParser,
+          "@media": propertyParser,
+          "nav-up": propertyParser,
+          quotes: propertyParser,
+          resize: propertyParser,
+          clear: propertyParser,
+          color: propertyParser,
+          float: propertyParser,
+          order: propertyParser,
+          right: propertyParser,
+          width: propertyParser,
+          clip: propertyParser,
+          fill: propertyParser,
+          flex: propertyParser,
+          font: propertyParser,
+          left: propertyParser,
+          all: propertyParser,
+          top: propertyParser,
+          gap: propertyParser,
+          "": propertyParser,
+          comment: commentParser
         }),
         [
-          { regex: /--/, nodeConstructor: variableNode },
-          { regex: /^\-\w.+/, nodeConstructor: browserPrefixPropertyNode }
+          { regex: /--/, parser: variableParser },
+          { regex: /^\-\w.+/, parser: browserPrefixPropertyParser }
         ]
       )
     }
     get selectorCell() {
       return this.getWord(0)
     }
-    get isSelectorNode() {
+    get isSelectorParser() {
       return true
     }
     getSelector() {
@@ -17814,16 +17775,16 @@ selectorNode
         .join(",")
     }
     compile() {
-      const propertyNodes = this.getChildren().filter(node => node.doesExtend("propertyNode"))
-      if (!propertyNodes.length) return ""
+      const propertyParsers = this.getChildren().filter(node => node.doesExtend("propertyParser"))
+      if (!propertyParsers.length) return ""
       const spaces = "  "
       return `${this.getSelector()} {
-${propertyNodes.map(child => child.compile(spaces)).join("\n")}
+${propertyParsers.map(child => child.compile(spaces)).join("\n")}
 }\n`
     }
   }
 
-  window.hakonNode = hakonNode
+  window.hakonParser = hakonParser
 }
 
 
@@ -18064,7 +18025,7 @@ class WillowMousetrap {
   bind() {}
 }
 // this one should have no document, window, $, et cetera.
-class AbstractWillowBrowser extends stumpNode {
+class AbstractWillowBrowser extends stumpParser {
   constructor(fullHtmlPageUrlIncludingProtocolAndFileName) {
     super(`${WillowConstants.tags.html}
  ${WillowConstants.tags.head}
@@ -18722,13 +18683,13 @@ class RealWillowBrowser extends AbstractWillowBrowser {
 }
 class AbstractTheme {
   hakonToCss(str) {
-    const hakonProgram = new hakonNode(str)
+    const hakonProgram = new hakonParser(str)
     // console.log(hakonProgram.getAllErrors())
     return hakonProgram.compile()
   }
 }
 class DefaultTheme extends AbstractTheme {}
-class AbstractTreeComponent extends GrammarBackedNode {
+class AbstractTreeComponentParser extends GrammarBackedNode {
   async startWhenReady() {
     if (this.isNodeJs()) return this.start()
     document.addEventListener(
@@ -18960,14 +18921,14 @@ class AbstractTreeComponent extends GrammarBackedNode {
  class ${this.getCssClassNames().join(" ")}`
   }
   getCssClassNames() {
-    return this._getJavascriptPrototypeChainUpTo("AbstractTreeComponent")
+    return this._getJavascriptPrototypeChainUpTo("AbstractTreeComponentParser")
   }
   treeComponentWillMount() {}
   async treeComponentDidMount() {
-    AbstractTreeComponent._mountedTreeComponents++
+    AbstractTreeComponentParser._mountedTreeComponents++
   }
   treeComponentDidUnmount() {
-    AbstractTreeComponent._mountedTreeComponents--
+    AbstractTreeComponentParser._mountedTreeComponents--
   }
   treeComponentWillUnmount() {}
   getNewestTimeToRender() {
@@ -18979,7 +18940,7 @@ class AbstractTreeComponent extends GrammarBackedNode {
   }
   async treeComponentDidUpdate() {}
   _getChildTreeComponents() {
-    return this.getChildrenByNodeConstructor(AbstractTreeComponent)
+    return this.getChildrenByParser(AbstractTreeComponentParser)
   }
   _hasChildrenTreeComponents() {
     return this._getChildTreeComponents().length > 0
@@ -18997,7 +18958,7 @@ class AbstractTreeComponent extends GrammarBackedNode {
   toPlainHtml(containerId) {
     return `<div id="${containerId}">
  <style>${this.getTheme().hakonToCss(this.toHakonCode())}</style>
-${new stumpNode(this.toStumpCode()).compile()}
+${new stumpParser(this.toStumpCode()).compile()}
 </div>`
   }
   _updateAndGetUpdateReport() {
@@ -19171,8 +19132,8 @@ ${new stumpNode(this.toStumpCode()).compile()}
     return new TreeNode(str)
   }
 }
-AbstractTreeComponent._mountedTreeComponents = 0
-class TreeComponentFrameworkDebuggerComponent extends AbstractTreeComponent {
+AbstractTreeComponentParser._mountedTreeComponents = 0
+class TreeComponentFrameworkDebuggerComponent extends AbstractTreeComponentParser {
   toHakonCode() {
     return `.TreeComponentFrameworkDebuggerComponent
  position fixed
@@ -19210,7 +19171,7 @@ class TreeComponentFrameworkDebuggerComponent extends AbstractTreeComponent {
 ${app.toString(3)}`
   }
 }
-class AbstractGithubTriangleComponent extends AbstractTreeComponent {
+class AbstractGithubTriangleComponent extends AbstractTreeComponentParser {
   constructor() {
     super(...arguments)
     this.githubLink = `https://github.com/treenotation/jtree`
@@ -19231,6 +19192,6 @@ class AbstractGithubTriangleComponent extends AbstractTreeComponent {
   }
 }
 window.AbstractGithubTriangleComponent = AbstractGithubTriangleComponent
-window.AbstractTreeComponent = AbstractTreeComponent
+window.AbstractTreeComponentParser = AbstractTreeComponentParser
 window.WillowBrowser = WillowBrowser
 window.TreeComponentFrameworkDebuggerComponent = TreeComponentFrameworkDebuggerComponent

@@ -1,8 +1,8 @@
 const { TreeNode } = require("jtree/products/TreeNode.js")
-const { AbstractTreeComponent } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const programCompiler = new (require("scroll-cli").DefaultScrollCompiler)
+/*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollCompiler)
 
 class CodeMirrorShim {
   setSize() {}
@@ -14,7 +14,7 @@ class CodeMirrorShim {
   }
 }
 
-class CodeEditorComponent extends AbstractTreeComponent {
+class CodeEditorComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
  class ${CodeEditorComponent.name}
@@ -26,8 +26,8 @@ class CodeEditorComponent extends AbstractTreeComponent {
   id codeErrorsConsole`
   }
 
-  createParser() {
-    return new TreeNode.Parser(undefined, {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(undefined, {
       value: TreeNode
     })
   }
@@ -46,7 +46,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
     const root = this.root
     // this._updateLocalStorage()
 
-    this.program = new programCompiler(code)
+    this.program = new scrollParser(code)
     const errs = this.program.getAllErrors()
 
     const errMessage = errs.length ? `${errs.length} errors` : "&nbsp;"
@@ -115,7 +115,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => programCompiler, undefined, CodeMirror)
+    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,

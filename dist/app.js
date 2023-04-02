@@ -1,9 +1,9 @@
 
 
 
-class BottomBarComponent extends AbstractTreeComponent {
-  createParser() {
-    return new TreeNode.Parser(undefined, {})
+class BottomBarComponent extends AbstractTreeComponentParser {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(undefined, {})
   }
 }
 
@@ -25,7 +25,7 @@ class CodeMirrorShim {
   }
 }
 
-class CodeEditorComponent extends AbstractTreeComponent {
+class CodeEditorComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
  class ${CodeEditorComponent.name}
@@ -37,8 +37,8 @@ class CodeEditorComponent extends AbstractTreeComponent {
   id codeErrorsConsole`
   }
 
-  createParser() {
-    return new TreeNode.Parser(undefined, {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(undefined, {
       value: TreeNode
     })
   }
@@ -57,7 +57,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
     const root = this.root
     // this._updateLocalStorage()
 
-    this.program = new programCompiler(code)
+    this.program = new scrollParser(code)
     const errs = this.program.getAllErrors()
 
     const errMessage = errs.length ? `${errs.length} errors` : "&nbsp;"
@@ -126,7 +126,7 @@ class CodeEditorComponent extends AbstractTreeComponent {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => programCompiler, undefined, CodeMirror)
+    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
@@ -171,7 +171,7 @@ window.CodeEditorComponent = CodeEditorComponent
 
 // prettier-ignore
 
-class githubTriangleComponent extends AbstractTreeComponent {
+class githubTriangleComponent extends AbstractTreeComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
     return `.AbstractGithubTriangleComponent
@@ -192,14 +192,12 @@ class githubTriangleComponent extends AbstractTreeComponent {
   }
 }
 
-class ErrorNode extends AbstractTreeComponent {
-  _isErrorNodeType() {
+class ErrorNode extends AbstractTreeComponentParser {
+  _isErrorParser() {
     return true
   }
   toStumpCode() {
-    console.error(
-      `Warning: EditorApp does not have a node type for "${this.getLine()}"`
-    )
+    console.error(`Warning: EditorApp does not have a node type for "${this.getLine()}"`)
     return `span
  style display: none;`
   }
@@ -211,16 +209,16 @@ const newSeed = () => {
   return _defaultSeed
 }
 
-class EditorApp extends AbstractTreeComponent {
-  createParser() {
-    return new TreeNode.Parser(ErrorNode, {
+class EditorApp extends AbstractTreeComponentParser {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(ErrorNode, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
-      ShowcaseComponent,
+      ShowcaseComponent
     })
   }
 
@@ -267,14 +265,12 @@ class EditorApp extends AbstractTreeComponent {
   }
 
   dumpErrorsCommand() {
-    const errs = new programCompiler(this.scrollCode).getAllErrors()
-    console.log(
-      new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200)
-    )
+    const errs = new scrollParser(this.scrollCode).getAllErrors()
+    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
   }
 
   get mainDocument() {
-    return new programCompiler(this.scrollCode)
+    return new scrollParser(this.scrollCode)
   }
 
   refreshHtml() {
@@ -287,7 +283,7 @@ class EditorApp extends AbstractTreeComponent {
     this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
-    Object.keys(keyboardShortcuts).forEach((key) => {
+    Object.keys(keyboardShortcuts).forEach(key => {
       willowBrowser.getMousetrap().bind(key, function(evt) {
         keyboardShortcuts[key]()
         // todo: handle the below when we need to
@@ -314,15 +310,14 @@ class EditorApp extends AbstractTreeComponent {
   _getKeyboardShortcuts() {
     return {
       d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
-      w: () => this.resizeEditorCommand(),
+      w: () => this.resizeEditorCommand()
     }
   }
 
   resizeEditorCommand(newSize = SIZES.EDITOR_WIDTH) {
     this.editor.setWord(1, newSize)
 
-    if (!this.isNodeJs())
-      localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
+    if (!this.isNodeJs()) localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
     this.renderAndGetRenderReport()
   }
 }
@@ -332,25 +327,16 @@ const SIZES = {}
 SIZES.BOARD_MARGIN = 20
 SIZES.TOP_BAR_HEIGHT = 28
 SIZES.BOTTOM_BAR_HEIGHT = 40
-SIZES.CHROME_HEIGHT =
-  SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
+SIZES.CHROME_HEIGHT = SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
 SIZES.TITLE_HEIGHT = 20
 
-SIZES.EDITOR_WIDTH = Math.floor(
-  typeof window !== "undefined" ? window.innerWidth / 2 : 400
-)
+SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (
-  simojiCode,
-  windowWidth = 1000,
-  windowHeight = 1000,
-  styleCode = ""
-) => {
+EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, styleCode = "") => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
-      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ??
-        SIZES.EDITOR_WIDTH
+      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
   const startState = new TreeNode(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
@@ -375,7 +361,7 @@ window.EditorApp = EditorApp
 
 
 
-class EditorHandleComponent extends AbstractTreeComponent {
+class EditorHandleComponent extends AbstractTreeComponentParser {
   get left() {
     return this.root.editor.width
   }
@@ -420,7 +406,7 @@ window.EditorHandleComponent = EditorHandleComponent
 
 
 
-class ExportComponent extends AbstractTreeComponent {
+class ExportComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
  class ExportComponent
@@ -457,7 +443,7 @@ window.ExportComponent = ExportComponent
 
 
 
-class ShareComponent extends AbstractTreeComponent {
+class ShareComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
  class ShareComponent
@@ -483,7 +469,7 @@ window.ShareComponent = ShareComponent
 
 
 
-class ShowcaseComponent extends AbstractTreeComponent {
+class ShowcaseComponent extends AbstractTreeComponentParser {
   get html() {
     return this.root.completeHtml
   }
@@ -514,9 +500,9 @@ window.ShowcaseComponent = ShowcaseComponent
 
 
 
-class TopBarComponent extends AbstractTreeComponent {
-  createParser() {
-    return new TreeNode.Parser(undefined, {
+class TopBarComponent extends AbstractTreeComponentParser {
+  createParserCombinator() {
+    return new TreeNode.ParserCombinator(undefined, {
       ShareComponent,
       ExportComponent
     })
@@ -570,12 +556,12 @@ aboveAsCode
 * Who knows. Perhaps a large ontology of types of thought?
 
 spaceTable
- Format NodeTypes
+ Format Types
  HTML ~142
  Markdown ~192
  Scroll 1,000,000's`
 
-class BrowserGlue extends AbstractTreeComponent {
+class BrowserGlue extends AbstractTreeComponentParser {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
     const code = await this.fetchText(url)
     return code
@@ -610,7 +596,7 @@ class BrowserGlue extends AbstractTreeComponent {
   }
 
   async init(grammarCode, styleCode) {
-    window.programCompiler = new HandGrammarProgram(grammarCode).compileAndReturnRootConstructor()
+    window.scrollParser = new HandGrammarProgram(grammarCode).compileAndReturnRootParser()
     const scrollCode = await this.fetchCode()
 
     window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight, styleCode)
