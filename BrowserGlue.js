@@ -66,11 +66,11 @@ class BrowserGlue extends AbstractTreeComponentParser {
     return DEFAULT_PROGRAM
   }
 
-  async init(grammarCode, styleCode) {
+  async init(grammarCode) {
     window.scrollParser = new HandGrammarProgram(grammarCode).compileAndReturnRootParser()
     const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight, styleCode)
+    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)
     window.app.start()
     return window.app
   }

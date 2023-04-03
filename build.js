@@ -41,8 +41,7 @@ Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 // Scroll code
 const grammar = new DefaultScrollCompiler().definition.asString
 const AppConstants = {
-	grammar,
-	style: new ScrollFile().SCROLL_CSS
+	grammar
 }
 Disk.write(path.join(__dirname, "scroll.grammar"), grammar) // Compile grammar to one file for use in Tree Language Designer.
 Disk.write(path.join(__dirname, "dist", "constants.js"), `const AppConstants = ` + JSON.stringify(AppConstants))

@@ -65,14 +65,8 @@ class EditorApp extends AbstractTreeComponentParser {
     })
   }
 
-  style = ""
-
-  get styleTag() {
-    return `\n<style>${this.style}</style>`
-  }
-
   get completeHtml() {
-    return this.mainDocument.compile() + this.styleTag
+    return this.mainDocument.compile()
   }
 
   verbose = true
@@ -176,7 +170,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000, styleCode = "") => {
+EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
@@ -195,7 +189,6 @@ ${ShowcaseComponent.name}`)
   const app = new EditorApp(startState.asString)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
-  app.style = styleCode
   return app
 }
 
