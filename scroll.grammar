@@ -8,6 +8,8 @@
 
 
 
+
+
 anyCell
 urlCell
  highlightScope constant.language
@@ -127,7 +129,7 @@ abstractAftertextParser
    if (classLine && classLine.applyToParentElement) return classLine.content
    return this.defaultClassName
   }
-  defaultClassName = "scrollParagraphComponent"
+  defaultClassName = "scrollParagraph"
   compile(compileSettings) {
    this.compileSettings = compileSettings
    const { className } = this
@@ -274,9 +276,16 @@ sectionTitleParser
  javascript
   compile(compileSettings) {
    this.parent.sectionStack.push("</div>")
-   return `<div class="scrollSectionComponent">` + super.compile(compileSettings)
+   return `<div class="scrollSection">` + super.compile(compileSettings)
   }
   tag = "h3"
+questionAftertextParser
+ description A question.
+ extends sectionTitleParser
+ crux ?
+ javascript
+  tag = "h4"
+  defaultClassName = "scrollQuestion"
 titleParser
  description Title of the page for meta tags and also compiles to an html h1 tag.
  extends sectionTitleParser
@@ -291,7 +300,7 @@ titleParser
    newLine.destroy()
    return compiled
   }
-  defaultClassName = "scrollTitleComponent"
+  defaultClassName = "scrollTitle"
   tag = "h1"
 sectionSubTitleParser
  description Compiles to an html h4 tag.
@@ -299,13 +308,6 @@ sectionSubTitleParser
  crux ##
  javascript
   tag = "h4"
-questionAftertextParser
- description A question.
- extends sectionTitleParser
- crux ?
- javascript
-  tag = "h4"
-  defaultClassName = "scrollQuestionComponent"
 startColumnsParser
  extends abstractAftertextParser
  cruxFromId
@@ -320,7 +322,7 @@ startColumnsParser
    const COLUMN_GAP = 20
    const maxColumns = parseInt(this.getWord(1) ?? 10)
    const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
-   return this.parent.clearSectionStack() + `<div class="scrollColumnsComponent" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
+   return this.parent.clearSectionStack() + `<div class="scrollColumns" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
 endColumnsParser
  extends abstractAftertextParser
@@ -332,83 +334,6 @@ endColumnsParser
   }
   compileEmbeddedVersion() {
    return ""
-  }
-scrollCssTagParser
- extends abstractAftertextParser
- cruxFromId
- description Prints the Scroll CSS in an <style> tag. To not print the style tag use `scrollCss`.
- javascript
-  compile() {
-   return `<style>${this.parent.file.SCROLL_CSS}</style>`
-  }
-  compileEmbeddedVersion() {
-   return ""
-  }
-scrollCssParser
- extends scrollCssTagParser
- javascript
-  compile() {
-   return this.parent.file.SCROLL_CSS
-  }
-scrollFooterParser
- extends abstractAftertextParser
- cruxFromId
- javascript
-  compileEmbeddedVersion() {
-   return ""
-  }
-  compile() {
-   const file = this.parent.file
-   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
-   const closeContainerTag = "</div>"
-   return (
-    closeContainerTag +
-    file.compileStumpCode(`p
-   class scrollFileViewSourceUrlComponent doNotPrint
-   a View source
-    href ${viewSourceUrl}
-  div
-   class scrollFooterComponent doNotPrint
-   a ${SVGS.email}
-    href mailto:${file.email}
-   a ${SVGS.git}
-    href ${file.git}
-   a Built with Scroll v${SCROLL_VERSION}
-    href https://scroll.pub
-    class scrollCommunityLinkComponent`)
-   )
-  }
-scrollHeaderParser
- extends abstractAftertextParser
- cruxFromId
- description The simple default Scroll header.
- javascript
-  compileEmbeddedVersion() {
-   return ""
-  }
-  compile() {
-   const file = this.parent.file
-   const { SVGS, linkToPrevious, linkToNext } = file
-   let previousButton = ""
-   if (linkToPrevious)
-    previousButton = `a <
-    class scrollPrevPageLink
-    href ${linkToPrevious}`
-   let nextButton = ""
-   if (linkToNext)
-    nextButton = `a >
-    class scrollNextPageLink
-    href ${linkToNext}`
-   return file.compileStumpCode(`div
-   class scrollHeaderComponent doNotPrint
-   ${previousButton}
-   a ${SVGS.home}
-    class scrollTopLeftBarComponent
-    href ${file.get("homeLink") || "index.html"}
-   a ${SVGS.git}
-    class scrollTopRightBarComponent
-    href ${file.git}
-   ${nextButton}`)
   }
 horizontalRuleParser
  crux ---
@@ -494,9 +419,9 @@ snippetsParser
    const alreadyRequired = this.root.alreadyRequired
    const snippets = files.map(file => {
    const compileSettings = {relativePath: file.relativePath, alreadyRequired }
-   return `<div class="scrollSnippetContainerComponent">${this.makeSnippet(file.file, compileSettings)}</div>`
+   return `<div class="scrollSnippetContainer">${this.makeSnippet(file.file, compileSettings)}</div>`
    }).join("\n\n")
-   return `<div class="scrollColumnsComponent" style="column-width:35ch;">${snippets}</div>`
+   return `<div class="scrollColumns" style="column-width:35ch;">${snippets}</div>`
   }
 fullSnippetsParser
  extends snippetsParser
@@ -517,26 +442,28 @@ viewSourceParser
    const file = this.parent.file
    const { viewSourceUrl } = file
    return file.compileStumpCode(`p
-   class scrollFileViewSourceUrlComponent doNotPrint
+   class scrollViewSource doNotPrint
    a View source
     href ${viewSourceUrl}`)
   }
-authorParser
- description Prints an author byline with an optional link to a page for the author.
+byLineParser
+ description Prints a byline with the author's name and optionally a link to them.
  extends abstractScrollParser
  cruxFromId
  cells keywordCell urlCell
  catchAllCellType personNameCell
  example
-  comment With Link:
-  author https://breckyunits.com Breck Yunits
-  comment No link:
-  author  Breck Yunits
+  // With Link:
+  byLine https://breckyunits.com Breck Yunits
+  // No link:
+  byLine  Breck Yunits
  javascript
   compile() {
    const link = this.getWord(1)
-   return `<div class="scrollAuthor">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
+   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
   }
+authorParser
+ extends byLineParser
 chatParser
  description A dialogue between two people.
  catchAllParser chatLineParser
@@ -544,7 +471,7 @@ chatParser
  extends abstractScrollParser
  javascript
   compile() {
-   return this.map((line, index) => `<div class="scrollDialogueComponent ${index % 2 ? "scrollDialogueComponentRight" : "scrollDialogueComponentLeft"}"><span>${line.asString}</span></div>`).join("")
+   return this.map((line, index) => `<div class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>`).join("")
   }
 codeParser
  description A code block.
@@ -552,7 +479,7 @@ codeParser
  extends abstractScrollParser
  javascript
   compile() {
-   return `<code class="scrollCodeBlockComponent">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
+   return `<code class="scrollCodeBlock">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
   }
  cruxFromId
 codeWithLanguageParser
@@ -582,7 +509,7 @@ copyButtonsParser
   }
  string requireOnce
   <script>
-  document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollCodeBlockComponent").forEach(block =>
+  document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollCodeBlock").forEach(block =>
    {
     if (!navigator.clipboard) return
     const button = document.createElement("span")
@@ -590,7 +517,7 @@ copyButtonsParser
     block.appendChild(button)
     button.addEventListener("click", async () => {
       await navigator.clipboard.writeText(block.innerText)
-      button.classList.add("scrollCopied")
+      button.classList.add("scrollCopiedButton")
     })
    }
   ))
@@ -668,7 +595,7 @@ belowAsCodeParser
   }
   reverse = false
   compile() {
-   return `<code class="scrollCodeBlockComponent">${this.code.replace(/\</g, "&lt;")}</code>`
+   return `<code class="scrollCodeBlock">${this.code.replace(/\</g, "&lt;")}</code>`
   }
 aboveAsCodeParser
  description Print the Scroll code for the previous node.
@@ -699,6 +626,31 @@ cssParser
   compile() {
    return `<style>${this.content ?? ""}${this.childrenToString()}</style>`
   }
+dashboardParser
+ description Display key stats in a big font.
+ catchAllParser rowParser
+ cruxFromId
+ extends abstractScrollParser
+ example
+  dashboard
+   #2 Popularity
+   30 Years Old
+   $456 Revenue
+ javascript
+  get tableBody() {
+   const items = this.topDownArray
+   let str = ""
+   for (let i = 0; i < items.length; i = i + 3) {
+    str += this.makeRow(items.slice(i, i + 3))
+   }
+   return str
+  }
+  makeRow(items) {
+   return `<tr>` + items.map(node => `<td>${node.firstWord}<span>${node.content}</span></td>`).join("\n") + `</tr>\n`
+  }
+  compile() {
+   return `<table class="scrollDashboard">${this.tableBody}</table>`
+  }
 abstractTopLevelSingleMetaParser
  description Use these keywords once per file.
  extends abstractScrollParser
@@ -716,6 +668,353 @@ permalinkParser
  description When compiling, Scroll will save this file to {permalink}
  extends abstractTopLevelSingleMetaParser
  cells keywordCell permalinkCell
+abstractThemeParser
+ description Extend this to create a Scroll CSS theme.
+ extends abstractTopLevelSingleMetaParser
+ cruxFromId
+ // todo Provide a better way to indicate tagged or not
+ catchAllCellType stringCell
+ javascript
+  get tagged() {
+    return this.content !== "noTag"
+  }
+  compile() {
+   return this.tagged ? `<style>${this.css}</style>` : this.css
+  }
+  compileEmbeddedVersion() {
+   return ""
+  }
+gazetteThemeParser
+ description The default Scroll theme.
+ extends abstractThemeParser
+ javascript
+  get css() {
+    if (this.constructor._cachedCss)
+      return this.constructor._cachedCss
+    const hakonParser = this.hakonParser
+    this.constructor._cachedCss = new hakonParser([this.hakonReset, this.hakonStandardStyles, this.hakonCustomElements].join("\n")).compile()
+    return this.constructor._cachedCss
+  }
+  get hakonParser() {
+    if (this.isNodeJs())
+      return require("jtree/products/hakon.nodejs.js")
+    return hakonParser
+  }
+ // CSS Reset
+ string hakonReset
+  html,body,div,span,h1,h2,h3,h4,p,ol,ul,li,table,figure
+   margin 0
+   padding 0
+   border 0
+   vertical-align baseline
+   border-spacing 0
+  li
+   list-style-position inside
+   margin-top .4em
+   line-height 1.2em
+  a
+   text-decoration-color transparent
+  a:hover
+   text-decoration-color initial
+  sup,sub
+   vertical-align baseline
+   position relative
+   top -0.6em
+  sub
+   top 0.6em
+  html
+   padding 4px
+   background-color rgb(244,244,244)
+   font-family Exchange,Georgia,serif
+   color #000
+   font-size 14px
+   hyphens auto
+  p
+   margin-top 0.4em
+   line-height 1.4em
+  .scrollQuote
+   break-inside avoid
+   display block
+   margin .5em 0
+   padding .5em
+   background rgba(204,204,204,.5)
+   white-space pre-line
+   border-left .5em solid rgba(204,204,204,.8)
+  code
+   font-size 90%
+   background-color rgba(204,204,204,.5)
+   padding 2px 4px
+   border-radius 4px
+ // Header and Footer
+ string hakonCustomElements
+  .gazetteHeader
+   svg
+    width 30px
+    height 30px
+    fill rgba(204,204,204,.8)
+    &:hover
+     fill #333
+   a
+    color rgba(204,204,204,.8)
+    position absolute
+    font-size 30px
+    line-height 27px
+    text-decoration none
+    &:hover
+     color #333
+   .gazetteTopLeftBar
+    text-align left
+    left 25px
+   .gazetteTopRightBar
+    text-align right
+    right 25px
+   a.gazettePrevPageLink
+    left 3px
+   a.gazetteNextPageLink
+    right 3px
+  .gazetteFooter
+   margin-top 8px
+   padding-top 8px
+   text-align center
+   svg
+    width 30px
+    height 30px
+    fill rgba(204,204,204, .5)
+    padding 0 7px
+    &:hover
+     fill #333
+  .gazetteScrollLink
+   display block
+   font-family Verdana
+   font-weight 100
+   margin .5em
+   color rgba(204,204,204,.5)
+ // Styles for Scroll standard tags
+ string hakonStandardStyles
+  comment Main body of both pages is similar
+  .scrollColumns
+   column-count auto
+   column-fill balance
+   column-width 35ch
+   column-gap 20px
+   padding-left 20px
+   padding-right 20px
+   margin auto
+  comment On group pages add some spacing around files
+  .scrollSnippetContainer
+   padding 1ch 0
+   break-inside avoid
+   text-align justify
+  .scrollTitle
+   text-align center
+   margin-bottom .25em
+   a
+    color #000
+  .scrollDateline
+   font-style italic
+   font-size 80%
+  .scrollSection
+   break-inside avoid
+   h3
+    margin-top 1em
+    text-align center
+   h4
+    margin-top 1em
+    text-align center
+  h4.scrollQuestion
+   text-align left
+  .scrollNoteLink
+   opacity .4
+  
+  .scrollHoverNote
+   text-decoration underline dashed 1px rgba(0,0,0,.1)
+   cursor default
+  
+  .scrollCodeBlock
+   overflow auto
+   font-size 80%
+   hyphens none
+   white-space pre
+   border-left .5em solid rgba(204,204,204,.8)
+   break-inside avoid
+   display block
+   margin .5em 0
+   padding .5em
+   border-radius 0
+   position relative
+  .scrollCodeBlock:hover
+   .scrollCopyButton
+    opacity .5
+   .scrollCopyButton:hover
+    opacity .8
+   .scrollCopyButton:active
+    opacity 1
+  .scrollCopyButton
+   position absolute
+   top 2px
+   right 2px
+   font-size 14px
+   cursor pointer
+   opacity 0
+  .scrollCopyButton::after
+   content "[ ]"
+  .scrollCopiedButton::after
+   content "[✓]"
+  
+  .scrollTable
+   table-layout fixed
+   margin .5em 0
+   overflow hidden
+   font-size 80%
+   width 100%
+   hyphens none
+   border 1px solid rgba(224,224,224,.8)
+   td,th
+    padding 3px
+    overflow hidden
+   th
+    border-bottom 2px solid rgba(0,0,0,.6)
+    text-align left
+   tr:nth-child(even)
+    background rgba(224,224,224,.6)
+  
+  .scrollByLine
+   font-size 12px
+   font-style italic
+   margin 4px 0
+   text-align center
+  
+  comment Subtle "Article Source" link
+  .scrollViewSource
+   text-align center
+   font-size 80%
+   margin 0
+   margin-top 0.4em
+   line-height 1.4em
+   margin-bottom 1em
+   a
+    color #000
+  
+  .scrollContinueReadingLink
+   display block
+   text-align center
+  
+  .scrollCaptionedFigure
+   display block
+   text-align center
+   img
+    max-width 98%
+    height auto
+   figcaption
+    font-style italic
+  .scrollDashboard
+   width 100%
+   font-size 30px
+   text-align center
+   font-weight bold
+   break-inside avoid
+   margin-top 8px
+   margin-bottom 8px
+   td
+    width 33.3%
+    border 1px solid #e8e8e8
+   span
+    font-size 20p;
+    display block
+  .scrollChat
+   span
+    font-family Verdana
+    margin-top 5px
+    padding 5px 20px
+    border-radius 15px
+    display inline-block
+  .scrollChatLeft
+   text-align left
+   span
+    background rgba(204,204,204, .5)
+  .scrollChatRight
+   text-align right
+   span
+    color white
+    background rgb(0,132,255)
+  .scrollYouTubeHolder
+   position relative
+   width 100%
+   height 0
+   padding-bottom 56.25%
+  .scrollYouTubeEmbed
+   position absolute
+   top 0
+   left 0
+   width 100%
+   height 100%
+abstractThemeHeaderParser
+ cruxFromId
+ description A theme header.
+ extends abstractTopLevelSingleMetaParser
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+gazetteHeaderParser
+ extends abstractThemeHeaderParser
+ javascript
+  compile() {
+   const file = this.parent.file
+   const { SVGS, linkToPrevious, linkToNext } = file
+   let previousButton = ""
+   if (linkToPrevious)
+    previousButton = `a <
+    class gazettePrevPageLink
+    href ${linkToPrevious}`
+   let nextButton = ""
+   if (linkToNext)
+    nextButton = `a >
+    class gazetteNextPageLink
+    href ${linkToNext}`
+   return file.compileStumpCode(`div
+   class gazetteHeader doNotPrint
+   ${previousButton}
+   a ${SVGS.home}
+    class gazetteTopLeftBar
+    href ${file.get("homeLink") || "index.html"}
+   a ${SVGS.git}
+    class gazetteTopRightBar
+    href ${file.git}
+   ${nextButton}`)
+  }
+abstractThemeFooterParser
+ cruxFromId
+ description A theme footer.
+ extends abstractTopLevelSingleMetaParser
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+gazetteFooterParser
+ extends abstractThemeFooterParser
+ javascript
+  compile() {
+   const file = this.parent.file
+   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
+   const closeContainerTag = "</div>"
+   return (
+    closeContainerTag +
+    file.compileStumpCode(`p
+   class scrollViewSource doNotPrint
+   a View source
+    href ${viewSourceUrl}
+  div
+   class gazetteFooter doNotPrint
+   a ${SVGS.email}
+    href mailto:${file.email}
+   a ${SVGS.git}
+    href ${file.git}
+   a Built with Scroll v${SCROLL_VERSION}
+    href https://scroll.pub
+    class gazetteScrollLink`)
+   )
+  }
 groupsParser
  description Add this file to zero or more groups.
  cruxFromId
@@ -885,7 +1184,7 @@ abstractCaptionedParser
   compile(compileSettings) {
    const caption = this.getNode("caption")
    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
-   return `<figure class="scrollCaptionedComponent">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
+   return `<figure class="scrollCaptionedFigure">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
   }
 imageParser
  description An img tag.
@@ -922,7 +1221,7 @@ youTubeParser
  javascript
   getFigureContent() {
    const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
-   return `<div class="youTubeHolder"><iframe class="youTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+   return `<div class="scrollYouTubeHolder"><iframe class="scrollYouTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
 importParser
  description Import one file into another.
@@ -964,7 +1263,7 @@ keyboardNavParser
     else if (event.key === "ArrowRight")
       getLinks()[1].click()
    });</script>`
-   return `<div class="scrollKeyboardNav"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
+   return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
 quoteParser
  cruxFromId
@@ -973,7 +1272,7 @@ quoteParser
  extends abstractScrollParser
  javascript
   compile() {
-   return `<blockquote class="scrollQuoteComponent">${this.childrenToString()}</blockquote>`
+   return `<blockquote class="scrollQuote">${this.childrenToString()}</blockquote>`
   }
 readingListParser
  extends abstractScrollParser
@@ -1099,7 +1398,7 @@ abstractTableParser
     .join("\n")
   }
   compile() {
-   return `<table class="scrollTableComponent"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
+   return `<table class="scrollTable"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
   }
 tableParser
  description A table with a custom delimiter.
@@ -1146,31 +1445,6 @@ treeTableParser
     name Python
     example
      print "Hello world"
-kpiTableParser
- description Display key statistics in a big font.
- catchAllParser rowParser
- cruxFromId
- extends abstractScrollParser
- example
-  kpiTable
-   #2 Popularity
-   30 Years Old
-   $456 Revenue
- javascript
-  get tableBody() {
-   const items = this.topDownArray
-   let str = ""
-   for (let i = 0; i < items.length; i = i + 3) {
-    str += this.makeRow(items.slice(i, i + 3))
-   }
-   return str
-  }
-  makeRow(items) {
-   return `<tr>` + items.map(node => `<td>${node.firstWord}<span>${node.content}</span></td>`).join("\n") + `</tr>\n`
-  }
-  compile() {
-   return `<table class="scrollKpiTable">${this.tableBody}</table>`
-  }
 abstractAftertextAttributeParser
  cells keywordCell
  boolean isAttribute true
@@ -1422,7 +1696,7 @@ datelineParser
    } catch (err) {
     console.error(err)
    }
-   return [{ index: 0, string: `<span class="scrollDateComponent">${day} — </span>` }]
+   return [{ index: 0, string: `<span class="scrollDateline">${day} — </span>` }]
   }
 dayjsParser
  description Advanced directive that evals some Javascript code in an environment including "dayjs".

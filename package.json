@@ -10,7 +10,7 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "jtree": "^73.0.0",
-    "scroll-cli": "^66.0.0"
+    "scroll-cli": "^67.0.0"
   },
   "devDependencies": {
     "tap": "^15.0.9"
