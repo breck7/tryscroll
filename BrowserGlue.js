@@ -32,7 +32,7 @@ spaceTable
  Markdown ~192
  Scroll 1,000,000's
 
-gazetteTheme`
+gazetteCss`
 
 class BrowserGlue extends AbstractTreeComponentParser {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {

@@ -668,25 +668,25 @@ permalinkParser
  description When compiling, Scroll will save this file to {permalink}
  extends abstractTopLevelSingleMetaParser
  cells keywordCell permalinkCell
-abstractThemeParser
+abstractThemeCssParser
  description Extend this to create a Scroll CSS theme.
  extends abstractTopLevelSingleMetaParser
+ inScope tagsParser
  cruxFromId
- // todo Provide a better way to indicate tagged or not
  catchAllCellType stringCell
  javascript
-  get tagged() {
-    return this.content !== "noTag"
+  get useTags() {
+    return !(this.get("tags") === "false")
   }
   compile() {
-   return this.tagged ? `<style>${this.css}</style>` : this.css
+   return this.useTags ? `<style>${this.css}</style>` : this.css
   }
   compileEmbeddedVersion() {
    return ""
   }
-gazetteThemeParser
+gazetteCssParser
  description The default Scroll theme.
- extends abstractThemeParser
+ extends abstractThemeCssParser
  javascript
   get css() {
     if (this.constructor._cachedCss)
@@ -1905,6 +1905,10 @@ rowParser
    }
    return str
   }
+tagsParser
+ // Todo: there may be a bug with having scoped parsers in abstract classes not being available to child classes.
+ cells keywordCell booleanCell
+ cruxFromId
 treeRowContentParser
  description Any blob content in a cell.
  cells stringCell
