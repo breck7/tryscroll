@@ -1,3 +1,6 @@
+
+
+
 class BottomBarComponent extends AbstractTreeComponentParser {
   createParserCombinator() {
     return new TreeNode.ParserCombinator(undefined, {})
@@ -5,6 +8,10 @@ class BottomBarComponent extends AbstractTreeComponentParser {
 }
 
 window.BottomBarComponent = BottomBarComponent
+
+
+
+
 
 // prettier-ignore
 
@@ -149,7 +156,18 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
 window.CodeEditorComponent = CodeEditorComponent
 
+
 // prettier-ignore
+
+
+
+
+
+
+
+
+
+
 
 // prettier-ignore
 
@@ -333,6 +351,9 @@ ${ShowcaseComponent.name}`)
 
 window.EditorApp = EditorApp
 
+
+
+
 class EditorHandleComponent extends AbstractTreeComponentParser {
   get left() {
     return this.root.editor.width
@@ -375,6 +396,9 @@ class EditorHandleComponent extends AbstractTreeComponentParser {
 
 window.EditorHandleComponent = EditorHandleComponent
 
+
+
+
 class ExportComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
@@ -409,6 +433,9 @@ class ExportComponent extends AbstractTreeComponentParser {
 
 window.ExportComponent = ExportComponent
 
+
+
+
 class ShareComponent extends AbstractTreeComponentParser {
   toStumpCode() {
     return `div
@@ -431,6 +458,9 @@ class ShareComponent extends AbstractTreeComponentParser {
 }
 
 window.ShareComponent = ShareComponent
+
+
+
 
 class ShowcaseComponent extends AbstractTreeComponentParser {
   get html() {
@@ -457,6 +487,12 @@ class ShowcaseComponent extends AbstractTreeComponentParser {
 
 window.ShowcaseComponent = ShowcaseComponent
 
+
+
+
+
+
+
 class TopBarComponent extends AbstractTreeComponentParser {
   createParserCombinator() {
     return new TreeNode.ParserCombinator(undefined, {
@@ -467,6 +503,7 @@ class TopBarComponent extends AbstractTreeComponentParser {
 }
 
 window.TopBarComponent = TopBarComponent
+
 
 const LocalStorageKeys = {}
 
@@ -481,6 +518,12 @@ UrlKeys.url = "url"
 window.LocalStorageKeys = LocalStorageKeys
 
 window.UrlKeys = UrlKeys
+
+
+
+
+
+
 
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 
