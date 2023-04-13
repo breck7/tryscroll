@@ -78,7 +78,7 @@ abstractScrollParser
 abstractAftertextParser
  description Text followed by markup commands.
  extends abstractScrollParser
- inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser slashCommentParser
+ inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser commentParser
  example
   aftertext
    Hello brave new world
@@ -607,6 +607,7 @@ aboveAsCodeParser
 commentParser
  description Comments do not appear in the compiled HTML.
  catchAllCellType commentCell
+ cells commentCell
  extends abstractScrollParser
  cruxFromId
  javascript
@@ -617,6 +618,10 @@ commentParser
 slashCommentParser
  extends commentParser
  crux //
+counterpointParser
+ description A counterpoint. Will not show up in the compiled HTML.
+ extends commentParser
+ crux !
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
