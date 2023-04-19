@@ -52,6 +52,9 @@ delimiterCell
  highlightScope string
 htmlAttributesCell
  highlightScope comment
+htmlTagCell
+ highlightScope constant.language
+ enum div span p a img ul ol li h1 h2 h3 h4 h5 h6 header nav section article aside main footer input button form label select option textarea table tr td th tbody thead tfoot br hr meta link script style title code
 classNameCell
  highlightScope constant
 htmlIdCell
@@ -78,7 +81,7 @@ abstractScrollParser
 abstractAftertextParser
  description Text followed by markup commands.
  extends abstractScrollParser
- inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser commentParser
+ inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser aftertextTagParser commentParser
  example
   aftertext
    Hello brave new world
@@ -135,7 +138,8 @@ abstractAftertextParser
    this.compileSettings = compileSettings
    const { className } = this
    const classAttr = className ? `class="${this.className}"` : ""
-   return `<${this.tag} ${this.divAttributes}${classAttr}>${this.text}</${this.tag}>`
+   const tag = this.get("tag") || this.tag
+   return `<${tag} ${this.divAttributes}${classAttr}>${this.text}</${tag}>`
   }
   get divAttributes() {
    const attrs = this.filter(node => node.isAttribute)
@@ -145,10 +149,8 @@ thoughtParser
  // todo Perhaps rewrite this from scratch and move out of aftertext.
  extends abstractAftertextParser
  catchAllCellType stringCell
- example
-  * I had a _new_ thought.
  description A thought.
- crux *
+ cruxFromId
  javascript
   compile(compileSettings) {
    // Hacky, I know.
@@ -309,6 +311,11 @@ sectionSubTitleParser
  crux ##
  javascript
   tag = "h4"
+quickThoughtParser
+ crux *
+ extends thoughtParser
+ example
+  * I had a _new_ thought.
 startColumnsParser
  extends abstractAftertextParser
  cruxFromId
@@ -323,6 +330,7 @@ startColumnsParser
    const COLUMN_GAP = 20
    const maxColumns = parseInt(this.getWord(1) ?? 10)
    const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
+   // Starting the columns always first clears the section stack.
    return this.parent.clearSectionStack() + `<div class="scrollColumns" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
 endColumnsParser
@@ -821,6 +829,8 @@ gazetteCssParser
    font-size 80%
   .scrollSection
    break-inside avoid
+   h2
+    text-align center
    h3
     margin-top 1em
     text-align center
@@ -1467,12 +1477,25 @@ aftertextIdParser
  extends abstractAftertextAttributeParser
  cells keywordCell htmlIdCell
  single
+aftertextStyleParser
+ crux style
+ description Provide code for the generated HTML tag's "style" attribute.
+ extends abstractAftertextAttributeParser
+ cells keywordCell
+ catchAllCellType cssAnyCell
 aftertextHiddenParser
  crux hidden
  cells keywordCell
  description Do not compile this node to HTML.
  extends abstractAftertextAttributeParser
  single
+aftertextTagParser
+ cells keywordCell htmlTagCell
+ crux tag
+ javascript
+  compile() {
+   return ""
+  }
 abstractAftertextDirectiveParser
  cells keywordCell
  catchAllCellType stringCell
@@ -1846,7 +1869,7 @@ readingListItemParser
   }
 scrollParser
  extensions scroll
- description Tools for thought that compile to HTML.
+ description Tools for thought thats compile to HTML.
  root
  inScope abstractScrollParser blankLineParser
  catchAllParser catchAllParagraphParser
