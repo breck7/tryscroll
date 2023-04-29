@@ -235,10 +235,9 @@ blinkParser
     </script>`
   }
 catchAllParagraphParser
- description A catch all block. This may be removed in future versions.
+ description Any top level line that doesn't match a keyword is treated as a thought (aka paragraph) node.
  extends thoughtParser
  cells stringCell
- baseParser errorParser
  javascript
   get originalText() {
    return this.getLine() || ""
@@ -1515,6 +1514,7 @@ aftertextHiddenParser
  single
 aftertextTagParser
  cells keywordCell htmlTagCell
+ description Override the HTML tag that the compiled node will use.
  crux tag
  javascript
   compile() {
@@ -1576,26 +1576,31 @@ abstractMarkupParser
  inScope abstractMarkupParameterParser
 boldParser
  cruxFromId
+ description Bold the matching text.
  extends abstractMarkupParser
  javascript
   tag = "b"
 italicsParser
  cruxFromId
+ description Italicize the matching text.
  extends abstractMarkupParser
  javascript
   tag = "i"
 underlineParser
+ description Underline the matching text.
  cruxFromId
  extends abstractMarkupParser
  javascript
   tag = "u"
 aftertextCodeParser
+ description Wrap the matching text in a <code> span.
  crux code
  extends abstractMarkupParser
  javascript
   tag = "code"
 linkParser
  extends abstractMarkupParser
+ description Put the matching text in an <a> tag.
  cells keywordCell urlCell
  inScope linkTitleParser linkTargetParser commentParser
  cruxFromId
