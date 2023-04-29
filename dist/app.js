@@ -527,7 +527,7 @@ window.UrlKeys = UrlKeys
 
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 
-* Scroll is an extensible alternative to Markdown.
+Scroll is an extensible alternative to Markdown.
  https://scroll.pub Scroll
 
 quote
@@ -541,18 +541,16 @@ chat
 aboveAsCode
 
 ? What's the benefit for using today?
-
-* A simple plain text format that keeps your thoughts and data clean that is ready to _grow with you_.
+A simple plain text format that keeps your thoughts and data clean that is ready to _grow with you_.
 
 ? What might this become?
+Who knows. Perhaps a large ontology of types of thought?
 
-* Who knows. Perhaps a large ontology of types of thought?
-
-spaceTable
- Format Types
- HTML ~142
- Markdown ~192
- Scroll 1,000,000's
+table |
+ Format|Types
+ HTML|~142
+ Markdown|~192
+ Scroll|10,000's
 
 gazetteCss`
 
