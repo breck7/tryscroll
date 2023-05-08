@@ -11,6 +11,7 @@
 
 
 
+
 anyCell
 urlCell
  highlightScope constant.language
@@ -108,7 +109,8 @@ abstractAftertextParser
   replaceNotes(originalText) {
    this.root.footnotes.forEach((note, index) => {
     const needle = note.firstWord
-    if (originalText.includes(needle)) originalText = originalText.replace(needle, `<a href="#${note.anchorId}" class="scrollNoteLink" id="${note.linkBack()}"><sup>${note.noteId}</sup></a>`)
+    const {linkBack} = note
+    if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.anchorId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.noteId}</sup></a>`)
    })
    return originalText
   }
@@ -258,7 +260,7 @@ footnoteDefinitionParser
    // In the future we could allow common practices like author name
    return this.noteIndex
   }
-  linkBack() {
+  get linkBack() {
    return `noteUsage${this.noteIndex}`
   }
   get text() {
@@ -271,26 +273,38 @@ captionAftertextParser
  description An optional caption to accompany the resource.
  crux caption
  extends thoughtParser
-sectionTitleParser
- description Compiles to an html h3 tag.
+abstractHeaderParser
  extends thoughtParser
+ javascript
+  compile(compileSettings) {
+   this.parent.sectionStack.push("</div>")
+   return `<div class="scrollSection">` + super.compile(compileSettings)
+  }
+h4Parser
+ description Compiles to an html h4 tag.
+ extends abstractHeaderParser
+ crux ####
+ javascript
+  tag = "h4"
+questionAftertextParser
+ description A question.
+ extends h4Parser
+ crux ?
+ javascript
+  defaultClassName = "scrollQuestion"
+h1Parser
+ description Compiles to an html h1 tag.
+ extends abstractHeaderParser
  crux #
  javascript
   compile(compileSettings) {
    this.parent.sectionStack.push("</div>")
    return `<div class="scrollSection">` + super.compile(compileSettings)
   }
-  tag = "h3"
-questionAftertextParser
- description A question.
- extends sectionTitleParser
- crux ?
- javascript
-  tag = "h4"
-  defaultClassName = "scrollQuestion"
+  tag = "h1"
 titleParser
  description Title of the page for meta tags and also compiles to an html h1 tag.
- extends sectionTitleParser
+ extends abstractHeaderParser
  crux title
  javascript
   compile(compileSettings) {
@@ -304,12 +318,24 @@ titleParser
   }
   defaultClassName = "scrollTitle"
   tag = "h1"
-sectionSubTitleParser
- description Compiles to an html h4 tag.
- extends sectionTitleParser
+h2Parser
+ description Compiles to an html h2 tag.
+ extends abstractHeaderParser
  crux ##
  javascript
-  tag = "h4"
+  tag = "h2"
+h3Parser
+ description Compiles to an html h3 tag.
+ extends abstractHeaderParser
+ crux ###
+ javascript
+  tag = "h3"
+h5Parser
+ description Compiles to an html h5 tag.
+ extends abstractHeaderParser
+ crux #####
+ javascript
+  tag = "h5"
 quickThoughtParser
  crux *
  extends thoughtParser
@@ -479,7 +505,7 @@ chatParser
  extends abstractScrollParser
  javascript
   compile() {
-   return this.map((line, index) => `<div class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>`).join("")
+   return this.map((line, index) => `<div style="text-align: ${index % 2 ? "right" : "left"};" class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>`).join("")
   }
 codeParser
  description A code block.
@@ -711,6 +737,47 @@ abstractThemeCssParser
  inScope tagsParser
  cruxFromId
  catchAllCellType stringCell
+ string scrollStyles
+  figure
+   margin 0
+   padding 0
+  .scrollCaptionedFigure
+   display block
+   text-align center
+   img
+    max-width 98%
+    height auto
+   figcaption
+    font-style italic
+  .scrollCodeBlock
+   overflow auto
+   font-size 80%
+   hyphens none
+   white-space pre
+   break-inside avoid
+   display block
+   margin .5em 0
+   padding .5em
+   border-radius 0
+   position relative
+  .scrollCodeBlock:hover
+   .scrollCopyButton
+    opacity .5
+   .scrollCopyButton:hover
+    opacity .8
+   .scrollCopyButton:active
+    opacity 1
+  .scrollCopyButton
+   position absolute
+   top 2px
+   right 2px
+   font-size 14px
+   cursor pointer
+   opacity 0
+  .scrollCopyButton::after
+   content "[ ]"
+  .scrollCopiedButton::after
+   content "[✓]"
  javascript
   get useTags() {
     return !(this.get("tags") === "false")
@@ -721,6 +788,10 @@ abstractThemeCssParser
   compileEmbeddedVersion() {
    return ""
   }
+  get scrollCss() {
+    const hakonParser = this.root.hakonParser
+    return new hakonParser(this.scrollStyles).compile()
+  }
 gazetteCssParser
  description The default Scroll theme.
  extends abstractThemeCssParser
@@ -728,18 +799,13 @@ gazetteCssParser
   get css() {
     if (this.constructor._cachedCss)
       return this.constructor._cachedCss
-    const hakonParser = this.hakonParser
-    this.constructor._cachedCss = new hakonParser([this.hakonReset, this.hakonStandardStyles, this.hakonCustomElements].join("\n")).compile()
+    const hakonParser = this.root.hakonParser
+    this.constructor._cachedCss = this.scrollCss + new hakonParser([this.hakonReset, this.hakonStandardStyles].join("\n")).compile()
     return this.constructor._cachedCss
-  }
-  get hakonParser() {
-    if (this.isNodeJs())
-      return require("jtree/products/hakon.nodejs.js")
-    return hakonParser
   }
  // CSS Reset
  string hakonReset
-  html,body,div,span,h1,h2,h3,h4,p,ol,ul,li,table,figure
+  html,body,div,span,p,ol,ul,li,table,figure
    margin 0
    padding 0
    border 0
@@ -782,50 +848,6 @@ gazetteCssParser
    background-color rgba(204,204,204,.5)
    padding 2px 4px
    border-radius 4px
- // Header and Footer
- string hakonCustomElements
-  .gazetteHeader
-   svg
-    width 30px
-    height 30px
-    fill rgba(204,204,204,.8)
-    &:hover
-     fill #333
-   a
-    color rgba(204,204,204,.8)
-    position absolute
-    font-size 30px
-    line-height 27px
-    text-decoration none
-    &:hover
-     color #333
-   .gazetteTopLeftBar
-    text-align left
-    left 25px
-   .gazetteTopRightBar
-    text-align right
-    right 25px
-   a.gazettePrevPageLink
-    left 3px
-   a.gazetteNextPageLink
-    right 3px
-  .gazetteFooter
-   margin-top 8px
-   padding-top 8px
-   text-align center
-   svg
-    width 30px
-    height 30px
-    fill rgba(204,204,204, .5)
-    padding 0 7px
-    &:hover
-     fill #333
-  .gazetteScrollLink
-   display block
-   font-family Verdana
-   font-weight 100
-   margin .5em
-   color rgba(204,204,204,.5)
  // Styles for Scroll standard tags
  string hakonStandardStyles
   comment Main body of both pages is similar
@@ -842,9 +864,23 @@ gazetteCssParser
    padding 1ch 0
    break-inside avoid
    text-align justify
-  .scrollTitle
+  h1
+   font-size 18px
+   margin 10px 0
+  h2
+   font-size 16px
+   margin 10px 0
+  h3
+   font-size 14px
+   margin 10px 0
+  h4
+   margin 10px 0
+   font-size 14px
+  h1.scrollTitle
    text-align center
    margin-bottom .25em
+   margin-top 0
+   font-size 28px
    a
     color #000
   .scrollDateline
@@ -852,13 +888,13 @@ gazetteCssParser
    font-size 80%
   .scrollSection
    break-inside avoid
+   h1
+    text-align center
    h2
     text-align center
    h3
-    margin-top 1em
     text-align center
    h4
-    margin-top 1em
     text-align center
   h4.scrollQuestion
    text-align left
@@ -870,35 +906,7 @@ gazetteCssParser
    cursor default
   
   .scrollCodeBlock
-   overflow auto
-   font-size 80%
-   hyphens none
-   white-space pre
    border-left .5em solid rgba(204,204,204,.8)
-   break-inside avoid
-   display block
-   margin .5em 0
-   padding .5em
-   border-radius 0
-   position relative
-  .scrollCodeBlock:hover
-   .scrollCopyButton
-    opacity .5
-   .scrollCopyButton:hover
-    opacity .8
-   .scrollCopyButton:active
-    opacity 1
-  .scrollCopyButton
-   position absolute
-   top 2px
-   right 2px
-   font-size 14px
-   cursor pointer
-   opacity 0
-  .scrollCopyButton::after
-   content "[ ]"
-  .scrollCopiedButton::after
-   content "[✓]"
   
   .scrollTable
    table-layout fixed
@@ -938,14 +946,6 @@ gazetteCssParser
    display block
    text-align center
   
-  .scrollCaptionedFigure
-   display block
-   text-align center
-   img
-    max-width 98%
-    height auto
-   figcaption
-    font-style italic
   .scrollDashboard
    width 100%
    font-size 30px
@@ -968,11 +968,9 @@ gazetteCssParser
     border-radius 15px
     display inline-block
   .scrollChatLeft
-   text-align left
    span
     background rgba(204,204,204, .5)
   .scrollChatRight
-   text-align right
    span
     color white
     background rgb(0,132,255)
@@ -987,73 +985,301 @@ gazetteCssParser
    left 0
    width 100%
    height 100%
-abstractThemeHeaderParser
- cruxFromId
- description A theme header.
- extends abstractTopLevelSingleMetaParser
+tufteCssParser
+ description A theme built using Tufte CSS. https://github.com/edwardtufte/tufte-css
+ extends abstractThemeCssParser
  javascript
-  compileEmbeddedVersion() {
-   return ""
+  get css() {
+    return this.scrollCss + this.tufteCss
   }
-gazetteHeaderParser
- extends abstractThemeHeaderParser
- javascript
-  compile() {
-   const file = this.parent.file
-   const { SVGS, linkToPrevious, linkToNext } = file
-   let previousButton = ""
-   if (linkToPrevious)
-    previousButton = `a <
-    class gazettePrevPageLink
-    href ${linkToPrevious}`
-   let nextButton = ""
-   if (linkToNext)
-    nextButton = `a >
-    class gazetteNextPageLink
-    href ${linkToNext}`
-   return file.compileStumpCode(`div
-   class gazetteHeader doNotPrint
-   ${previousButton}
-   a ${SVGS.home}
-    class gazetteTopLeftBar
-    href ${file.get("homeLink") || "index.html"}
-   a ${SVGS.git}
-    class gazetteTopRightBar
-    href ${file.git}
-   ${nextButton}`)
+  tufteCss = `html {
+     font-size: 15px;
   }
-abstractThemeFooterParser
- cruxFromId
- description A theme footer.
- extends abstractTopLevelSingleMetaParser
- javascript
-  compileEmbeddedVersion() {
-   return ""
+   body {
+       width: 87.5%;
+       margin-left: auto;
+       margin-right: auto;
+       padding-left: 12.5%;
+       font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+       background-color: #fffff8;
+       color: #111;
+       max-width: 1400px;
+       counter-reset: sidenote-counter;
   }
-gazetteFooterParser
- extends abstractThemeFooterParser
- javascript
-  compile() {
-   const file = this.parent.file
-   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
-   const closeContainerTag = "</div>"
-   return (
-    closeContainerTag +
-    file.compileStumpCode(`p
-   class scrollViewSource doNotPrint
-   a View source
-    href ${viewSourceUrl}
-  div
-   class gazetteFooter doNotPrint
-   a ${SVGS.email}
-    href mailto:${file.email}
-   a ${SVGS.git}
-    href ${file.git}
-   a Built with Scroll v${SCROLL_VERSION}
-    href https://scroll.pub
-    class gazetteScrollLink`)
-   )
+  /* Adds dark mode */
+   @media (prefers-color-scheme: dark) {
+       body {
+           background-color: #151515;
+           color: #ddd;
+      }
   }
+   h1 {
+       font-weight: 400;
+       margin-top: 3rem;
+       margin-bottom: 1.5rem;
+       font-size: 2.4rem;
+       line-height: 1;
+  }
+  .scrollTitle a { text-decoration: none; font-size: 3.2rem;}
+   h2 {
+       font-style: italic;
+       font-weight: 400;
+       margin-top: 2.1rem;
+       margin-bottom: 1.4rem;
+       font-size: 2.2rem;
+       line-height: 1;
+  }
+   h3 {
+       font-style: italic;
+       font-weight: 400;
+       font-size: 1.7rem;
+       margin-top: 2rem;
+       margin-bottom: 1.4rem;
+       line-height: 1;
+  }
+   hr {
+       display: block;
+       height: 1px;
+       width: 55%;
+       border: 0;
+       border-top: 1px solid #ccc;
+       margin: 1em 0;
+       padding: 0;
+  }
+   p.subtitle {
+       font-style: italic;
+       margin-top: 1rem;
+       margin-bottom: 1rem;
+       font-size: 1.8rem;
+       display: block;
+       line-height: 1;
+  }
+   .numeral {
+       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+   .danger {
+       color: red;
+  }
+   article {
+       padding: 5rem 0rem;
+  }
+   section {
+       padding-top: 1rem;
+       padding-bottom: 1rem;
+  }
+   p, dl, ol, ul {
+       font-size: 1.4rem;
+       line-height: 2rem;
+  }
+   p {
+       margin-top: 1.4rem;
+       margin-bottom: 1.4rem;
+       padding-right: 0;
+       vertical-align: baseline;
+  }
+  /* Chapter Epigraphs */
+   div.epigraph {
+       margin: 5em 0;
+  }
+   div.epigraph > blockquote {
+       margin-top: 3em;
+       margin-bottom: 3em;
+  }
+   div.epigraph > blockquote, div.epigraph > blockquote > p {
+       font-style: italic;
+  }
+   div.epigraph > blockquote > footer {
+       font-style: normal;
+  }
+   div.epigraph > blockquote > footer > cite {
+       font-style: italic;
+  }
+  /* end chapter epigraphs styles */
+   blockquote {
+       font-size: 1.4rem;
+  }
+   blockquote p {
+       width: 55%;
+       margin-right: 40px;
+  }
+   blockquote footer {
+       width: 55%;
+       font-size: 1.1rem;
+       text-align: right;
+  }
+   section > p, section > footer, section > table {
+       width: 55%;
+  }
+  /* 50 + 5 == 55, to be the same width as paragraph */
+   section > dl, section > ol, section > ul {
+       width: 50%;
+       -webkit-padding-start: 5%;
+  }
+   dt:not(:first-child), li:not(:first-child) {
+       margin-top: 0.25rem;
+  }
+  /* Links: replicate underline that clears descenders */
+   a:link, a:visited {
+       color: inherit;
+  }
+  /* Sidenotes, margin notes, figures, captions */
+   img {
+       max-width: 100%;
+  }
+   .sidenote, .marginnote {
+       float: right;
+       clear: right;
+       margin-right: -60%;
+       width: 50%;
+       margin-top: 0.3rem;
+       margin-bottom: 0;
+       font-size: 1.1rem;
+       line-height: 1.3;
+       vertical-align: baseline;
+       position: relative;
+  }
+   .sidenote-number {
+       counter-increment: sidenote-counter;
+  }
+   .sidenote-number:after, .sidenote:before {
+       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+       position: relative;
+       vertical-align: baseline;
+  }
+   .sidenote-number:after {
+       content: counter(sidenote-counter);
+       font-size: 1rem;
+       top: -0.5rem;
+       left: 0.1rem;
+  }
+   .sidenote:before {
+       content: counter(sidenote-counter) " ";
+       font-size: 1rem;
+       top: -0.5rem;
+  }
+   blockquote .sidenote, blockquote .marginnote {
+       margin-right: -82%;
+       min-width: 59%;
+       text-align: left;
+  }
+   div.fullwidth, table.fullwidth {
+       width: 100%;
+  }
+   div.table-wrapper {
+       overflow-x: auto;
+       font-family: "Trebuchet MS", "Gill Sans", "Gill Sans MT", sans-serif;
+  }
+   .sans {
+       font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif;
+       letter-spacing: 0.03em;
+  }
+   code, pre > code {
+       font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+       font-size: 1rem;
+       line-height: 1.42;
+       -webkit-text-size-adjust: 100%;
+      /* Prevent adjustments of font size after orientation changes in iOS. See https://github.com/edwardtufte/tufte-css/issues/81#issuecomment-261953409 */
+  }
+   .sans > code {
+       font-size: 1.2rem;
+  }
+   h1 > code, h2 > code, h3 > code {
+       font-size: 0.8em;
+  }
+   .marginnote > code, .sidenote > code {
+       font-size: 1rem;
+  }
+   pre > code {
+       font-size: 0.9rem;
+       width: 52.5%;
+       margin-left: 2.5%;
+       overflow-x: auto;
+       display: block;
+  }
+   pre.fullwidth > code {
+       width: 90%;
+  }
+   .fullwidth {
+       max-width: 90%;
+       clear: both;
+  }
+   span.newthought {
+       font-variant: small-caps;
+       font-size: 1.2em;
+  }
+   input.margin-toggle {
+       display: none;
+  }
+   label.sidenote-number {
+       display: inline-block;
+       max-height: 2rem;
+      /* should be less than or equal to paragraph line-height */
+  }
+   label.margin-toggle:not(.sidenote-number) {
+       display: none;
+  }
+   .iframe-wrapper {
+       position: relative;
+       padding-bottom: 56.25%;
+      /* 16:9 */
+       padding-top: 25px;
+       height: 0;
+  }
+   .iframe-wrapper iframe {
+       position: absolute;
+       top: 0;
+       left: 0;
+       width: 100%;
+       height: 100%;
+  }
+   @media (max-width: 760px) {
+       body {
+           width: 84%;
+           padding-left: 8%;
+           padding-right: 8%;
+      }
+       hr, section > p, section > footer, section > table {
+           width: 100%;
+      }
+       pre > code {
+           width: 97%;
+      }
+       section > dl, section > ol, section > ul {
+           width: 90%;
+      }
+       blockquote {
+           margin-left: 1.5em;
+           margin-right: 0em;
+      }
+       blockquote p, blockquote footer {
+           width: 100%;
+      }
+       label.margin-toggle:not(.sidenote-number) {
+           display: inline;
+      }
+       .sidenote, .marginnote {
+           display: none;
+      }
+       .margin-toggle:checked + .sidenote, .margin-toggle:checked + .marginnote {
+           display: block;
+           float: left;
+           left: 1rem;
+           clear: both;
+           width: 95%;
+           margin: 1rem 2.5%;
+           vertical-align: baseline;
+           position: relative;
+      }
+       label {
+           cursor: pointer;
+      }
+       div.table-wrapper, table {
+           width: 85%;
+      }
+       img {
+           width: 100%;
+      }
+  }`
 groupsParser
  description Add this file to zero or more groups.
  cruxFromId
@@ -1119,6 +1345,120 @@ descriptionParser
  catchAllCellType stringCell
  description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
  extends abstractTopLevelSingleMetaParser
+pageFooterParser
+ cruxFromId
+ description A footer for your page.
+ extends abstractTopLevelSingleMetaParser
+ string hakon
+  .pageFooter
+   margin-top 8px
+   padding-top 8px
+   text-align center
+   svg
+    width 30px
+    height 30px
+    fill rgba(204,204,204, .5)
+    padding 0 7px
+    &:hover
+     fill #333
+  .pageFooterScrollLink
+   display block
+   font-family Verdana
+   font-weight 100
+   margin .5em
+   color rgba(204,204,204,.5)
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  get css() {
+    const hakonParser = this.root.hakonParser
+    return new hakonParser(this.hakon).compile()
+  }
+  compile() {
+   const file = this.parent.file
+   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
+   const closeContainerTag = "</div>"
+   return (
+    closeContainerTag + `<style>${this.css}</style>` +
+    file.compileStumpCode(`p
+   class scrollViewSource doNotPrint
+   a View source
+    href ${viewSourceUrl}
+  div
+   class pageFooter doNotPrint
+   a ${SVGS.email}
+    href mailto:${file.email}
+   a ${SVGS.git}
+    href ${file.git}
+   a Built with Scroll v${SCROLL_VERSION}
+    href https://scroll.pub
+    class pageFooterScrollLink
+    style display:block; margin: .5em;`)
+   )
+  }
+gazetteFooterParser
+ extends pageFooterParser
+ description DEPRECATED! Use "pageFooter" instead.
+pageHeaderParser
+ cruxFromId
+ description A header for your page.
+ extends abstractTopLevelSingleMetaParser
+ string hakon
+  .pageHeader
+   position absolute
+   top 4px
+   right 0
+   left 0
+   svg
+    width 30px
+    height 30px
+    fill rgba(204,204,204,.8)
+    &:hover
+     fill #333
+   a
+    color rgba(204,204,204,.8)
+    position absolute
+    font-size 30px
+    line-height 27px
+    text-decoration none
+    &:hover
+     color #333
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  get css() {
+    const hakonParser = this.root.hakonParser
+    return new hakonParser(this.hakon).compile()
+  }
+  compile() {
+   const file = this.parent.file
+   const { SVGS, linkToPrevious, linkToNext } = file
+   let previousButton = ""
+   if (linkToPrevious)
+    previousButton = `a <
+    style left:3px;
+    href ${linkToPrevious}`
+   let nextButton = ""
+   if (linkToNext)
+    nextButton = `a >
+    style right:3px;
+    href ${linkToNext}`
+   return `<style>${this.css}</style>` + file.compileStumpCode(`div
+   class pageHeader doNotPrint
+   ${previousButton}
+   a ${SVGS.home}
+    style text-align:left;left:25px;
+    href ${file.get("homeLink") || "index.html"}
+   a ${SVGS.git}
+    style text-align:right;right: 25px;
+    href ${file.git}
+   ${nextButton}`)
+  }
+gazetteHeaderParser
+ extends pageHeaderParser
+ description DEPRECATED! Use "pageHeader" instead.
 endSnippetParser
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractTopLevelSingleMetaParser
@@ -1917,6 +2257,11 @@ scrollParser
    const result = this.sectionStack.join("")
    this.sectionStack = []
    return result
+  }
+  get hakonParser() {
+    if (this.isNodeJs())
+      return require("jtree/products/hakon.nodejs.js")
+    return hakonParser
   }
   alreadyRequired = new Set()
   compileEmbeddedVersion(compileSettings) {
