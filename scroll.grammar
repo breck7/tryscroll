@@ -851,6 +851,8 @@ gazetteCssParser
  // Styles for Scroll standard tags
  string hakonStandardStyles
   comment Main body of both pages is similar
+  .scrollParagraph
+   text-align justify
   .scrollColumns
    column-count auto
    column-fill balance
@@ -1021,6 +1023,8 @@ tufteCssParser
        line-height: 1;
   }
   .scrollTitle a { text-decoration: none; font-size: 3.2rem;}
+  .scrollParagraph { text-align: justify; hyphens: auto;}
+  a.scrollNoteLink { text-decoration: none;}
    h2 {
        font-style: italic;
        font-weight: 400;
@@ -1341,6 +1345,10 @@ metaTagsParser
    name twitter:card
    content summary_large_image`)
   }
+htmlLangParser
+ cells keywordCell stringCell
+ description The lang attribute for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
+ extends abstractTopLevelSingleMetaParser
 descriptionParser
  catchAllCellType stringCell
  description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
@@ -1943,12 +1951,27 @@ linkParser
  description Put the matching text in an <a> tag.
  cells keywordCell urlCell
  inScope linkTitleParser linkTargetParser commentParser
+ programParser
+  description Anything here will be URI encoded and then appended to the link.
+  cruxFromId
+  cells keywordCell
+  catchAllParser programLinkParser
+  javascript
+   get encoded() {
+    return encodeURIComponent(this.childrenToString())
+   }
  cruxFromId
  javascript
   tag = "a"
   get link() {
+   const {baseLink} = this
+   if (this.has("program"))
+     return baseLink + this.getNode("program").encoded
+   return baseLink
+  }
+  get baseLink() {
    const link = this.getWord(1)
-   const isAbsoluteLink = link.startsWith("https://") || link.startsWith("http://")
+   const isAbsoluteLink = link.includes("://")
    if (isAbsoluteLink) return link
    const relativePath = this.parent.compileSettings?.relativePath || ""
    return relativePath + link
@@ -2145,6 +2168,8 @@ linkTitleParser
   * This report showed the treatment had a big impact.
    https://example.com/report This report.
     title The average growth in the treatment group was 14.2x higher than the control group.
+programLinkParser
+ catchAllCellType codeCell
 blankLineParser
  description Blank lines compile to nothing in the HTML.
  cells blankCell
