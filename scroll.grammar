@@ -107,10 +107,12 @@ abstractAftertextParser
    return shouldLinkify ? this.replaceNotes(Utils.linkify(originalText)) : originalText
   }
   replaceNotes(originalText) {
+   // Skip the replacements if there are no footnotes or the text has none.
+   if (!this.root.footnotes.length || !originalText.includes("^")) return originalText
    this.root.footnotes.forEach((note, index) => {
     const needle = note.firstWord
     const {linkBack} = note
-    if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.anchorId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.noteId}</sup></a>`)
+    if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.anchorId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.label}</sup></a>`)
    })
    return originalText
   }
@@ -209,7 +211,10 @@ listAftertextParser
    const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
    const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
    const { listType } = this
-   return (isStartOfList ? `<${listType} style="text-indent:${(this.getIndentLevel() - 1) * 20}px;">` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
+   return (isStartOfList ? `<${listType} style="text-indent:${(this.getIndentLevel() - 1) * 20}px;"${this.attributes}>` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
+  }
+  get attributes() {
+    return ""
   }
   tag = "li"
   listType = "ul"
@@ -221,6 +226,7 @@ orderedListAftertextParser
  pattern ^\d+\. 
  javascript
   listType = "ol"
+  get attributes() { return ` start="${this.getWord(0)}"`}
 blinkParser
  description Useful when you have a client that always needs to find 1 thing they would like you to change.
  extends thoughtParser
@@ -249,24 +255,29 @@ footnoteDefinitionParser
  extends thoughtParser
  boolean isFootnote true
  pattern ^\^.+$
+ labelParser
+  description If you want to show a custom label for a footnote. Default label is the note definition index.
+  cruxFromId
+  cells keywordCell
+  catchAllCellType stringCell
  javascript
   get divAttributes() {
    return super.divAttributes + ` id="${this.anchorId}"`
   }
   get anchorId() {
-   return `note${this.noteIndex}`
+   return `note${this.noteDefinitionIndex}`
   }
-  get noteId() {
+  get label() {
    // In the future we could allow common practices like author name
-   return this.noteIndex
+   return this.get("label") || this.noteDefinitionIndex
   }
   get linkBack() {
-   return `noteUsage${this.noteIndex}`
+   return `noteUsage${this.noteDefinitionIndex}`
   }
   get text() {
-   return `<a class="scrollNoteIndex" href="#noteUsage${this.noteIndex}">${this.noteIndex}</a> ${super.text}`
+   return `${this.label} ${super.text} <a class="scrollFootNoteUsageLink" href="#noteUsage${this.noteDefinitionIndex}">⮐</a>`
   }
-  get noteIndex() {
+  get noteDefinitionIndex() {
    return this.parent.footnotes.indexOf(this) + 1
   }
 captionAftertextParser
@@ -811,10 +822,11 @@ gazetteCssParser
    border 0
    vertical-align baseline
    border-spacing 0
+  ol,ul
+   padding-left 1em
   li
-   list-style-position inside
    margin-top .4em
-   line-height 1.2em
+   line-height 140%
   a
    text-decoration-color transparent
   a:hover
@@ -976,6 +988,11 @@ gazetteCssParser
    span
     color white
     background rgb(0,132,255)
+  .scrollFootNoteUsageLink
+   color rgba(204,204,204,.5)
+   &:hover
+    color #333
+    text-decoration none
   .scrollYouTubeHolder
    position relative
    width 100%
@@ -1375,6 +1392,9 @@ pageFooterParser
    font-weight 100
    margin .5em
    color rgba(204,204,204,.5)
+   &:hover
+    color #333
+    text-decoration none
  javascript
   compileEmbeddedVersion() {
    return ""
@@ -2067,8 +2087,9 @@ wrapsOnParser
   get shouldMatchAll() {
    return true
   }
+  wraps = [{delimiter: "`", tag: "code"},{delimiter: "*", tag: "strong"}, {delimiter: "_", tag: "em"}, {delimiter: "$", tag: "span", attributes: ' class="scrollKatex"'}]
   getMatches(text) {
-   return [this.runPattern(text, "`", "code"), this.runPattern(text, "*", "strong"), this.runPattern(text, "_", "em")].filter(i => i).flat()
+   return this.wraps.map(wrap => this.runPattern(text, wrap.delimiter, wrap.tag, wrap.attributes)).filter(i => i).flat()
   }
   runPattern(text, delimiter, tag, attributes = "") {
    const escapedDelimiter = delimiter.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
