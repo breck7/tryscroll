@@ -12,6 +12,9 @@
 
 
 
+wrapNameCell
+ description What wraps are available to turn on?
+ enum bold italics code katex
 anyCell
 urlCell
  highlightScope constant.language
@@ -158,9 +161,10 @@ thoughtParser
  javascript
   compile(compileSettings) {
    // Hacky, I know.
-   const newLine = this.appendLine("wrapsOn")
+   const newLine = this.has("wrapsOn") ? undefined : this.appendLine("wrapsOn")
    const compiled = super.compile(compileSettings)
-   newLine.destroy()
+   if (newLine)
+    newLine.destroy()
    return compiled
   }
 indentableThoughtParser
@@ -361,14 +365,20 @@ startColumnsParser
   compileEmbeddedVersion() {
    return ""
   }
+  columnWidth = 35
+  columnGap = 20
   compile() {
-   const columnWidth = 35
-   const COLUMN_GAP = 20
+   const {columnWidth, columnGap} = this
    const maxColumns = parseInt(this.getWord(1) ?? 10)
-   const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * COLUMN_GAP
+   const maxTotalWidth = maxColumns * columnWidth + (maxColumns - 1) * columnGap
    // Starting the columns always first clears the section stack.
    return this.parent.clearSectionStack() + `<div class="scrollColumns" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
+wideColumnsParser
+ extends startColumnsParser
+ description Start a double wide column.
+ javascript
+  columnWidth = 90
 endColumnsParser
  extends abstractAftertextParser
  cruxFromId
@@ -2083,11 +2093,19 @@ wrapsOnParser
  cruxFromId
  description Enable `code`, *bold*, and _italics_ rules.
  extends abstractAftertextDirectiveParser
+ catchAllCellType wrapNameCell
  javascript
   get shouldMatchAll() {
    return true
   }
-  wraps = [{delimiter: "$", tag: "span", attributes: ' class="scrollKatex"', exclusive: true}, {delimiter: "`", tag: "code", exclusive: true},{delimiter: "*", tag: "strong"}, {delimiter: "_", tag: "em"}]
+  get wraps() {
+    const wraps = [{delimiter: "`", tag: "code", exclusive: true, name: "code"},{delimiter: "*", tag: "strong", name: "bold"}, {delimiter: "_", tag: "em", name: "italics"}]
+    if (this.root.has("katex"))
+      wraps.unshift({delimiter: "$", tag: "span", attributes: ' class="scrollKatex"', exclusive: true, name: "katex"})
+    if (this.content)
+      return wraps.filter(wrap => this.content.includes(wrap.name))
+    return wraps
+  }
   getMatches(text) {
    const exclusives = []
    return this.wraps.map(wrap => this.runPattern(text, wrap, exclusives)).filter(i => i).flat()
