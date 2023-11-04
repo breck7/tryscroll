@@ -141,7 +141,11 @@ abstractAftertextParser
    return this.defaultClassName
   }
   defaultClassName = "scrollParagraph"
+  get isHidden() {
+    return this.has("hidden")
+  }
   compile(compileSettings) {
+   if (this.isHidden) return ""
    this.compileSettings = compileSettings
    const { className } = this
    const classAttr = className ? `class="${this.className}"` : ""
@@ -160,6 +164,7 @@ thoughtParser
  cruxFromId
  javascript
   compile(compileSettings) {
+   if (this.isHidden) return ""
    // Hacky, I know.
    const newLine = this.has("wrapsOn") ? undefined : this.appendLine("wrapsOn")
    const compiled = super.compile(compileSettings)
@@ -292,6 +297,7 @@ abstractHeaderParser
  extends thoughtParser
  javascript
   compile(compileSettings) {
+   if (this.isHidden) return ""
    this.parent.sectionStack.push("</div>")
    return `<div class="scrollSection">` + super.compile(compileSettings)
   }
@@ -312,10 +318,6 @@ h1Parser
  extends abstractHeaderParser
  crux #
  javascript
-  compile(compileSettings) {
-   this.parent.sectionStack.push("</div>")
-   return `<div class="scrollSection">` + super.compile(compileSettings)
-  }
   tag = "h1"
 titleParser
  description Title of the page for meta tags and also compiles to an html h1 tag.
@@ -1776,6 +1778,7 @@ printFeedParser
  example
   printFeed index
   printFeed cars/index
+  permalink feed.xml
  javascript
   compile() {
    const dayjs = require("dayjs")
