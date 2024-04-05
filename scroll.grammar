@@ -503,24 +503,6 @@ viewSourceParser
    a View source
     href ${viewSourceUrl}`)
   }
-byLineParser
- description Prints a byline with the author's name and optionally a link to them.
- extends abstractScrollParser
- cruxFromId
- cells keywordCell urlCell
- catchAllCellType personNameCell
- example
-  // With Link:
-  byLine https://breckyunits.com Breck Yunits
-  // No link:
-  byLine  Breck Yunits
- javascript
-  compile() {
-   const link = this.getWord(1)
-   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
-  }
-authorParser
- extends byLineParser
 chatParser
  description A dialogue between two people.
  catchAllParser chatLineParser
@@ -702,6 +684,28 @@ counterpointParser
  description A counterpoint. Will not show up in the compiled HTML.
  extends commentParser
  crux !
+thanksToParser
+ description A place to store data on reviewers who helped improve a post (and a reminder to seek feedback!). Does not appear in compiled HTML.
+ extends commentParser
+ cruxFromId
+byLineParser
+ description Prints a byline with the author's name and optionally a link to them.
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell urlCell
+ catchAllCellType personNameCell
+ example
+  // With Link:
+  byLine https://breckyunits.com Breck Yunits
+  // No link:
+  byLine  Breck Yunits
+ javascript
+  compile() {
+   const link = this.getWord(1)
+   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
+  }
+authorParser
+ extends byLineParser
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
@@ -711,6 +715,59 @@ cssParser
  javascript
   compile() {
    return `<style>${this.content ?? ""}${this.childrenToString()}</style>`
+  }
+printFeedParser
+ description Prints out the RSS feed for a group.
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell groupNameWithOptionalFolderCell
+ catchAllCellType groupNameWithOptionalFolderCell
+ example
+  printFeed index
+  printFeed cars/index
+  permalink feed.xml
+ javascript
+  compile() {
+   const dayjs = require("dayjs")
+   const file = this.root.file
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const { title, baseUrl, description } = file
+   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
+  <rss version="2.0">
+  <channel>
+   <title>${title}</title>
+   <link>${baseUrl}</link>
+   <description>${description}</description>
+   <lastBuildDate>${dayjs().format("ddd, DD MMM YYYY HH:mm:ss ZZ")}</lastBuildDate>
+   <language>en-us</language>
+  ${files.map(file => file.toRss()).join("\n")}
+  </channel>
+  </rss>`
+  }
+printCsvParser
+ description Prints out a group as a CSV.
+ extends printFeedParser
+ example
+  printCsv index
+  permalink posts.csv
+ javascript
+  compile() {
+   const file = this.root.file
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const header = file.csvFields
+   return `${header.join(",")}\n${files.map(file => file.toCsv()).join("\n")}`
+  }
+printSourceParser
+ description Prints out the source code for each file in a group.
+ extends printFeedParser
+ example
+  printSource index
+  permalink source.txt
+ javascript
+  compile() {
+   const file = this.root.file
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   return `${files.map(file => file.filePath + "\n " + file.originalScrollCode.replace(/\n/g, "\n ") ).join("\n")}`
   }
 dashboardParser
  description Display key stats in a big font.
@@ -1695,6 +1752,16 @@ keyboardNavParser
    });</script>`
    return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
+plainTextParser
+ description Use for plain text one liners and/or blocks of plain text.
+ cruxFromId
+ extends abstractScrollParser
+ catchAllParser plainTextLineParser
+ catchAllCellType stringCell
+ javascript
+  compile() {
+   return `${this.content ?? ""}${this.childrenToString()}`
+  }
 quoteParser
  cruxFromId
  description A blockquote.
@@ -1768,34 +1835,6 @@ replaceDefaultParser
  javascript
   compile() {
    return ""
-  }
-printFeedParser
- description Prints out the RSS feed for a group.
- extends abstractScrollParser
- cruxFromId
- cells keywordCell groupNameWithOptionalFolderCell
- catchAllCellType groupNameWithOptionalFolderCell
- example
-  printFeed index
-  printFeed cars/index
-  permalink feed.xml
- javascript
-  compile() {
-   const dayjs = require("dayjs")
-   const file = this.root.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
-   const { title, baseUrl, description } = file
-   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
-  <rss version="2.0">
-  <channel>
-   <title>${title}</title>
-   <link>${baseUrl}</link>
-   <description>${description}</description>
-   <lastBuildDate>${dayjs().format("ddd, DD MMM YYYY HH:mm:ss ZZ")}</lastBuildDate>
-   <language>en-us</language>
-  ${files.map(file => file.toRss()).join("\n")}
-  </channel>
-  </rss>`
   }
 abstractTableParser
  cruxFromId
@@ -2312,6 +2351,9 @@ longParser
  cells keywordCell floatCell
  cruxFromId
  single
+plainTextLineParser
+ catchAllCellType stringCell
+ catchAllParser plainTextLineParser
 quoteLineParser
  catchAllCellType anyCell
  catchAllParser quoteLineParser
@@ -2386,12 +2428,12 @@ rowParser
    while (column < columnCount) {
     const col = columns[column]
     column++
-    const content = columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]
+    const content = (columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]) ?? ""
     if (col.isLink) continue
     let tagged = content
     const link = words[col.linkIndex]
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
-    else if (content && content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
+    else if (content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
     str += `<td>${tagged}</td>\n`
    }
    return str
@@ -2423,12 +2465,12 @@ treeRowParser
      str += "<td></td>\n"
      return
     }
-    const content = node.length ? node.childrenToString() : node.content
+    const content = (node.length ? node.childrenToString() : node.content) ?? ""
     let tagged = ""
     const link = this.get(col.name + "Link")
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
-    else if (node.length) tagged = `<pre>${content ?? ""}</pre>`
-    else tagged = content ?? ""
+    else if (node.length) tagged = `<pre>${content}</pre>`
+    else tagged = content
     str += `<td>${tagged}</td>\n`
    })
    return str
