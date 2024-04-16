@@ -400,6 +400,15 @@ horizontalRuleParser
   compile() {
    return `<hr>`
   }
+dinkusParser
+ crux ***
+ description Prints a centered *
+ extends abstractAftertextParser
+ javascript
+  compile() {
+   return `<div class="dinkus"><span>${this.dinkus}</span></div>`
+  }
+  dinkus = "*"
 loopParser
  extends abstractAftertextParser
  cells keywordCell
@@ -827,6 +836,11 @@ abstractThemeCssParser
    margin-right 2px
    display block
    float left
+  .dinkus
+   text-align center
+   padding 1em
+   span
+    vertical-align sub
   .scrollCaptionedFigure
    display block
    text-align center
