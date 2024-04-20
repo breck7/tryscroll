@@ -12,6 +12,14 @@
 
 
 
+
+
+
+
+
+
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -264,6 +272,8 @@ footnoteDefinitionParser
  extends thoughtParser
  boolean isFootnote true
  pattern ^\^.+$
+ // We need to quickLinks back in scope because there is currently a bug in JTree/Grammar where if a parser extending a parent class has a child parser defined, then any regex parsers in the parent class will not be tested unless explicitly included in scope again.
+ inScope quickLinkParser
  labelParser
   description If you want to show a custom label for a footnote. Default label is the note definition index.
   cruxFromId
@@ -675,17 +685,19 @@ aboveAsCodeParser
  javascript
   method = "previous"
   reverse = true
-commentParser
+abstractCommentParser
  description Comments do not appear in the compiled HTML.
  catchAllCellType commentCell
  cells commentCell
  extends abstractScrollParser
- cruxFromId
  javascript
   compile() {
    return ``
   }
  catchAllParser commentLineParser
+commentParser
+ extends abstractCommentParser
+ cruxFromId
 slashCommentParser
  extends commentParser
  crux //
@@ -695,7 +707,7 @@ counterpointParser
  crux !
 thanksToParser
  description A place to store data on reviewers who helped improve a post (and a reminder to seek feedback!). Does not appear in compiled HTML.
- extends commentParser
+ extends abstractCommentParser
  cruxFromId
 byLineParser
  description Prints a byline with the author's name and optionally a link to them.
@@ -831,14 +843,14 @@ abstractThemeCssParser
    margin 0
    padding 0
   .dropcap:first-letter
-   font-size 3em
+   font-size 3rem
    line-height .9em
-   margin-right 2px
+   margin-right .125rem
    display block
    float left
   .dinkus
    text-align center
-   padding 1em
+   padding 1rem
    span
     vertical-align sub
   .scrollCaptionedFigure
@@ -847,22 +859,21 @@ abstractThemeCssParser
    img
     max-width 100%
     height auto
-    margin-top 3px
+    margin-top .1875rem
    figcaption
-    font-family Verdana
-    font-size 80%
+    font-family "SF Pro", "Helvetica Neue", "Segoe UI", "Arial"
+    font-size .8rem
     .scrollParagraph
      margin-top 0
-     line-height 1.1em
   .scrollCodeBlock
    overflow auto
-   font-size 80%
+   font-size .8rem
    hyphens none
    white-space pre
    break-inside avoid
    display block
-   margin .5em 0
-   padding .5em
+   margin .5rem 0
+   padding .5rem
    border-radius 0
    position relative
   .scrollCodeBlock:hover
@@ -874,9 +885,9 @@ abstractThemeCssParser
     opacity 1
   .scrollCopyButton
    position absolute
-   top 2px
-   right 2px
-   font-size 14px
+   top .125rem
+   right .125rem
+   font-size .875rem
    cursor pointer
    opacity 0
   .scrollCopyButton::after
@@ -917,10 +928,10 @@ gazetteCssParser
    vertical-align baseline
    border-spacing 0
   ol,ul
-   padding-left 1em
+   padding-left 1rem
   li
-   margin-top .4em
-   line-height 140%
+   margin-top .4rem
+   line-height 1.4
   a
    text-decoration-color transparent
   a:hover
@@ -928,32 +939,32 @@ gazetteCssParser
   sup,sub
    vertical-align baseline
    position relative
-   top -0.6em
+   top -.375rem
   sub
-   top 0.6em
+   top .375rem
   html
-   padding 4px
+   padding .25rem
    background-color rgb(244,244,244)
    font-family Exchange,Georgia,serif
    color #000
-   font-size 14px
+   font-size var(--base-font-size, 16px)
    hyphens auto
   p
-   margin-top 0.4em
-   line-height 1.4em
+   margin-top .4rem
+   line-height 1.4rem
   .scrollQuote
    break-inside avoid
    display block
-   margin .5em 0
-   padding .5em
+   margin .5rem 0
+   padding .5rem
    background rgba(204,204,204,.5)
    white-space pre-line
-   border-left .5em solid rgba(204,204,204,.8)
+   border-left .5rem solid rgba(204,204,204,.8)
   code
-   font-size 90%
+   font-size .9rem
    background-color rgba(204,204,204,.5)
-   padding 2px 4px
-   border-radius 4px
+   padding .125rem .25rem
+   border-radius .25rem
  // Styles for Scroll standard tags
  string hakonStandardStyles
   comment Main body of both pages is similar
@@ -963,49 +974,47 @@ gazetteCssParser
    column-count auto
    column-fill balance
    column-width 35ch
-   column-gap 20px
-   padding-left 20px
-   padding-right 20px
+   column-gap 1.5rem
+   padding-left 1.25rem
+   padding-right 1.25rem
    margin auto
   comment On group pages add some spacing around files
   .scrollSnippetContainer
    padding 1ch 0
    break-inside avoid
    text-align justify
+  h1,h2,h3,h4
+   margin .625rem 0
   h1
-   font-size 18px
-   margin 10px 0
+   font-size 1.25rem
   h2
-   font-size 16px
-   margin 10px 0
-  h3
-   font-size 14px
-   margin 10px 0
-  h4
-   margin 10px 0
-   font-size 14px
+   font-size 1.125rem
+  h3,h4
+   font-size 1rem
   h1.scrollTitle
    text-align center
-   margin-bottom .25em
+   margin-bottom .15625rem
    margin-top 0
-   font-size 28px
+   font-size 1.75rem
    a
     color #000
   .scrollDateline
    font-style italic
-   font-size 80%
+   line-height 1.4rem
+   comment Decrease font size to deemphasize dateline but keep the line height the same to not cause different line spacing.
+   font-size .75rem
   .scrollSection
    break-inside avoid
-   h1
-    text-align center
-   h2
-    text-align center
-   h3
-    text-align center
-   h4
+   h1,h2,h3,h4
     text-align center
   h4.scrollQuestion
    text-align left
+   margin 1.4rem 0 0 0
+  .scrollSection:first-child
+   h1,h2,h3,h4
+    margin-top 0
+   h4.scrollQuestion
+    margin-top 0
   .scrollNoteLink
    opacity .4
   
@@ -1014,18 +1023,18 @@ gazetteCssParser
    cursor default
   
   .scrollCodeBlock
-   border-left .5em solid rgba(204,204,204,.8)
+   border-left .5rem solid rgba(204,204,204,.8)
   
   .scrollTable
    table-layout fixed
-   margin .5em 0
+   margin .5rem 0
    overflow hidden
-   font-size 80%
+   font-size .8rem
    width 100%
    hyphens none
    border 1px solid rgba(224,224,224,.8)
    td,th
-    padding 3px
+    padding .1875rem
     overflow hidden
    th
     border-bottom 2px solid rgba(0,0,0,.6)
@@ -1034,19 +1043,19 @@ gazetteCssParser
     background rgba(224,224,224,.6)
   
   .scrollByLine
-   font-size 12px
+   font-size .875rem
    font-style italic
-   margin 4px 0
+   margin .25rem 0
    text-align center
   
   comment Subtle "Article Source" link
   .scrollViewSource
    text-align center
-   font-size 80%
+   font-size .8rem
    margin 0
-   margin-top 0.4em
-   line-height 1.4em
-   margin-bottom 1em
+   margin-top .4rem
+   line-height 1.4rem
+   margin-bottom 1rem
    a
     color #000
   
@@ -1056,24 +1065,24 @@ gazetteCssParser
   
   .scrollDashboard
    width 100%
-   font-size 30px
+   font-size 1.875rem
    text-align center
    font-weight bold
    break-inside avoid
-   margin-top 8px
-   margin-bottom 8px
+   margin-top .5rem
+   margin-bottom .5rem
    td
     width 33.3%
     border 1px solid #e8e8e8
    span
-    font-size 20p;
+    font-size 1.25rem
     display block
   .scrollChat
    span
     font-family Verdana
-    margin-top 5px
-    padding 5px 20px
-    border-radius 15px
+    margin-top .3125rem
+    padding .3125rem 1.25rem
+    border-radius .9375rem
     display inline-block
   .scrollChatLeft
    span
@@ -1529,20 +1538,20 @@ pageHeaderParser
  string hakon
   .pageHeader
    position absolute
-   top 4px
+   top .25rem
    right 0
    left 0
    svg
-    width 30px
-    height 30px
+    width 1.875rem
+    height 1.875rem
     fill rgba(204,204,204,.8)
     &:hover
      fill #333
    a
     color rgba(204,204,204,.8)
     position absolute
-    font-size 30px
-    line-height 27px
+    font-size 1.875rem
+    line-height 1.7rem
     text-decoration none
     &:hover
      color #333
@@ -1560,21 +1569,21 @@ pageHeaderParser
    let previousButton = ""
    if (linkToPrevious)
     previousButton = `a <
-    style left:3px;
+    style left:.1875rem;
     href ${linkToPrevious}`
    let nextButton = ""
    if (linkToNext)
     nextButton = `a >
-    style right:3px;
+    style right:.1875rem;
     href ${linkToNext}`
    return `<style>${this.css}</style>` + file.compileStumpCode(`div
    class pageHeader doNotPrint
    ${previousButton}
    a ${SVGS.home}
-    style text-align:left;left:25px;
+    style text-align:left;left:1.5625rem;
     href ${file.get("homeLink") || "index.html"}
    a ${SVGS.git}
-    style text-align:right;right: 25px;
+    style text-align:right;right: 1.5625rem;
     href ${file.git}
    ${nextButton}`)
   }
@@ -2043,6 +2052,52 @@ aftertextCodeParser
  extends abstractMarkupParser
  javascript
   tag = "code"
+classMarkupParser
+ description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
+ extends abstractMarkupParser
+ cells keywordCell classNameCell
+ crux class
+ javascript
+  tag = "span"
+  get applyToParentElement() {
+   return this.words.length === 2
+  }
+  getInserts(text) {
+   // If no select text is added, set the class on the parent element.
+   if (this.applyToParentElement) return []
+   return super.getInserts(text)
+  }
+  get className() {
+   return this.getWord(1)
+  }
+  get attributes() {
+   return [`class="${this.className}"`]
+  }
+  get pattern() {
+   const words = this.getWordsFrom(2)
+   return words.length ? words.join(" ") : this.parent.content
+  }
+hoverNoteParser
+ description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
+ cruxFromId
+ extends classMarkupParser
+ catchAllParser lineOfTextParser
+ cells keywordCell
+ javascript
+  get pattern() {
+   return this.getWordsFrom(1).join(" ")
+  }
+  get attributes() {
+   return [`class="scrollHoverNote"`, `title="${this.hoverNoteText}"`]
+  }
+  get hoverNoteText() {
+   return this.childrenToString().replace(/\n/g, " ")
+  }
+strikethroughParser
+ cruxFromId
+ extends abstractMarkupParser
+ javascript
+  tag = "s"
 linkParser
  extends abstractMarkupParser
  description Put the matching text in an <a> tag.
@@ -2105,57 +2160,6 @@ quickLinkParser
    return this.firstWord
   }
   patternStartsAtWord = 1
-classMarkupParser
- description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
- extends abstractMarkupParser
- cells keywordCell classNameCell
- crux class
- javascript
-  tag = "span"
-  get applyToParentElement() {
-   return this.words.length === 2
-  }
-  getInserts(text) {
-   // If no select text is added, set the class on the parent element.
-   if (this.applyToParentElement) return []
-   return super.getInserts(text)
-  }
-  get className() {
-   return this.getWord(1)
-  }
-  get attributes() {
-   return [`class="${this.className}"`]
-  }
-  get pattern() {
-   const words = this.getWordsFrom(2)
-   return words.length ? words.join(" ") : this.parent.content
-  }
-hoverNoteParser
- description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
- cruxFromId
- extends classMarkupParser
- catchAllParser lineOfTextParser
- cells keywordCell
- javascript
-  get pattern() {
-   return this.getWordsFrom(1).join(" ")
-  }
-  get attributes() {
-   return [`class="scrollHoverNote"`, `title="${this.hoverNoteText}"`]
-  }
-  get hoverNoteText() {
-   return this.childrenToString().replace(/\n/g, " ")
-  }
-strikethroughParser
- cruxFromId
- extends abstractMarkupParser
- javascript
-  tag = "s"
-linkifyParser
- description Use this to disable linkify on the text.
- extends abstractAftertextDirectiveParser
- cruxFromId
- cells keywordCell booleanCell
 wrapsOnParser
  cruxFromId
  description Enable `code`, *bold*, and _italics_ rules.
@@ -2246,6 +2250,11 @@ dayjsParser
    const index = this.parent.originalTextPostLinkify.indexOf("days")
    return [{ index, string: `${days} ` }]
   }
+linkifyParser
+ description Use this to disable linkify on the text.
+ extends abstractAftertextDirectiveParser
+ cruxFromId
+ cells keywordCell booleanCell
 abstractMarkupParameterParser
  cells keywordCell
  cruxFromId
@@ -2275,17 +2284,6 @@ linkTargetParser
  description If you want to set the target of the link. To "_blank", for example.
  crux target
  cells keywordCell anyCell
-linkTitleParser
- description If you want to set the title of the link.
- crux title
- cells keywordCell
- catchAllCellType anyCell
- example
-  * This report showed the treatment had a big impact.
-   https://example.com/report This report.
-    title The average growth in the treatment group was 14.2x higher than the control group.
-programLinkParser
- catchAllCellType codeCell
 blankLineParser
  description Blank lines compile to nothing in the HTML.
  cells blankCell
@@ -2316,6 +2314,17 @@ htmlLineParser
  catchAllParser htmlLineParser
 stumpContentParser
  catchAllCellType anyCell
+linkTitleParser
+ description If you want to set the title of the link.
+ crux title
+ cells keywordCell
+ catchAllCellType anyCell
+ example
+  * This report showed the treatment had a big impact.
+   https://example.com/report This report.
+    title The average growth in the treatment group was 14.2x higher than the control group.
+programLinkParser
+ catchAllCellType codeCell
 abstractLoopConfigParser
  cells keywordCell
  cruxFromId
