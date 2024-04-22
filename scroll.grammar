@@ -1,8 +1,18 @@
 // Related work:
  CSS is great for text selector ideas: https://www.w3schools.com/cssref/css_selectors.asp
  Roff has a lot of related markup ideas: https://www.systutorials.com/docs/linux/man/7-groff_man/
+// Note: this is an MVP of Scroll Datasets for initial experimentation and to test the syntax. Few features are implemented yet.
+// todo: copy the external library to folder so it works offline?
 // Extend this if you want to create a new provider
 // Some basic providers:
+
+
+
+
+
+
+
+
 
 
 
@@ -24,6 +34,7 @@ wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
 anyCell
+enumCell
 urlCell
  highlightScope constant.language
 keywordCell
@@ -75,6 +86,13 @@ filePathCell
  extends stringCell
 cssAnyCell
  extends anyCell
+valueCell
+ highlightScope comment
+measureTypeCell
+ extends enumCell
+ enum string int bool url uid float enum
+measureNameCell
+ highlightScope keyword
 groupNameCell
  extends permalinkCell
 groupNameWithOptionalFolderCell
@@ -288,13 +306,13 @@ footnoteDefinitionParser
   }
   get label() {
    // In the future we could allow common practices like author name
-   return this.get("label") || this.noteDefinitionIndex
+   return this.get("label") || `[${this.noteDefinitionIndex}]`
   }
   get linkBack() {
    return `noteUsage${this.noteDefinitionIndex}`
   }
   get text() {
-   return `${this.label} ${super.text} <a class="scrollFootNoteUsageLink" href="#noteUsage${this.noteDefinitionIndex}">⮐</a>`
+   return `<a class="scrollFootNoteUsageLink" href="#noteUsage${this.noteDefinitionIndex}">${this.label}</a> ${super.text}`
   }
   get noteDefinitionIndex() {
    return this.parent.footnotes.indexOf(this) + 1
@@ -653,6 +671,26 @@ mapParser
    }
   </script>`
   }
+tableSearchParser
+ cruxFromId
+ extends abstractScrollWithRequirementsParser
+ string requireOnce
+  <script defer src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.5/css/dataTables.dataTables.min.css" />
+    <script defer src="https://cdn.datatables.net/2.0.5/js/dataTables.min.js"></script>
+    <script>
+     document.addEventListener("DOMContentLoaded", function () {
+      const urlSearchParams = new URLSearchParams(window.location.search)
+      const params = Object.fromEntries(urlSearchParams.entries())
+      jQuery('table').DataTable({"order": [],"paging": false,search:{ search: params.filter || ""}});
+    } );
+    </script>
+ description Add table search to all tables on the page.
+ javascript
+  compileInstance() {
+   return ""
+  }
 belowAsCodeParser
  description Print the Scroll code of the next node.
  extends abstractScrollParser
@@ -709,6 +747,44 @@ thanksToParser
  description A place to store data on reviewers who helped improve a post (and a reminder to seek feedback!). Does not appear in compiled HTML.
  extends abstractCommentParser
  cruxFromId
+conceptStartParser
+ crux ::
+ description Begins a concept.
+ extends abstractCommentParser
+ javascript
+  compile() {
+   return `<hr>`
+  }
+measurementParser
+ description Add a measurement to a concept. Also used for defining measures.
+ cells measureNameCell
+ pattern ^[a-zA-Z0-9_]+:( |$)
+ catchAllCellType valueCell
+ extends abstractCommentParser
+ javascript
+  compile() {
+   return `<div>${Utils.linkify(this.getLine())}</div>`
+  }
+ example
+  ::
+  id: earth
+  order: 3
+printDatasetParser
+ description Print the dataset in a page into an HTML table.
+ cruxFromId
+ extends abstractCommentParser
+ javascript
+   compile() {
+   // A hacky but simple way to do this for now.
+   const node = this.appendSibling("table \t", this.parent.file.makeDataset("tsv"))
+   const html = node.compile()
+   node.destroy()
+   return html
+   }
+writeDatasetParser
+ cruxFromId
+ description Write a dataset file to disk.
+ extends abstractCommentParser
 byLineParser
  description Prints a byline with the author's name and optionally a link to them.
  extends abstractScrollParser
@@ -1017,6 +1093,14 @@ gazetteCssParser
     margin-top 0
   .scrollNoteLink
    opacity .4
+   text-decoration none
+   &:hover
+    opacity 1
+  .scrollFootNoteUsageLink
+   opacity .7
+   text-decoration none
+   &:hover
+    opacity 1
   
   .scrollHoverNote
    text-decoration underline dashed 1px rgba(0,0,0,.1)
@@ -1027,6 +1111,7 @@ gazetteCssParser
   
   .scrollTable
    table-layout fixed
+   font-family "SF Pro", "Helvetica Neue", "Segoe UI", "Arial"
    margin .5rem 0
    overflow hidden
    font-size .8rem
@@ -1036,6 +1121,9 @@ gazetteCssParser
    td,th
     padding .1875rem
     overflow hidden
+    white-space nowrap
+   th
+    text-transform capitalize
    th
     border-bottom 2px solid rgba(0,0,0,.6)
     text-align left
@@ -1091,11 +1179,6 @@ gazetteCssParser
    span
     color white
     background rgb(0,132,255)
-  .scrollFootNoteUsageLink
-   color rgba(204,204,204,.5)
-   &:hover
-    color #333
-    text-decoration none
   .scrollYouTubeHolder
    position relative
    width 100%
