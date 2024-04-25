@@ -30,6 +30,8 @@
 
 
 
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -785,6 +787,35 @@ writeDatasetParser
  cruxFromId
  description Write a dataset file to disk.
  extends abstractCommentParser
+tabularDataParser
+ description Root lines with tabs are parsed as tsv data and printed as tables.
+ cells anyCell
+ pattern \t
+ catchAllCellType anyCell
+ extends abstractCommentParser
+ javascript
+  compile() {
+   // If this is not the first line in the table, do nothing, since the first line
+   // prints the table
+   if (this.previous.isTabularData) return ""
+   let table = this.getLine()
+   let line = this
+   while (line.next.isTabularData) {
+     table += "\n" + line.next.getLine()
+     line = line.next
+     if (line === this)
+       break
+   }
+   const node = this.appendSibling("table \t", table)
+   const html = node.compile()
+   node.destroy()
+   return html
+  }
+  isTabularData = true
+ example
+  // The below lines will print as a table
+  Index Name
+  1 Thermos
 byLineParser
  description Prints a byline with the author's name and optionally a link to them.
  extends abstractScrollParser
@@ -1069,9 +1100,12 @@ gazetteCssParser
    font-size 1rem
   h1.scrollTitle
    text-align center
+   margin auto
    margin-bottom .15625rem
    margin-top 0
    font-size 1.75rem
+   comment On narrow browsers like phones make sure the title doesn't overlap with the icons buttons in top left and right.
+   max-width calc(100vw - 2 * (1.5625rem + 1.875rem))
    a
     color #000
   .scrollDateline
