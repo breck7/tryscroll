@@ -1,0 +1,46 @@
+<!DOCTYPE html><html lang="en"><link rel="stylesheet" href="katex.min.css">
+<script defer src="katex.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollKatex").forEach(el =>
+ {
+  katex.render(el.innerText, el, {
+      throwOnError: false
+  });
+ }
+))
+</script>
+
+<div class="scrollKatex" id="1"></div>
+<link rel="stylesheet" href="leaflet.css" />
+<script src="leaflet.js"></script>
+
+<div id="map2" style="height: 500px;"></div>
+<script>
+ {
+  const lat = 37.8
+  const long = 4
+  const zoomLevel = 4
+  const points = []
+  const map = L.map("map2").setView([lat, long], zoomLevel)
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+   attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+   maxZoom: 18
+  }).addTo(map)
+  points.forEach(point => {
+   L.marker([point.lat, point.long])
+    .addTo(map)
+    .bindPopup("<b>" +point.title + "</b><br />" + point.description)
+  })
+ }
+</script>
+<script defer src="jquery-3.7.1.min.js"></script>
+<style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
+<link rel="stylesheet" href="dataTables.dataTables.min.css" />
+  <script defer src="dataTables.min.js"></script>
+  <script>
+   document.addEventListener("DOMContentLoaded", function () {
+    const urlSearchParams = new URLSearchParams(window.location.search)
+    const params = Object.fromEntries(urlSearchParams.entries())
+    jQuery('table').DataTable({"order": [],"paging": false,search:{ search: params.filter || ""}});
+  } );
+  </script></html>

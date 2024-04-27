@@ -10,18 +10,18 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "jtree": "^73.0.0",
-    "scroll-cli": "^78.0.0"
+    "scroll-cli": "file:../scroll"
   },
   "devDependencies": {
     "tap": "^18.7.2"
   },
   "scripts": {
-    "build": "npm remove scroll-cli;npm install scroll-cli;./build.js",
+    "build": "npm remove scroll-cli;npm install scroll-cli;./build.js; scroll build",
     "buildCoverageReport": "tap testAll.js",
     "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
     "open": "open index.html",
     "test": "node testAll.js",
-    "beta": "npm install ~/scroll; node ./build.js"
+    "beta": "npm install ~/scroll; node ./build.js; scroll build"
   },
   "repository": {
     "type": "git",

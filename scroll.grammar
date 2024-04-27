@@ -32,6 +32,15 @@
 
 
 
+
+
+
+
+
+
+
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -606,9 +615,10 @@ katexParser
  catchAllCellType codeCell
  catchAllParser lineOfCodeParser
  description Use the KaTex library to typeset math.
+ string copyFromExternal katex.min.css katex.min.js
  string requireOnce
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.6/dist/katex.min.css" integrity="sha384-mXD7x5S50Ko38scHSnD4egvoExgMPbrseZorkbE49evAfv9nNcbrXJ8LLNsDgh9d" crossorigin="anonymous">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.6/dist/katex.min.js" integrity="sha384-j/ZricySXBnNMJy9meJCtyXTKMhIJ42heyr7oAdxTDBy/CYA9hzpMo+YTNV5C+1X" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="katex.min.css">
+  <script defer src="katex.min.js"></script>
   <script>
   document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollKatex").forEach(el =>
    {
@@ -645,10 +655,10 @@ mapParser
    extends abstractPointConfigParser
  extends abstractScrollWithRequirementsParser
  description Uses LeafletJs
- // todo Make this only require once
+ string copyFromExternal leaflet.css leaflet.js
  string requireOnce
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="leaflet.css" />
+  <script src="leaflet.js"></script>
  javascript
   compileInstance() {
    const height = 500
@@ -676,11 +686,12 @@ mapParser
 tableSearchParser
  cruxFromId
  extends abstractScrollWithRequirementsParser
+ string copyFromExternal jquery-3.7.1.min.js dataTables.dataTables.min.css dataTables.min.js
  string requireOnce
-  <script defer src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script defer src="jquery-3.7.1.min.js"></script>
   <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.5/css/dataTables.dataTables.min.css" />
-    <script defer src="https://cdn.datatables.net/2.0.5/js/dataTables.min.js"></script>
+  <link rel="stylesheet" href="dataTables.dataTables.min.css" />
+    <script defer src="dataTables.min.js"></script>
     <script>
      document.addEventListener("DOMContentLoaded", function () {
       const urlSearchParams = new URLSearchParams(window.location.search)
@@ -962,6 +973,7 @@ abstractThemeCssParser
     vertical-align sub
   .scrollCaptionedFigure
    display block
+   break-inside avoid
    text-align center
    img
     max-width 100%

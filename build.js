@@ -3,7 +3,7 @@
 const { Disk } = require("jtree/products/Disk.node.js")
 const path = require("path")
 const { TypeScriptRewriter } = require("jtree/products/TypeScriptRewriter.js")
-const { DefaultScrollParser, ScrollFile } = require("scroll-cli")
+const { DefaultScrollParser } = require("scroll-cli")
 
 // Libs
 const libPaths = `node_modules/jtree/treeComponentFramework/sweepercraft/lib/mousetrap.min.js
