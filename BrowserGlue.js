@@ -5,18 +5,17 @@ const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
 const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 
-Scroll is an extensible alternative to Markdown.
+# Scroll is an extensible alternative to Markdown.
  https://scroll.pub Scroll
 
-quote
- Scroll aims to help you structure your thoughts.
-
-chat
- What can I do with Scroll?
- You can invent your own node types.
- What's an example?
- This chat node.
+## Links are different
+You put links _after_ the text, like this one.
+ https://scroll.pub one.
 aboveAsCode
+
+## It has footnotes^note
+
+^note Sometimes called endnotes
 
 ? What's the benefit for using today?
 A simple plain text format that keeps your thoughts and data clean that is ready to _grow with you_.
@@ -24,11 +23,11 @@ A simple plain text format that keeps your thoughts and data clean that is ready
 ? What might this become?
 Who knows. Perhaps a large ontology of types of thought?
 
-table |
- Format|Types
- HTML|~142
- Markdown|~192
- Scroll|10,000's
+# A Table of Node Types
+Format  Types
+HTML   ~142
+Markdown  ~192
+Scroll  1,000's?
 
 gazetteCss`
 

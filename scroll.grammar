@@ -5,6 +5,112 @@
 // todo: copy the external library to folder so it works offline?
 // Extend this if you want to create a new provider
 // Some basic providers:
+// https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap#text
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -119,6 +225,9 @@ abstractScrollParser
   compileEmbeddedVersion(compileSettings) {
    return this.compile(compileSettings)
   }
+  compileTextVersion() {
+    return ""
+  }
 abstractAftertextParser
  description Text followed by markup commands.
  extends abstractScrollParser
@@ -193,11 +302,11 @@ abstractAftertextParser
    const attrs = this.filter(node => node.isAttribute)
    return attrs.length ? attrs.map(node => node.divAttributes).join(" ") + " " : ""
   }
-thoughtParser
+paragraphParser
  // todo Perhaps rewrite this from scratch and move out of aftertext.
  extends abstractAftertextParser
  catchAllCellType stringCell
- description A thought.
+ description A paragraph.
  cruxFromId
  javascript
   compile(compileSettings) {
@@ -209,9 +318,37 @@ thoughtParser
     newLine.destroy()
    return compiled
   }
-indentableThoughtParser
- extends thoughtParser
- inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser indentableThoughtParser
+  compileTextVersion() {
+    const children = this.filter(node => node.compileTextVersion).map(node => node.compileTextVersion()).filter(i => i).join("\n")
+    const dateline = this.getNode("dateline")
+    return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
+  }
+blinkParser
+ description Useful when you have a client that always needs to find 1 thing they would like you to change.
+ extends paragraphParser
+ crux blink
+ javascript
+  compile() {
+   return `<span class="scrollBlink">${super.compile()}</span>
+    <script>
+    setInterval(()=>{
+        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
+        el.style.color = el.style.color === "white" ? "black" : "white"
+        )
+    }, 2000)
+    </script>`
+  }
+catchAllParagraphParser
+ description Any top level line that doesn't match a keyword is treated as a paragraph node.
+ extends paragraphParser
+ cells stringCell
+ javascript
+  get originalText() {
+   return this.getLine() || ""
+  }
+indentableParagraphParser
+ extends paragraphParser
+ inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser indentableParagraphParser
  javascript
   compile() {
    return (
@@ -221,8 +358,11 @@ indentableThoughtParser
      .trim()
    )
   }
+  compileTextVersion() {
+    return this.getWord(0) + " " + super.compileTextVersion()
+  }
 checklistTodoParser
- extends indentableThoughtParser
+ extends indentableParagraphParser
  example
   [] Get milk
  description An incomplete checklist item.
@@ -243,7 +383,7 @@ checklistDoneParser
  example
   [x] get milk
 listAftertextParser
- extends indentableThoughtParser
+ extends indentableParagraphParser
  example
   - I had a _new_ thought.
  description A list item.
@@ -273,32 +413,9 @@ orderedListAftertextParser
  javascript
   listType = "ol"
   get attributes() { return ` start="${this.getWord(0)}"`}
-blinkParser
- description Useful when you have a client that always needs to find 1 thing they would like you to change.
- extends thoughtParser
- crux blink
- javascript
-  compile() {
-   return `<span class="scrollBlink">${super.compile()}</span>
-    <script>
-    setInterval(()=>{
-        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
-        el.style.color = el.style.color === "white" ? "black" : "white"
-        )
-    }, 2000)
-    </script>`
-  }
-catchAllParagraphParser
- description Any top level line that doesn't match a keyword is treated as a thought (aka paragraph) node.
- extends thoughtParser
- cells stringCell
- javascript
-  get originalText() {
-   return this.getLine() || ""
-  }
 footnoteDefinitionParser
  description A footnote. Can also be used as section notes.
- extends thoughtParser
+ extends paragraphParser
  boolean isFootnote true
  pattern ^\^.+$
  // We need to quickLinks back in scope because there is currently a bug in JTree/Grammar where if a parser extending a parent class has a child parser defined, then any regex parsers in the parent class will not be tested unless explicitly included in scope again.
@@ -328,17 +445,29 @@ footnoteDefinitionParser
   get noteDefinitionIndex() {
    return this.parent.footnotes.indexOf(this) + 1
   }
+  compileTextVersion() {
+    return this.getWord(0) + ": " + super.compileTextVersion()
+  }
 captionAftertextParser
  description An optional caption to accompany the resource.
  crux caption
- extends thoughtParser
+ extends paragraphParser
+quickParagraphParser
+ crux *
+ extends paragraphParser
+ example
+  * I had a _new_ idea.
 abstractHeaderParser
- extends thoughtParser
+ extends paragraphParser
  javascript
   compile(compileSettings) {
    if (this.isHidden) return ""
    this.parent.sectionStack.push("</div>")
    return `<div class="scrollSection">` + super.compile(compileSettings)
+  }
+  compileTextVersion() {
+    const line = super.compileTextVersion()
+    return line + "\n" + "=".repeat(line.length)
   }
 h4Parser
  description Compiles to an html h4 tag.
@@ -352,12 +481,6 @@ questionAftertextParser
  crux ?
  javascript
   defaultClassName = "scrollQuestion"
-h1Parser
- description Compiles to an html h1 tag.
- extends abstractHeaderParser
- crux #
- javascript
-  tag = "h1"
 titleParser
  description Title of the page for meta tags and also compiles to an html h1 tag.
  extends abstractHeaderParser
@@ -373,6 +496,12 @@ titleParser
    return compiled
   }
   defaultClassName = "scrollTitle"
+  tag = "h1"
+h1Parser
+ description Compiles to an html h1 tag.
+ extends abstractHeaderParser
+ crux #
+ javascript
   tag = "h1"
 h2Parser
  description Compiles to an html h2 tag.
@@ -392,11 +521,6 @@ h5Parser
  crux #####
  javascript
   tag = "h5"
-quickThoughtParser
- crux *
- extends thoughtParser
- example
-  * I had a _new_ thought.
 startColumnsParser
  extends abstractAftertextParser
  cruxFromId
@@ -439,6 +563,9 @@ horizontalRuleParser
   compile() {
    return `<hr>`
   }
+  compileTextVersion() {
+    return this.getLine()
+  }
 dinkusParser
  crux ***
  description Prints a centered *
@@ -448,6 +575,9 @@ dinkusParser
    return `<div class="dinkus"><span>${this.dinkus}</span></div>`
   }
   dinkus = "*"
+  compileTextVersion() {
+    return this.getLine()
+  }
 loopParser
  extends abstractAftertextParser
  cells keywordCell
@@ -551,6 +681,133 @@ viewSourceParser
    a View source
     href ${viewSourceUrl}`)
   }
+byLineParser
+ description Prints a byline with the author's name and optionally a link to them.
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell urlCell
+ catchAllCellType personNameCell
+ example
+  // With Link:
+  byLine https://breckyunits.com Breck Yunits
+  // No link:
+  byLine  Breck Yunits
+ javascript
+  compile() {
+   const link = this.getWord(1)
+   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${this.name}</a></div>`
+  }
+  get name() {
+    return this.getWordsFrom(2).join(" ") || this.parent.get("author")
+  }
+  compileTextVersion() {
+    return `by ${this.name}`
+  }
+abstractTopLevelSingleMetaParser
+ description Use these keywords once per file.
+ extends abstractScrollParser
+ inScope slashCommentParser
+ cruxFromId
+ cells keywordCell
+ javascript
+  isTopMatter = true
+  isSetterParser = true
+  compile() {
+   return ""
+  }
+authorParser
+ catchAllCellType personNameCell
+ description Set the author(s) for a post. Prints nothing by itself, but is printed with the title in text mode and in various metadata outputs.
+ extends abstractTopLevelSingleMetaParser
+dateParser
+ catchAllCellType dateCell
+ description Date this file was first published.
+ extends abstractTopLevelSingleMetaParser
+abstractFileSettingParser
+ extends abstractTopLevelSingleMetaParser
+ cells keywordCell
+ javascript
+  compile() {
+   return ""
+  }
+abstractUrlSettingParser
+ extends abstractFileSettingParser
+ cells keywordCell urlCell
+ cruxFromId
+baseUrlParser
+ description Root url of this published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
+ extends abstractUrlSettingParser
+homeLinkParser
+ description In the default Scroll theme the home button will link to "index.html". You can override this with this setting.
+ extends abstractUrlSettingParser
+viewSourceBaseUrlParser
+ description The base link to be used to generate the "View source" link.
+ extends abstractUrlSettingParser
+gitParser
+ description A link to the web Git UI for this site.
+ extends abstractUrlSettingParser
+canonicalLinkParser
+ description Canonical URL for SEO. If undefined Scroll generates this from the baseUrl and permalink.
+ extends abstractUrlSettingParser
+openGraphImageParser
+ description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ extends abstractUrlSettingParser
+rssFeedUrlParser
+ description URL for RSS feed, if any.
+ extends abstractUrlSettingParser
+abstractSiteStringSettingParser
+ extends abstractFileSettingParser
+ catchAllCellType stringCell
+ cruxFromId
+emailParser
+ description Email address for the site owner.
+ extends abstractFileSettingParser
+ cruxFromId
+ cells keywordCell emailAddressCell
+permalinkParser
+ description When compiling, Scroll will save this file to {permalink}
+ extends abstractTopLevelSingleMetaParser
+ cells keywordCell permalinkCell
+groupsParser
+ description Add this file to zero or more groups.
+ cruxFromId
+ example
+  groups index.html
+ extends abstractTopLevelSingleMetaParser
+ cells keywordCell
+ catchAllCellType groupNameCell
+importOnlyParser
+ description Mark a file as not one to build. This line will be not be imported into the importing file.
+ cruxFromId
+ extends abstractTopLevelSingleMetaParser
+ javascript
+  compile() {
+   return ""
+  }
+htmlLangParser
+ cells keywordCell stringCell
+ description The lang attribute for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
+ extends abstractTopLevelSingleMetaParser
+descriptionParser
+ catchAllCellType stringCell
+ description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
+ extends abstractTopLevelSingleMetaParser
+relatedParser
+ catchAllCellType permalinkCell
+ cruxFromId
+ cells keywordCell
+ description Set any related posts. Prints nothing by itself.
+ example
+  ...
+  That's all I have to say about hiking.
+  related fishing camping
+  # Related Posts
+  relatedList
+ extends abstractTopLevelSingleMetaParser
+viewSourceUrlParser
+ catchAllCellType urlCell
+ description Use this to override the link to the source code for a scroll file.
+ extends abstractTopLevelSingleMetaParser
 chatParser
  description A dialogue between two people.
  catchAllParser chatLineParser
@@ -560,6 +817,9 @@ chatParser
   compile() {
    return this.map((line, index) => `<div style="text-align: ${index % 2 ? "right" : "left"};" class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>`).join("")
   }
+  compileTextVersion() {
+    return this.childrenToString()
+  }
 codeParser
  description A code block.
  catchAllParser lineOfCodeParser
@@ -567,6 +827,9 @@ codeParser
  javascript
   compile() {
    return `<code class="scrollCodeBlock">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
+  }
+  compileTextVersion() {
+    return this.childrenToString()
   }
  cruxFromId
 codeWithLanguageParser
@@ -683,6 +946,17 @@ mapParser
    }
   </script>`
   }
+helpfulNotFoundParser
+ cruxFromId
+ extends abstractScrollWithRequirementsParser
+ string copyFromExternal helpfulNotFound.js
+ string requireOnce
+  <script defer src="helpfulNotFound.js"></script>
+ description Add a helpful not found element to the page.
+ javascript
+  compileInstance() {
+   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1>`
+  }
 tableSearchParser
  cruxFromId
  extends abstractScrollWithRequirementsParser
@@ -794,10 +1068,6 @@ printDatasetParser
    node.destroy()
    return html
    }
-writeDatasetParser
- cruxFromId
- description Write a dataset file to disk.
- extends abstractCommentParser
 tabularDataParser
  description Root lines with tabs are parsed as tsv data and printed as tables.
  cells anyCell
@@ -808,7 +1078,8 @@ tabularDataParser
   compile() {
    // If this is not the first line in the table, do nothing, since the first line
    // prints the table
-   if (this.previous.isTabularData) return ""
+   // todo: remove this feature. make it explicit that you have to add a keyword to print a root table. otherwise should be silent
+   if (!this.isFirst) return ""
    let table = this.getLine()
    let line = this
    while (line.next.isTabularData) {
@@ -822,29 +1093,17 @@ tabularDataParser
    node.destroy()
    return html
   }
+  get isFirst() {
+    return !this.previous.isTabularData
+  }
+  compileTextVersion() {
+    return this.isFirst ? `[Table Omitted]` : ""
+  }
   isTabularData = true
  example
   // The below lines will print as a table
   Index Name
   1 Thermos
-byLineParser
- description Prints a byline with the author's name and optionally a link to them.
- extends abstractScrollParser
- cruxFromId
- cells keywordCell urlCell
- catchAllCellType personNameCell
- example
-  // With Link:
-  byLine https://breckyunits.com Breck Yunits
-  // No link:
-  byLine  Breck Yunits
- javascript
-  compile() {
-   const link = this.getWord(1)
-   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${this.getWordsFrom(2).join(" ")}</a></div>`
-  }
-authorParser
- extends byLineParser
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
@@ -933,26 +1192,30 @@ dashboardParser
   compile() {
    return `<table class="scrollDashboard">${this.tableBody}</table>`
   }
-abstractTopLevelSingleMetaParser
- description Use these keywords once per file.
+  compileTextVersion() {
+    return this.childrenToString()
+  }
+abstractCommandParser
  extends abstractScrollParser
  cruxFromId
  cells keywordCell
+ inScope slashCommentParser
  javascript
+  isTopMatter = true
   compile() {
    return ""
   }
-dateParser
- catchAllCellType dateCell
- description Date this file was first published.
- extends abstractTopLevelSingleMetaParser
-permalinkParser
- description When compiling, Scroll will save this file to {permalink}
- extends abstractTopLevelSingleMetaParser
- cells keywordCell permalinkCell
+writeDatasetParser
+ cruxFromId
+ description Write a dataset file to disk.
+ extends abstractCommandParser
+writeTextParser
+ cruxFromId
+ description Compile a post to text rather than html and save to disk.
+ extends abstractCommandParser
 abstractThemeCssParser
  description Extend this to create a Scroll CSS theme.
- extends abstractTopLevelSingleMetaParser
+ extends abstractScrollParser
  inScope tagsParser
  cruxFromId
  catchAllCellType stringCell
@@ -1533,240 +1796,6 @@ tufteCssParser
            width: 100%;
       }
   }`
-groupsParser
- description Add this file to zero or more groups.
- cruxFromId
- example
-  groups index.html
- extends abstractTopLevelSingleMetaParser
- cells keywordCell
- catchAllCellType groupNameCell
-metaTagsParser
- cruxFromId
- extends abstractTopLevelSingleMetaParser
- description Adds meta tags like title, description, et cetera.
- javascript
-  compileEmbeddedVersion() {
-   return ""
-  }
-  compile() {
-   const { file } = this.parent
-   const { title, description, openGraphImage, SCROLL_VERSION, canonicalLink } = file
-   const rssFeedUrl = file.get("rssFeedUrl")
-   let rssTag = ""
-   if (rssFeedUrl) {
-    rssTag = `link
-   rel alternate
-   type application/rss+xml
-   title ${title}
-   href ${rssFeedUrl}`
-   }
-   return file.compileStumpCode(`meta
-   charset utf-8
-  titleTag ${title}
-  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
-  styleTag @media print {.doNotPrint {display: none !important;}}
-  link
-   rel canonical
-   href ${canonicalLink}
-  meta
-   charset iso-8859-1
-  meta
-   name viewport
-   content width=device-width,initial-scale=1
-  meta
-   name description
-   content ${description}
-  meta
-   name generator
-   content Scroll v${SCROLL_VERSION}
-  meta
-   property og:title
-   content ${title}
-  meta
-   property og:description
-   content ${description}
-  meta
-   property og:image
-   content ${openGraphImage}
-  ${rssTag}
-  meta
-   name twitter:card
-   content summary_large_image`)
-  }
-htmlLangParser
- cells keywordCell stringCell
- description The lang attribute for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
- extends abstractTopLevelSingleMetaParser
-descriptionParser
- catchAllCellType stringCell
- description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
- extends abstractTopLevelSingleMetaParser
-pageFooterParser
- cruxFromId
- description A footer for your page.
- extends abstractTopLevelSingleMetaParser
- string hakon
-  .pageFooter
-   margin-top 8px
-   padding-top 8px
-   text-align center
-   svg
-    width 30px
-    height 30px
-    fill rgba(204,204,204, .5)
-    padding 0 7px
-    &:hover
-     fill #333
-  .pageFooterScrollLink
-   display block
-   font-family Verdana
-   font-weight 100
-   margin .5em
-   color rgba(204,204,204,.5)
-   &:hover
-    color #333
-    text-decoration none
- javascript
-  compileEmbeddedVersion() {
-   return ""
-  }
-  get css() {
-    const hakonParser = this.root.hakonParser
-    return new hakonParser(this.hakon).compile()
-  }
-  compile() {
-   const file = this.parent.file
-   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
-   const closeContainerTag = "</div>"
-   return (
-    closeContainerTag + `<style>${this.css}</style>` +
-    file.compileStumpCode(`p
-   class scrollViewSource doNotPrint
-   a View source
-    href ${viewSourceUrl}
-  div
-   class pageFooter doNotPrint
-   a ${SVGS.email}
-    href mailto:${file.email}
-   a ${SVGS.git}
-    href ${file.git}
-   a Built with Scroll v${SCROLL_VERSION}
-    href https://scroll.pub
-    class pageFooterScrollLink
-    style display:block; margin: .5em;`)
-   )
-  }
-gazetteFooterParser
- extends pageFooterParser
- description DEPRECATED! Use "pageFooter" instead.
-pageHeaderParser
- cruxFromId
- description A header for your page.
- extends abstractTopLevelSingleMetaParser
- string hakon
-  .pageHeader
-   position absolute
-   top .25rem
-   right 0
-   left 0
-   svg
-    width 1.875rem
-    height 1.875rem
-    fill rgba(204,204,204,.8)
-    &:hover
-     fill #333
-   a
-    color rgba(204,204,204,.8)
-    position absolute
-    font-size 1.875rem
-    line-height 1.7rem
-    text-decoration none
-    &:hover
-     color #333
- javascript
-  compileEmbeddedVersion() {
-   return ""
-  }
-  get css() {
-    const hakonParser = this.root.hakonParser
-    return new hakonParser(this.hakon).compile()
-  }
-  compile() {
-   const file = this.parent.file
-   const { SVGS, linkToPrevious, linkToNext } = file
-   let previousButton = ""
-   if (linkToPrevious)
-    previousButton = `a <
-    style left:.1875rem;
-    href ${linkToPrevious}`
-   let nextButton = ""
-   if (linkToNext)
-    nextButton = `a >
-    style right:.1875rem;
-    href ${linkToNext}`
-   return `<style>${this.css}</style>` + file.compileStumpCode(`div
-   class pageHeader doNotPrint
-   ${previousButton}
-   a ${SVGS.home}
-    style text-align:left;left:1.5625rem;
-    href ${file.get("homeLink") || "index.html"}
-   a ${SVGS.git}
-    style text-align:right;right: 1.5625rem;
-    href ${file.git}
-   ${nextButton}`)
-  }
-gazetteHeaderParser
- extends pageHeaderParser
- description DEPRECATED! Use "pageHeader" instead.
-endSnippetParser
- description Insert one of these where you want to cut the file for a snippet.
- extends abstractTopLevelSingleMetaParser
-viewSourceUrlParser
- catchAllCellType urlCell
- description Use this to override the link to the source code for a scroll file.
- extends abstractTopLevelSingleMetaParser
-abstractFileSettingParser
- extends abstractScrollParser
- cells keywordCell
- javascript
-  compile() {
-   return ""
-  }
-abstractUrlSettingParser
- extends abstractFileSettingParser
- cells keywordCell urlCell
- cruxFromId
-baseUrlParser
- description Root url of this published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
- extends abstractUrlSettingParser
-homeLinkParser
- description In the default Scroll theme the home button will link to "index.html". You can override this with this setting.
- extends abstractUrlSettingParser
-viewSourceBaseUrlParser
- description The base link to be used to generate the "View source" link.
- extends abstractUrlSettingParser
-gitParser
- description A link to the web Git UI for this site.
- extends abstractUrlSettingParser
-canonicalLinkParser
- description Canonical URL for SEO. If undefined Scroll generates this from the baseUrl and permalink.
- extends abstractUrlSettingParser
-openGraphImageParser
- description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
- extends abstractUrlSettingParser
-rssFeedUrlParser
- description URL for RSS feed, if any.
- extends abstractUrlSettingParser
-abstractSiteStringSettingParser
- extends abstractFileSettingParser
- catchAllCellType stringCell
- cruxFromId
-emailParser
- description Email address for the site owner.
- extends abstractFileSettingParser
- cruxFromId
- cells keywordCell emailAddressCell
 scrollParserDefinitionParser
  extends abstractScrollParser
  // todo Figure out best pattern for integrating Scroll and Grammar?
@@ -1786,6 +1815,9 @@ htmlParser
  javascript
   compile() {
    return `${this.content ?? ""}${this.childrenToString()}`
+  }
+  compileTextVersion() {
+    return ""
   }
 quickHtmlParser
  extends htmlParser
@@ -1854,6 +1886,10 @@ imageParser
    const id = this.has("id") ? ` id="${this.get("id")}" ` : ""
    return `<a href="${linkRelativeToCompileTarget}" target="_blank" ${className} ${id}><img src="${linkRelativeToCompileTarget}" ${dimensionAttributes}loading="lazy"></a>`
   }
+  compileTextVersion() {
+    const children = this.filter(node => node.compileTextVersion).map(node => node.compileTextVersion()).filter(i => i).join("\n")
+    return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
+  }
 youTubeParser
  extends abstractCaptionedParser
  description Embed a YouTube video. Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
@@ -1873,14 +1909,6 @@ importParser
   }
  example
   import header.scroll
-importOnlyParser
- description Mark a file as not one to build. This line will be not be imported into the importing file.
- cruxFromId
- extends abstractScrollParser
- javascript
-  compile() {
-   return ""
-  }
 keyboardNavParser
  description Makes left go to previous file and right go to next file.
  extends abstractScrollParser
@@ -1904,16 +1932,176 @@ keyboardNavParser
    });</script>`
    return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
-plainTextParser
- description Use for plain text one liners and/or blocks of plain text.
+metaTagsParser
  cruxFromId
  extends abstractScrollParser
- catchAllParser plainTextLineParser
- catchAllCellType stringCell
+ description Prints meta tags like title, description, et cetera.
  javascript
-  compile() {
-   return `${this.content ?? ""}${this.childrenToString()}`
+  compileEmbeddedVersion() {
+   return ""
   }
+  compile() {
+   const { file } = this.parent
+   const { title, description, openGraphImage, SCROLL_VERSION, canonicalLink } = file
+   const rssFeedUrl = file.get("rssFeedUrl")
+   let rssTag = ""
+   if (rssFeedUrl) {
+    rssTag = `link
+   rel alternate
+   type application/rss+xml
+   title ${title}
+   href ${rssFeedUrl}`
+   }
+   return file.compileStumpCode(`meta
+   charset utf-8
+  titleTag ${title}
+  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
+  styleTag @media print {.doNotPrint {display: none !important;}}
+  link
+   rel canonical
+   href ${canonicalLink}
+  meta
+   charset iso-8859-1
+  meta
+   name viewport
+   content width=device-width,initial-scale=1
+  meta
+   name description
+   content ${description}
+  meta
+   name generator
+   content Scroll v${SCROLL_VERSION}
+  meta
+   property og:title
+   content ${title}
+  meta
+   property og:description
+   content ${description}
+  meta
+   property og:image
+   content ${openGraphImage}
+  ${rssTag}
+  meta
+   name twitter:card
+   content summary_large_image`)
+  }
+pageFooterParser
+ cruxFromId
+ description A footer for your page.
+ extends abstractScrollParser
+ string hakon
+  .pageFooter
+   margin-top 8px
+   padding-top 8px
+   text-align center
+   svg
+    width 30px
+    height 30px
+    fill rgba(204,204,204, .5)
+    padding 0 7px
+    &:hover
+     fill #333
+  .pageFooterScrollLink
+   display block
+   font-family Verdana
+   font-weight 100
+   margin .5em
+   color rgba(204,204,204,.5)
+   &:hover
+    color #333
+    text-decoration none
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  get css() {
+    const hakonParser = this.root.hakonParser
+    return new hakonParser(this.hakon).compile()
+  }
+  compile() {
+   const file = this.parent.file
+   const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
+   const closeContainerTag = "</div>"
+   return (
+    closeContainerTag + `<style>${this.css}</style>` +
+    file.compileStumpCode(`p
+   class scrollViewSource doNotPrint
+   a View source
+    href ${viewSourceUrl}
+  div
+   class pageFooter doNotPrint
+   a ${SVGS.email}
+    href mailto:${file.email}
+   a ${SVGS.git}
+    href ${file.git}
+   a Built with Scroll v${SCROLL_VERSION}
+    href https://scroll.pub
+    class pageFooterScrollLink
+    style display:block; margin: .5em;`)
+   )
+  }
+gazetteFooterParser
+ extends pageFooterParser
+ description DEPRECATED! Use "pageFooter" instead.
+pageHeaderParser
+ cruxFromId
+ description A header for your page.
+ extends abstractScrollParser
+ string hakon
+  .pageHeader
+   position absolute
+   top .25rem
+   right 0
+   left 0
+   svg
+    width 1.875rem
+    height 1.875rem
+    fill rgba(204,204,204,.8)
+    &:hover
+     fill #333
+   a
+    color rgba(204,204,204,.8)
+    position absolute
+    font-size 1.875rem
+    line-height 1.7rem
+    text-decoration none
+    &:hover
+     color #333
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  get css() {
+    const hakonParser = this.root.hakonParser
+    return new hakonParser(this.hakon).compile()
+  }
+  compile() {
+   const file = this.parent.file
+   const { SVGS, linkToPrevious, linkToNext } = file
+   let previousButton = ""
+   if (linkToPrevious)
+    previousButton = `a <
+    style left:.1875rem;
+    href ${linkToPrevious}`
+   let nextButton = ""
+   if (linkToNext)
+    nextButton = `a >
+    style right:.1875rem;
+    href ${linkToNext}`
+   return `<style>${this.css}</style>` + file.compileStumpCode(`div
+   class pageHeader doNotPrint
+   ${previousButton}
+   a ${SVGS.home}
+    style text-align:left;left:1.5625rem;
+    href ${file.get("homeLink") || "index.html"}
+   a ${SVGS.git}
+    style text-align:right;right: 1.5625rem;
+    href ${file.git}
+   ${nextButton}`)
+  }
+gazetteHeaderParser
+ extends pageHeaderParser
+ description DEPRECATED! Use "pageHeader" instead.
 quoteParser
  cruxFromId
  description A blockquote.
@@ -1922,6 +2110,9 @@ quoteParser
  javascript
   compile() {
    return `<blockquote class="scrollQuote">${this.childrenToString()}</blockquote>`
+  }
+  compileTextVersion() {
+    return this.childrenToString()
   }
 readingListParser
  extends abstractScrollParser
@@ -1947,18 +2138,51 @@ redirectToParser
   compile() {
    return `<meta http-equiv="Refresh" content="0; url='${this.getWord(1)}'" />`
   }
-replaceParser
- description Define a variable token and replacement that will be applied to all lines before and after this one.
+relatedListParser
+ description Prints a list of related posts with years.
  extends abstractScrollParser
  cruxFromId
- catchAllCellType stringCell
- baseParser blobParser
- example
-  replace YEAR 2022
+ cells keywordCell
  javascript
+  compile() {
+   const file = this.root.file
+   const ids = this.root.get("related")?.split(" ") || []
+   return ids.map(id => {
+    // get title, permalink, and year
+    const {title, permalink, year} = file.getFileFromId(id)
+    const node = this.appendSibling(`- ${title}${year ? " (" + year + ")" : ""}`, `link ${permalink}`)
+    // A hacky but simple way to do this for now.
+    const html = node.compile()
+    node.destroy()
+    return html
+   }).join("\n")
+  }
+  compileTextVersion() {
+   // Todo: reuse code between these 2 methods.
+   const file = this.root.file
+   const ids = this.root.get("related")?.split(" ") || []
+   return ids.map(id => {
+    // get title, permalink, and year
+    const {title, permalink, year} = file.getFileFromId(id)
+    const link = file.ensureAbsoluteLink(permalink)
+    return `- ${title}${year ? " (" + year + ")" : ""}\n ${link}`
+  }).join("\n")
+  }
+abstractVariableParser
+ extends abstractScrollParser
+ catchAllCellType stringCell
+ cruxFromId
+ javascript
+  isTopMatter = true
   compile() {
    return ""
   }
+replaceParser
+ description Define a variable token and replacement that will be applied to all lines before and after this one.
+ extends abstractVariableParser
+ baseParser blobParser
+ example
+  replace YEAR 2022
 replaceJsParser
  description Define a variable token and replacement that will be applied to all lines before and after this one.
  extends replaceParser
@@ -1968,8 +2192,7 @@ replaceJsParser
   * 1+1 = SUM
 nodejsParser
  description Write nodejs code inside a Scroll file. Sort of like PHP.
- extends abstractScrollParser
- cruxFromId
+ extends abstractVariableParser
  catchAllCellType javascriptCell
  baseParser blobParser
  example
@@ -1977,12 +2200,29 @@ nodejsParser
    module.exports = {SCORE : 1 + 2}
   * The score is SCORE
 replaceDefaultParser
+ // todo: remove this?
  description Define the default value for a replacement. Useful if you want to import a file and set a replacement later.
- extends abstractScrollParser
- catchAllCellType stringCell
+ extends abstractVariableParser
  baseParser blobParser
  example
   replaceDefault YEAR 2021
+printSiteMapParser
+ description Prints out a plain text sitemap for a folder.
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell
+ example
+  baseUrl http://test.com
+  printSiteMap
+ javascript
+  compile() {
+   const file = this.root.file
+   const { baseUrl } = file
+   return file.allHtmlFiles.map(file => baseUrl + file.permalink).join("\n")
+  }
+endSnippetParser
+ description Insert one of these where you want to cut the file for a snippet.
+ extends abstractScrollParser
  cruxFromId
  javascript
   compile() {
@@ -2021,6 +2261,9 @@ abstractTableParser
   }
   compile() {
    return `<table class="scrollTable"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
+  }
+  compileTextVersion() {
+    return `[Table Omitted]`
   }
 tableParser
  description A table with a custom delimiter.
@@ -2067,6 +2310,26 @@ treeTableParser
     name Python
     example
      print "Hello world"
+plainTextParser
+ description Use for plain text one liners and/or blocks of plain text. Will print in all output formats.
+ cruxFromId
+ extends abstractScrollParser
+ catchAllParser plainTextLineParser
+ catchAllCellType stringCell
+ javascript
+  compile() {
+   return this.compileTextVersion()
+  }
+  compileTextVersion() {
+    return `${this.content ?? ""}${this.childrenToString()}`
+  }
+plainTextOnlyParser
+ extends plainTextParser
+ description Only prints its contents in text output.
+ javascript
+  compile() {
+   return ""
+  }
 abstractAftertextAttributeParser
  cells keywordCell
  boolean isAttribute true
@@ -2244,6 +2507,9 @@ linkParser
  cruxFromId
  javascript
   tag = "a"
+  compileTextVersion() {
+    return this.root.file.ensureAbsoluteLink(this.link)
+  }
   get link() {
    const {baseLink} = this
    if (this.has("program"))
@@ -2358,15 +2624,20 @@ datelineParser
  extends abstractAftertextDirectiveParser
  javascript
   getInserts() {
-   let day = this.content || this.root.get("date")
+   const {day} = this
    if (!day) return false
+   return [{ index: 0, string: `<span class="scrollDateline">${day} — </span>` }]
+  }
+  get day() {
+   let day = this.content || this.root.get("date")
+   if (!day) return ""
    try {
     const dayjs = require("dayjs")
-    day = dayjs(day).format(`MMMM D, YYYY`)
+    return dayjs(day).format(`MMMM D, YYYY`)
    } catch (err) {
     console.error(err)
    }
-   return [{ index: 0, string: `<span class="scrollDateline">${day} — </span>` }]
+   return day || ""
   }
 dayjsParser
  description Advanced directive that evals some Javascript code in an environment including "dayjs".
@@ -2503,9 +2774,6 @@ longParser
  cells keywordCell floatCell
  cruxFromId
  single
-plainTextLineParser
- catchAllCellType stringCell
- catchAllParser plainTextLineParser
 quoteLineParser
  catchAllCellType anyCell
  catchAllParser quoteLineParser
@@ -2520,7 +2788,7 @@ readingListItemParser
   }
 scrollParser
  extensions scroll
- description Tools for thought thats compile to HTML.
+ description Tools for thought that compile to HTML.
  root
  inScope abstractScrollParser blankLineParser
  catchAllParser catchAllParagraphParser
@@ -2590,6 +2858,9 @@ rowParser
    }
    return str
   }
+plainTextLineParser
+ catchAllCellType stringCell
+ catchAllParser plainTextLineParser
 tagsParser
  // Todo: there may be a bug with having scoped parsers in abstract classes not being available to child classes.
  cells keywordCell booleanCell
