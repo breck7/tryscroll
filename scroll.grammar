@@ -147,6 +147,7 @@
 
 
 
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -413,6 +414,20 @@ orderedListAftertextParser
  javascript
   listType = "ol"
   get attributes() { return ` start="${this.getWord(0)}"`}
+expanderParser
+ cruxFromId
+ description Prints the section in an expandable html details and summary tag.
+ extends paragraphParser
+ javascript
+  compile() {
+   this.parent.sectionStack.push("</details>")
+   return `<details>${super.compile()}`
+  }
+  compileTextVersion() {
+    return this.content
+  }
+  tag = "summary"
+  defaultClassName = ""
 footnoteDefinitionParser
  description A footnote. Can also be used as section notes.
  extends paragraphParser
@@ -1075,35 +1090,24 @@ tabularDataParser
  catchAllCellType anyCell
  extends abstractCommentParser
  javascript
+  compileTextVersion() {
+    return ""
+  }
+  get headerNode() {
+    return this.isFirst ? this : this.previous.headerNode
+  }
   compile() {
-   // If this is not the first line in the table, do nothing, since the first line
-   // prints the table
-   // todo: remove this feature. make it explicit that you have to add a keyword to print a root table. otherwise should be silent
-   if (!this.isFirst) return ""
-   let table = this.getLine()
-   let line = this
-   while (line.next.isTabularData) {
-     table += "\n" + line.next.getLine()
-     line = line.next
-     if (line === this)
-       break
-   }
-   const node = this.appendSibling("table \t", table)
-   const html = node.compile()
-   node.destroy()
-   return html
+    return ""
   }
   get isFirst() {
     return !this.previous.isTabularData
   }
-  compileTextVersion() {
-    return this.isFirst ? `[Table Omitted]` : ""
-  }
   isTabularData = true
  example
-  // The below lines will print as a table
-  Index Name
-  1 Thermos
+  // The below lines will print a table
+  printTable
+  Index	Name
+  1	Thermos
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
@@ -1213,6 +1217,48 @@ writeTextParser
  cruxFromId
  description Compile a post to text rather than html and save to disk.
  extends abstractCommandParser
+printTableParser
+ description Print a tabular table in a page into an HTML table.
+ cruxFromId
+ extends abstractScrollParser
+ javascript
+   compile() {
+    const node = this.appendSibling("table \t", this.tsv)
+    const html = node.compile()
+    node.destroy()
+    return html
+   }
+   getTableByIndex(index) {
+      const hit = this.root.file.tables[parseInt(index)]
+      if (!hit)
+        console.error(`Table "${index}" not found`)
+      return hit
+   }
+   get table() {
+     const index = this.getWord(1)
+     if (index !== undefined)
+        return this.getTableByIndex(index)
+     if (this.next.isTabularData)
+       return this.next
+     if (this.previous.isTabularData)
+       return this.previous.headerNode
+    return this.getTableByIndex(0)
+   }
+   get tsv() {
+     const firstNode = this.table
+    let tableNode = firstNode
+    let tsv = tableNode.getLine()
+    while (tableNode.next.isTabularData) {
+      tsv += "\n" + tableNode.next.getLine()
+      tableNode = tableNode.next
+      if (tableNode === firstNode)
+        break
+    }
+     return tsv
+   }
+   compileTextVersion() {
+     return this.tsv
+   }
 abstractThemeCssParser
  description Extend this to create a Scroll CSS theme.
  extends abstractScrollParser
@@ -1234,6 +1280,11 @@ abstractThemeCssParser
    padding 1rem
    span
     vertical-align sub
+  details
+   margin-top 10px
+  summary
+   font-family "SF Pro", "Helvetica Neue", "Segoe UI", "Arial"
+   cursor pointer
   .scrollCaptionedFigure
    display block
    break-inside avoid
@@ -2263,7 +2314,7 @@ abstractTableParser
    return `<table class="scrollTable"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
   }
   compileTextVersion() {
-    return `[Table Omitted]`
+    return this.childrenToString()
   }
 tableParser
  description A table with a custom delimiter.

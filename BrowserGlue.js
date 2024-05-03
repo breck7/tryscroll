@@ -25,6 +25,7 @@ aboveAsCode
 - Designed to last.
 
 # Scroll supports tables
+printTable
 Language	NodeTypes
 HTML	~142
 Markdown	~192
@@ -35,6 +36,9 @@ image https://scroll.pub/blog/screenshot.png
  caption This is a screenshot of a blog
   https://breckyunits.com/ blog
 aboveAsCode
+
+expander Click me.
+You can easily add collapsed content.
 
 ## Scroll has footnotes^note
 
