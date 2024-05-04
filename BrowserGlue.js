@@ -11,7 +11,7 @@ const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
 ***
 
 // You can have multiple columns
-startColumns 2
+thinColumns 2
 
 ## Links are different
 You put links _after_ the text, like this one. The code:
