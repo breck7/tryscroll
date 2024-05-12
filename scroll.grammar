@@ -1,11 +1,46 @@
 // Related work:
  CSS is great for text selector ideas: https://www.w3schools.com/cssref/css_selectors.asp
  Roff has a lot of related markup ideas: https://www.systutorials.com/docs/linux/man/7-groff_man/
-// Note: this is an MVP of Scroll Datasets for initial experimentation and to test the syntax. Few features are implemented yet.
+// Basic cell types
+// Enum cell types
+// String cell types
+// Date cell types
+// Numeric cell types
+// Scroll cell types
+// Link cell types
+// File system cell types
+// HTML cell types
 // todo: copy the external library to folder so it works offline?
 // Extend this if you want to create a new provider
 // Some basic providers:
+// The main measure parser. All measures should extend from this.
+// String Measures
+// URL Parsers
+// Required ID measure which denotes a concept
+// Numeric Measures
+// Enum Measures
+// Boolean Measures
 // https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap#text
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -153,46 +188,66 @@
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
+blankCell
 anyCell
 enumCell
-urlCell
  highlightScope constant.language
-keywordCell
- highlightScope keyword
+booleanCell
+ enum true false
+ extends enumCell
 stringCell
  highlightScope string
-booleanCell
- highlightScope constant.language
- enum true false
-idCell
- highlightScope constant.language
+wordCell
+ highlightScope string
+ description A non-empty single word string.
+ regex .+
 dateCell
  highlightScope string
+numberCell
+ highlightScope constant.numeric
 integerCell
- highlightScope constant.numeric
+ extends numberCell
+ highlightScope constant.numeric.integer
 floatCell
- highlightScope constant.numeric
-permalinkCell
- highlightScope string
- description A string that doesn't contain characters that might interfere with most filesystems. No slashes, for instance.
+ extends numberCell
+ highlightScope constant.numeric.float
+percentCell
+ highlightScope constant.numeric.float
+ extends stringCell
+ // todo: this currently extends from stringCell b/c jtree needs to be fixed. seems like if extending from number then the hard coded number typescript regex takes precedence over a custom regex
+countCell
+ extends integerCell
+yearCell
+ extends integerCell
+keywordCell
+ highlightScope keyword
 commentCell
  highlightScope comment
-blankCell
-personNameCell
- extends stringCell
+delimiterCell
+ description String to use as a delimiter.
+ highlightScope string
 codeCell
  highlightScope comment
 bulletPointCell
  description Any token used as a bullet point such as "-" or "1." or ">"
  highlightScope keyword
+personNameCell
+ extends stringCell
+urlCell
+ highlightScope constant.language
+absoluteUrlCell
+ highlightScope constant.language
+ regex (ftp|https?)://.+
 emailAddressCell
+ extends stringCell
+permalinkCell
+ highlightScope string
+ description A string that doesn't contain characters that might interfere with most filesystems. No slashes, for instance.
+filePathCell
  extends stringCell
 tagOrUrlCell
  description An HTML tag or a url.
  highlightScope constant.language
-delimiterCell
- description String to use as a delimiter.
- highlightScope string
 htmlAttributesCell
  highlightScope comment
 htmlTagCell
@@ -201,18 +256,9 @@ htmlTagCell
 classNameCell
  highlightScope constant
 htmlIdCell
- extends idCell
-filePathCell
- extends stringCell
+ extends anyCell
 cssAnyCell
  extends anyCell
-valueCell
- highlightScope comment
-measureTypeCell
- extends enumCell
- enum string int bool url uid float enum
-measureNameCell
- highlightScope keyword
 groupNameCell
  extends permalinkCell
 groupNameWithOptionalFolderCell
@@ -220,6 +266,8 @@ groupNameWithOptionalFolderCell
  extends stringCell
 htmlAnyCell
  extends stringCell
+measureNameCell
+ extends keywordCell
 javascriptCell
  extends stringCell
 abstractScrollParser
@@ -299,6 +347,8 @@ abstractAftertextParser
    const { className } = this
    const classAttr = className ? `class="${this.className}"` : ""
    const tag = this.get("tag") || this.tag
+   if (tag === "none") // Allow no tag for aftertext in tables
+     return this.text
    return `<${tag} ${this.divAttributes}${classAttr}>${this.text}</${tag}>`
   }
   get divAttributes() {
@@ -416,6 +466,12 @@ orderedListAftertextParser
  javascript
   listType = "ol"
   get attributes() { return ` start="${this.getWord(0)}"`}
+quickQuoteParser
+ crux >
+ extends indentableParagraphParser
+ javascript
+  defaultClassName = "scrollQuote"
+  tag = "blockquote"
 expanderParser
  cruxFromId
  description Prints the section in an expandable html details and summary tag.
@@ -595,14 +651,18 @@ dinkusParser
  crux ***
  description Prints a centered *
  extends abstractAftertextParser
+ string dinkus *
  javascript
   compile() {
    return `<div class="dinkus"><span>${this.dinkus}</span></div>`
   }
-  dinkus = "*"
   compileTextVersion() {
     return this.getLine()
   }
+endOfPostDinkusParser
+ extends dinkusParser
+ crux ****
+ string dinkus ⁂
 loopParser
  extends abstractAftertextParser
  cells keywordCell
@@ -650,9 +710,10 @@ loremIpsumParser
    return text.repeat(this.getWord(1) ? parseInt(this.getWord(1)) : 1)
   }
 snippetsParser
+ // todo: why are we extending AT here and not loops? Is it for class/id etc?
  extends abstractAftertextParser
  cruxFromId
- cells keywordCell groupNameWithOptionalFolderCell
+ cells keywordCell
  catchAllCellType groupNameWithOptionalFolderCell
  description Prints the snippets of all files in the named group(s).
  example
@@ -671,17 +732,27 @@ snippetsParser
         .join(joinChar)
         .trim() +
       `<a class="scrollContinueReadingLink" href="${linkRelativeToCompileTarget}">Continue reading...</a>`
-    return html + file.viewSourceHtml
+    return html
   }
   compile() {
    const file = this.parent.file
    const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
    const alreadyRequired = this.root.alreadyRequired
    const snippets = files.map(file => {
-   const compileSettings = {relativePath: file.relativePath, alreadyRequired }
-   return `<div class="scrollSnippetContainer">${this.makeSnippet(file.file, compileSettings)}</div>`
-   }).join("\n\n")
+    const compileSettings = {relativePath: file.relativePath, alreadyRequired }
+    return `<div class="scrollSnippetContainer">${this.makeSnippet(file.file, compileSettings)}</div>`
+    }).join("\n\n")
    return `<div class="scrollColumns" style="column-width:35ch;">${snippets}</div>`
+  }
+  compileTextVersion() {
+   const file = this.parent.file
+   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+   return files.map(file =>  {
+    const title = file.file.title
+    const ruler = "=".repeat(title.length)
+    // Note: I tried to print the description here but the description generating code needs work.
+    return `${title}\n${ruler}\n${file.file.date}\n${file.file.absoluteLink}`
+   }).join("\n\n")
   }
 fullSnippetsParser
  extends snippetsParser
@@ -990,56 +1061,51 @@ tableSearchParser
   <script defer src="jquery-3.7.1.min.js"></script>
   <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
   <link rel="stylesheet" href="dataTables.dataTables.min.css" />
-    <script defer src="dataTables.min.js"></script>
-    <script>
-     document.addEventListener("DOMContentLoaded", function () {
-      const urlSearchParams = new URLSearchParams(window.location.search)
-      const params = Object.fromEntries(urlSearchParams.entries())
-      jQuery('table').DataTable({"order": [],"paging": false,search:{ search: params.filter || ""}});
-    } );
-    </script>
+  <script defer src="dataTables.min.js"></script>
+  <script defer>
+   document.addEventListener("DOMContentLoaded", function () {
+     const getSearch = () => {
+       const hashParams = window.location.hash
+         .substr(1)
+         .split("&")
+         .reduce(function (p, e) {
+           var a = e.split("=")
+           p[decodeURIComponent(a[0])] = decodeURIComponent(a[1])
+           return p
+         }, {})
+       return hashParams.q || ""
+     }
+     const dataTable = jQuery("table").DataTable({
+       order: [],
+       paging: false,
+       stateSave: true,
+       stateSaveCallback: function (settings, data) {
+         if (data.search.search)
+          window.location.hash = "q=" + encodeURIComponent(data.search.search)
+         else
+          window.location.hash = ""
+       },
+       // Set the search input to the initial value extracted from the URL
+       search: { search: getSearch() },
+       stateLoadCallback: function (settings) {
+         return { search: { search: getSearch() } }
+       }
+     })
+     // Listen for hash changes to update the DataTable search
+     window.addEventListener("hashchange", () => dataTable.search(getSearch()).draw(false))
+   })
+  </script>
  description Add table search to all tables on the page.
  javascript
   compileInstance() {
    return ""
   }
-belowAsCodeParser
- description Print the Scroll code of the next node.
- extends abstractScrollParser
- catchAllCellType integerCell
- cruxFromId
- javascript
-  method = "next"
-  get code() {
-   const { method } = this
-   let code = ""
-   let howMany = parseInt(this.getWord(1))
-   if (!howMany || isNaN(howMany)) howMany = 1
-   let nodes = []
-   let next = this[method]
-   while (howMany) {
-    nodes.push(next)
-    next = next[method]
-    howMany--
-   }
-   if (this.reverse) nodes.reverse()
-   return nodes.map(node => node.asString).join("\n")
-  }
-  reverse = false
-  compile() {
-   return `<code class="scrollCodeBlock">${this.code.replace(/\</g, "&lt;")}</code>`
-  }
-aboveAsCodeParser
- description Print the Scroll code for the previous node.
- extends belowAsCodeParser
- javascript
-  method = "previous"
-  reverse = true
 abstractCommentParser
  description Comments do not appear in the compiled HTML.
  catchAllCellType commentCell
  cells commentCell
  extends abstractScrollParser
+ baseParser blobParser
  javascript
   compile() {
    return ``
@@ -1055,49 +1121,37 @@ counterpointParser
  description A counterpoint. Will not show up in the compiled HTML.
  extends commentParser
  crux !
-thanksToParser
- description A place to store data on reviewers who helped improve a post (and a reminder to seek feedback!). Does not appear in compiled HTML.
- extends abstractCommentParser
- cruxFromId
-conceptStartParser
- crux ::
- description Begins a concept.
- extends abstractCommentParser
- javascript
-  compile() {
-   return `<hr>`
-  }
-measurementParser
- description Add a measurement to a concept. Also used for defining measures.
- cells measureNameCell
- pattern ^[a-zA-Z0-9_]+:( |$)
- catchAllCellType valueCell
- extends abstractCommentParser
- javascript
-  compile() {
-   return `<div>${Utils.linkify(this.getLine())}</div>`
-  }
- example
-  ::
-  id: earth
-  order: 3
-printDatasetParser
- description Print the dataset in a page into an HTML table.
+printConceptsParser
+ description Print the concepts in a page into an HTML table.
  cruxFromId
  extends abstractCommentParser
  javascript
    compile() {
    // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table \t", this.parent.file.makeDataset("tsv"))
+   const node = this.appendSibling("table \t", this.parent.file.compileConcepts("concepts.tsv"))
+   const html = node.compile()
+   node.destroy()
+   return html
+   }
+thanksToParser
+ description A place to store data on reviewers who helped improve a post (and a reminder to seek feedback!). Does not appear in compiled HTML.
+ extends abstractCommentParser
+ cruxFromId
+printMeasuresParser
+ description Print measures statistics in a page into an HTML table.
+ cruxFromId
+ extends abstractCommentParser
+ javascript
+   compile() {
+   // A hacky but simple way to do this for now.
+   const node = this.appendSibling("table \t", this.parent.file.compileMeasures("tsv"))
    const html = node.compile()
    node.destroy()
    return html
    }
 tabularDataParser
  description Root lines with tabs are parsed as tsv data and printed as tables.
- cells anyCell
  pattern \t
- catchAllCellType anyCell
  extends abstractCommentParser
  javascript
   compileTextVersion() {
@@ -1112,12 +1166,70 @@ tabularDataParser
   get isFirst() {
     return !this.previous.isTabularData
   }
+  get lastNode() {
+    if (this.next.isTabularData && this.next.lineNumber)
+      return this.next.lastNode
+    return this
+  }
+  applyAftertext(aftertext) {
+    const node = this.parent.appendLineAndChildren("* " + this.getLine(), aftertext + "\ntag none")
+    const html = node.compile()
+    node.destroy()
+    return html
+  }
   isTabularData = true
  example
   // The below lines will print a table
   printTable
-  Index	Name
-  1	Thermos
+  Index Name
+  1 Thermos
+loadConceptsParser
+ description Load all concepts in all scroll files in a folder and remove any "import" statements.
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell filePathCell
+ javascript
+  compile() {
+   // A little hacky
+   const { Disk } = require("jtree/products/Disk.node.js")
+   const path = require("path")
+   const {file} = this.parent
+   const folder = path.join(file.folderPath, this.getWord(1))
+   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(fullPath => Disk.read(fullPath) + `\nfilename ${path.basename(fullPath)}\n`).join("\n\n").replace(/import .+/g, "")
+    this.parent.concat(ONE_BIG_FILE)
+   //console.log(ONE_BIG_FILE)
+   return ""
+  }
+abstractCommandParser
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell
+ inScope slashCommentParser
+ javascript
+  isTopMatter = true
+  compile() {
+   return ""
+  }
+writeConceptsParser
+ cruxFromId
+ catchAllCellType filePathCell
+ description Compiles concepts to a delimited file and write to disk.
+ extends abstractCommandParser
+ sortByParser
+  cruxFromId
+  cells keywordCell anyCell
+writeMeasuresParser
+ cruxFromId
+ catchAllCellType filePathCell
+ description Writes measure statistics to a delimited file and write to disk.
+ extends abstractCommandParser
+ sortByParser
+  cruxFromId
+  cells keywordCell anyCell
+writeTextParser
+ cruxFromId
+ description Compile a post to text rather than html and save to disk.
+ extends abstractCommandParser
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
@@ -1128,12 +1240,19 @@ cssParser
   compile() {
    return `<style>${this.content ?? ""}${this.childrenToString()}</style>`
   }
-printFeedParser
- description Prints out the RSS feed for a group.
+abstractPostLoopParser
+ description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
  cruxFromId
- cells keywordCell groupNameWithOptionalFolderCell
+ cells keywordCell
  catchAllCellType groupNameWithOptionalFolderCell
+ javascript
+  get files() {
+   return this.root.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+  }
+printFeedParser
+ description Prints out the RSS feed for a group.
+ extends abstractPostLoopParser
  example
   printFeed index
   printFeed cars/index
@@ -1142,7 +1261,7 @@ printFeedParser
   compile() {
    const dayjs = require("dayjs")
    const file = this.root.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const files = this.files.map(file => file.file)
    const { title, baseUrl, description } = file
    return `<?xml version="1.0" encoding="ISO-8859-1" ?>
   <rss version="2.0">
@@ -1181,6 +1300,35 @@ printSourceParser
    const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
    return `${files.map(file => file.filePath + "\n " + file.originalScrollCode.replace(/\n/g, "\n ") ).join("\n")}`
   }
+printSearchTableParser
+ description Prints out all pages into an HTML table that can be searched.
+ extends abstractPostLoopParser
+ example
+  printSearchTable
+  tableSearch
+ javascript
+  compile() {
+   const file = this.root.file
+   const files = this.files
+   const data = files.map(file => file.file.toSearchTsvRow(file.relativePath)).join("\n")
+   // A hacky but simple way to do this for now.
+   const node = this.appendSibling("table \t", "title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
+   const html = node.compile()
+   node.destroy()
+   return html
+  }
+printSiteMapParser
+ extends abstractPostLoopParser
+ description Prints out a plain text sitemap.
+ example
+  baseUrl http://test.com
+  printSiteMap
+ javascript
+  compile() {
+   const file = this.root.file
+   const { baseUrl } = file
+   return this.files.map(file => baseUrl + file.file.permalink).join("\n")
+  }
 dashboardParser
  description Display key stats in a big font.
  catchAllParser rowParser
@@ -1209,66 +1357,60 @@ dashboardParser
   compileTextVersion() {
     return this.childrenToString()
   }
-abstractCommandParser
+belowAsCodeParser
+ description Print the Scroll code of the next node.
  extends abstractScrollParser
+ catchAllCellType integerCell
  cruxFromId
- cells keywordCell
- inScope slashCommentParser
  javascript
-  isTopMatter = true
-  compile() {
-   return ""
+  method = "next"
+  get code() {
+   const { method } = this
+   let code = ""
+   
+   let nodes = []
+   let next = this[method]
+   let {howMany} = this
+   while (howMany) {
+    nodes.push(next)
+    next = next[method]
+    howMany--
+   }
+   if (this.reverse) nodes.reverse()
+   return nodes.map(node => node.asString).join("\n")
   }
-writeDatasetParser
- cruxFromId
- description Write a dataset file to disk.
- extends abstractCommandParser
-writeTextParser
- cruxFromId
- description Compile a post to text rather than html and save to disk.
- extends abstractCommandParser
-printTableParser
- description Print a tabular table in a page into an HTML table.
- cruxFromId
- extends abstractScrollParser
+  reverse = false
+  compile() {
+   return `<code class="scrollCodeBlock">${this.code.replace(/\</g, "&lt;")}</code>`
+  }
+  get howMany() {
+    let howMany = parseInt(this.getWord(1))
+   if (!howMany || isNaN(howMany)) howMany = 1
+   return howMany
+  }
+belowAsCodeUntilParser
+ description Same as belowAsCode, except you can provide a search string to find the line where printing should stop.
+ extends belowAsCodeParser
+ catchAllCellType anyCell
  javascript
-   compile() {
-    const node = this.appendSibling("table \t", this.tsv)
-    const html = node.compile()
-    node.destroy()
-    return html
-   }
-   getTableByIndex(index) {
-      const hit = this.root.file.tables[parseInt(index)]
-      if (!hit)
-        console.error(`Table "${index}" not found`)
-      return hit
-   }
-   get table() {
-     const index = this.getWord(1)
-     if (index !== undefined)
-        return this.getTableByIndex(index)
-     if (this.next.isTabularData)
-       return this.next
-     if (this.previous.isTabularData)
-       return this.previous.headerNode
-    return this.getTableByIndex(0)
-   }
-   get tsv() {
-     const firstNode = this.table
-    let tableNode = firstNode
-    let tsv = tableNode.getLine()
-    while (tableNode.next.isTabularData) {
-      tsv += "\n" + tableNode.next.getLine()
-      tableNode = tableNode.next
-      if (tableNode === firstNode)
-        break
+  get howMany() {
+    let howMany = 1
+    const query = this.content
+    let node = this.next
+    while (node !== this) {
+      if (node.getLine().startsWith(query))
+        return howMany
+      node = node.next
+      howMany++
     }
-     return tsv
-   }
-   compileTextVersion() {
-     return this.tsv
-   }
+    return howMany
+  }
+aboveAsCodeParser
+ description Print the Scroll code for the previous node.
+ extends belowAsCodeParser
+ javascript
+  method = "previous"
+  reverse = true
 abstractThemeCssParser
  description Extend this to create a Scroll CSS theme.
  extends abstractScrollParser
@@ -1492,6 +1634,10 @@ gazetteCssParser
     padding .1875rem
     overflow hidden
     white-space nowrap
+   td:hover
+    text-overflow unset
+    overflow unset
+    white-space unset
    th
     text-transform capitalize
    th
@@ -1509,13 +1655,12 @@ gazetteCssParser
   comment Subtle "Article Source" link
   .scrollViewSource
    text-align center
-   font-size .8rem
-   margin 0
-   margin-top .4rem
-   line-height 1.4rem
-   margin-bottom 1rem
+   font-family Verdana
+   font-weight 100
    a
-    color #000
+    color rgba(204,204,204,.5)
+    &:hover
+     color #333
   
   .scrollContinueReadingLink
    display block
@@ -2000,6 +2145,90 @@ keyboardNavParser
    });</script>`
    return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
+abstractMeasureParser
+ cells measureNameCell
+ cruxFromId
+ boolean isMeasure true
+ int sortIndex 1000
+ boolean isComputed false
+ string typeForCsvDocs unspecified
+ extends abstractScrollParser
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   return ""
+  }
+  get measureValue() {
+    return this.content ?? ""
+  }
+  get measureName() {
+    return this.getFirstWordPath().replace(/ /g, "_")
+  }
+abstractWordMeasureParser
+ description A measure that contains a single word.
+ cells measureNameCell wordCell
+ string typeForCsvDocs word
+ extends abstractMeasureParser
+abstractUrlMeasureParser
+ string typeForCsvDocs url
+ cells measureNameCell urlCell
+ extends abstractWordMeasureParser
+abstractStringMeasureParser
+ string typeForCsvDocs string
+ catchAllCellType stringCell
+ extends abstractMeasureParser
+idParser
+ description What is the ID of this concept?
+ extends abstractStringMeasureParser
+ int sortIndex 0
+filenameParser
+ // Added by the loadConcepts keyword
+ description What is the name of the file holding this concept?
+ extends abstractStringMeasureParser
+ boolean isComputed true
+ int sortIndex 1
+ javascript
+  computeValue(concept, measureName, parsedProgram) {
+    return concept.get("filename") || parsedProgram.file.filename
+  }
+abstractNumericMeasureParser
+ string typeForCsvDocs number
+ extends abstractMeasureParser
+ javascript
+  get measureValue() {
+    const {content} = this
+    return content === undefined ? "" : parseFloat(content)
+  }
+abstractIntegerMeasureParser
+ string typeForCsvDocs integer
+ cells measureNameCell integerCell
+ extends abstractNumericMeasureParser
+abstractFloatMeasureParser
+ cells measureNameCell floatCell
+ extends abstractNumericMeasureParser
+abstractPercentageMeasureParser
+ cells measureNameCell percentCell
+ extends abstractNumericMeasureParser
+ javascript
+  get measureValue() {
+    const {content} = this
+    return content === undefined ? "" : parseFloat(content)
+  }
+abstractEnumMeasureParser
+ string typeForCsvDocs enum
+ cells measureNameCell enumCell
+ extends abstractMeasureParser
+abstractBooleanMeasureParser
+ string typeForCsvDocs boolean
+ cells measureNameCell booleanCell
+ extends abstractMeasureParser
+ javascript
+  get measureValue() {
+    const {content} = this
+    return content === undefined ? "" : content == "true"
+  }
 metaTagsParser
  cruxFromId
  extends abstractScrollParser
@@ -2023,7 +2252,7 @@ metaTagsParser
    return file.compileStumpCode(`meta
    charset utf-8
   titleTag ${title}
-  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. http://scroll.pub */
+  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. https://scroll.pub */
   styleTag @media print {.doNotPrint {display: none !important;}}
   link
    rel canonical
@@ -2258,36 +2487,15 @@ replaceJsParser
  example
   replaceJs SUM 1+1
   * 1+1 = SUM
-nodejsParser
+replaceNodejsParser
  description Write nodejs code inside a Scroll file. Sort of like PHP.
  extends abstractVariableParser
  catchAllCellType javascriptCell
  baseParser blobParser
  example
-  nodejs
+  replaceNodejs
    module.exports = {SCORE : 1 + 2}
   * The score is SCORE
-replaceDefaultParser
- // todo: remove this?
- description Define the default value for a replacement. Useful if you want to import a file and set a replacement later.
- extends abstractVariableParser
- baseParser blobParser
- example
-  replaceDefault YEAR 2021
-printSiteMapParser
- description Prints out a plain text sitemap for a folder.
- extends abstractScrollParser
- cruxFromId
- cells keywordCell
- example
-  baseUrl http://test.com
-  printSiteMap
- javascript
-  compile() {
-   const file = this.root.file
-   const { baseUrl } = file
-   return file.allHtmlFiles.map(file => baseUrl + file.permalink).join("\n")
-  }
 endSnippetParser
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractScrollParser
@@ -2378,6 +2586,51 @@ treeTableParser
     name Python
     example
      print "Hello world"
+printTableParser
+ description Print a tabular table in a page into an HTML table.
+ cruxFromId
+ catchAllCellType integerCell
+ extends abstractScrollParser
+ javascript
+   compile() {
+    const node = this.appendSibling("table \t", this.tsv)
+    const html = node.compile()
+    node.destroy()
+    return html
+   }
+   getTableByIndex(index) {
+      const hit = this.root.file.tables[parseInt(index)]
+      if (!hit)
+        console.error(`Table "${index}" not found`)
+      return hit
+   }
+   get table() {
+     const index = this.getWord(1)
+     if (index !== undefined)
+        return this.getTableByIndex(index)
+     if (this.next.isTabularData)
+       return this.next
+     if (this.previous.isTabularData)
+       return this.previous.headerNode
+    return this.getTableByIndex(0)
+   }
+   get tsv() {
+    const firstNode = this.table
+    const lastNode = firstNode.lastNode
+    const aftertext = lastNode.childrenToString() // todo: we could be more specific and ignore comments
+    let tableNode = firstNode
+    let tsv = tableNode.getLine()
+    while (tableNode.next.isTabularData) {
+      tsv += "\n" + (aftertext ? tableNode.next.applyAftertext(aftertext) : tableNode.next.getLine())
+      tableNode = tableNode.next
+      if (tableNode === firstNode)
+        break
+    }
+     return tsv
+   }
+   compileTextVersion() {
+     return this.tsv
+   }
 plainTextParser
  description Use for plain text one liners and/or blocks of plain text. Will print in all output formats.
  cruxFromId
@@ -2441,6 +2694,16 @@ abstractAftertextDirectiveParser
   isMarkup = true
   compile() {
    return ""
+  }
+  getErrors() {
+    const errors = super.getErrors()
+    if (!this.isMarkup || this.matchWholeLine) return errors
+    const inserts = this.getInserts(this.parent.originalTextPostLinkify)
+    // todo: make AbstractTreeError class exported by Grammar to allow Parsers to define their own error types.
+    // todo: also need to be able to map lines back to their line in source (pre-imports)
+    if (!inserts.length)
+      errors.push({toObject: () => {return { message: `No match found for "${this.getLine()}".`}}})
+    return errors
   }
   get pattern() {
    return this.getWordsFrom(1).join(" ")
@@ -2533,9 +2796,11 @@ classMarkupParser
   get attributes() {
    return [`class="${this.className}"`]
   }
+  get matchWholeLine() {
+    return this.getWordsFrom(2).length === 0
+  }
   get pattern() {
-   const words = this.getWordsFrom(2)
-   return words.length ? words.join(" ") : this.parent.content
+   return this.matchWholeLine ? this.parent.content : this.getWordsFrom(2).join(" ")
   }
 hoverNoteParser
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
@@ -2600,11 +2865,12 @@ linkParser
    })
    return attrs
   }
+  get matchWholeLine() {
+    return this.getWordsFrom(this.patternStartsAtWord).length === 0
+  }
   patternStartsAtWord = 2
   get pattern() {
-   // If no pattern is provided, apply to the *entire* content.
-   const words = this.getWordsFrom(this.patternStartsAtWord)
-   return words.length ? words.join(" ") : this.parent.originalText
+   return this.matchWholeLine ? this.parent.originalText : this.getWordsFrom(this.patternStartsAtWord).join(" ")
   }
 emailLinkParser
  description A mailto link
@@ -2696,6 +2962,7 @@ datelineParser
    if (!day) return false
    return [{ index: 0, string: `<span class="scrollDateline">${day} — </span>` }]
   }
+  matchWholeLine = true
   get day() {
    let day = this.content || this.root.get("date")
    if (!day) return ""
@@ -2761,8 +3028,6 @@ blankLineParser
   }
  pattern ^$
  tags doNotSynthesize
-errorParser
- baseParser errorParser
 chatLineParser
  catchAllCellType anyCell
  catchAllParser chatLineParser
@@ -2774,6 +3039,8 @@ commentLineParser
 cssLineParser
  catchAllCellType cssAnyCell
  catchAllParser cssLineParser
+errorParser
+ baseParser errorParser
 lineOfTextParser
  catchAllCellType stringCell
  boolean isTextParser true
@@ -2856,7 +3123,7 @@ readingListItemParser
   }
 scrollParser
  extensions scroll
- description Tools for thought that compile to HTML.
+ description A language for bloggers. A curated collection of tools for thoughts.
  root
  inScope abstractScrollParser blankLineParser
  catchAllParser catchAllParagraphParser
@@ -2940,10 +3207,10 @@ treeRowContentParser
 treeRowColumnParser
  catchAllParser treeRowContentParser
  description A columnName value pair, or just a columnName if the value is a text blob.
- cells idCell
+ cells anyCell
  catchAllCellType stringCell
 treeRowParser
- cells idCell
+ cells anyCell
  description The root node of a row.
  catchAllParser treeRowColumnParser
  javascript
