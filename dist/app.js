@@ -525,9 +525,13 @@ window.UrlKeys = UrlKeys
 
 
 
-const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
+const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
 
-# Scroll is an extensible alternative to Markdown.
+# Refine, share and collaborate on ideas
+
+## Build html files, CSV files, text files, and more.
+
+### Scroll is an extensible alternative to Markdown.
  https://scroll.pub Scroll
 
 ***

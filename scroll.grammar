@@ -1327,7 +1327,7 @@ printSiteMapParser
   compile() {
    const file = this.root.file
    const { baseUrl } = file
-   return this.files.map(file => baseUrl + file.file.permalink).join("\n")
+   return this.files.map(file => baseUrl + file.relativePath + file.file.permalink).join("\n")
   }
 dashboardParser
  description Display key stats in a big font.
@@ -3123,7 +3123,7 @@ readingListItemParser
   }
 scrollParser
  extensions scroll
- description A language for bloggers. A curated collection of tools for thoughts.
+ description Scroll is a language for scientists of all ages. Refine, share and collaborate on ideas.
  root
  inScope abstractScrollParser blankLineParser
  catchAllParser catchAllParagraphParser

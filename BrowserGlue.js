@@ -3,9 +3,13 @@ const { HandGrammarProgram } = require("jtree/products/GrammarLanguage.js")
 const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
-const DEFAULT_PROGRAM = `title This is Scroll. The keyword for title is title.
+const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
 
-# Scroll is an extensible alternative to Markdown.
+# Refine, share and collaborate on ideas
+
+## Build html files, CSV files, text files, and more.
+
+### Scroll is an extensible alternative to Markdown.
  https://scroll.pub Scroll
 
 ***
@@ -21,6 +25,7 @@ aboveAsCode
 ? What's the benefit for using today?
 - A very flat plain text format
 - Keeps your thoughts and data organized
+- Build fully documented and cited CSV files
 - Ready to _grow_ with _you_.
 - Designed to last.
 
