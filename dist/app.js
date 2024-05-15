@@ -526,6 +526,7 @@ window.UrlKeys = UrlKeys
 
 
 const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
+printTitle
 
 # Refine, share and collaborate on ideas
 
@@ -547,6 +548,7 @@ aboveAsCode
 ? What's the benefit for using today?
 - A very flat plain text format
 - Keeps your thoughts and data organized
+- Build fully documented and cited CSV files
 - Ready to _grow_ with _you_.
 - Designed to last.
 

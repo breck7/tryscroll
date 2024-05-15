@@ -4,6 +4,7 @@ const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFra
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
 const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
+printTitle
 
 # Refine, share and collaborate on ideas
 

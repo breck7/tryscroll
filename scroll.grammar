@@ -185,6 +185,8 @@
 
 
 
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -268,6 +270,8 @@ htmlAnyCell
  extends stringCell
 measureNameCell
  extends keywordCell
+ // A regex for column names for max compatibility with a broad range of data science tools:
+ regex [a-zA-Z][a-zA-Z0-9]*
 javascriptCell
  extends stringCell
 abstractScrollParser
@@ -521,15 +525,6 @@ footnoteDefinitionParser
   compileTextVersion() {
     return this.getWord(0) + ": " + super.compileTextVersion()
   }
-captionAftertextParser
- description An optional caption to accompany the resource.
- crux caption
- extends paragraphParser
-quickParagraphParser
- crux *
- extends paragraphParser
- example
-  * I had a _new_ idea.
 abstractHeaderParser
  extends paragraphParser
  javascript
@@ -542,34 +537,6 @@ abstractHeaderParser
     const line = super.compileTextVersion()
     return line + "\n" + "=".repeat(line.length)
   }
-h4Parser
- description Compiles to an html h4 tag.
- extends abstractHeaderParser
- crux ####
- javascript
-  tag = "h4"
-questionAftertextParser
- description A question.
- extends h4Parser
- crux ?
- javascript
-  defaultClassName = "scrollQuestion"
-titleParser
- description Title of the page for meta tags and also compiles to an html h1 tag.
- extends abstractHeaderParser
- crux title
- javascript
-  compile(compileSettings) {
-   // Hacky, I know.
-   const { permalink } = this.parent.file
-   if (!permalink) return super.compile(compileSettings)
-   const newLine = this.appendLine(`link ${permalink}`)
-   const compiled = super.compile(compileSettings)
-   newLine.destroy()
-   return compiled
-  }
-  defaultClassName = "scrollTitle"
-  tag = "h1"
 h1Parser
  description Compiles to an html h1 tag.
  extends abstractHeaderParser
@@ -588,12 +555,53 @@ h3Parser
  crux ###
  javascript
   tag = "h3"
+h4Parser
+ description Compiles to an html h4 tag.
+ extends abstractHeaderParser
+ crux ####
+ javascript
+  tag = "h4"
+questionAftertextParser
+ description A question.
+ extends h4Parser
+ crux ?
+ javascript
+  defaultClassName = "scrollQuestion"
 h5Parser
  description Compiles to an html h5 tag.
  extends abstractHeaderParser
  crux #####
  javascript
   tag = "h5"
+printTitleParser
+ description Print the page title.
+ extends abstractHeaderParser
+ cruxFromId
+ javascript
+  compile(compileSettings) {
+   // Hacky, I know.
+   const {content} = this
+   if (content === undefined)
+    this.setContent(this.parent.get("title"))
+   const { permalink } = this.parent.file
+   if (!permalink) return super.compile(compileSettings)
+   const newLine = this.appendLine(`link ${permalink}`)
+   const compiled = super.compile(compileSettings)
+   newLine.destroy()
+   this.setContent(content) // Restore it as it was.
+   return compiled
+  }
+  defaultClassName = "scrollTitle"
+  tag = "h1"
+captionAftertextParser
+ description An optional caption to accompany the resource.
+ crux caption
+ extends paragraphParser
+quickParagraphParser
+ crux *
+ extends paragraphParser
+ example
+  * I had a _new_ idea.
 thinColumnsParser
  extends abstractAftertextParser
  cruxFromId
@@ -636,22 +644,10 @@ endColumnsParser
   compileEmbeddedVersion() {
    return ""
   }
-horizontalRuleParser
- crux ---
- description Prints an html <hr> tag
- extends abstractAftertextParser
- javascript
-  compile() {
-   return `<hr>`
-  }
-  compileTextVersion() {
-    return this.getLine()
-  }
-dinkusParser
- crux ***
- description Prints a centered *
+abstractDinkusParser
  extends abstractAftertextParser
  string dinkus *
+ boolean isDinkus true
  javascript
   compile() {
    return `<div class="dinkus"><span>${this.dinkus}</span></div>`
@@ -659,8 +655,20 @@ dinkusParser
   compileTextVersion() {
     return this.getLine()
   }
+horizontalRuleParser
+ crux ---
+ description Prints an html <hr> tag
+ extends abstractDinkusParser
+ javascript
+  compile() {
+   return `<hr>`
+  }
+dinkusParser
+ crux ***
+ description Prints a centered *
+ extends abstractDinkusParser
 endOfPostDinkusParser
- extends dinkusParser
+ extends abstractDinkusParser
  crux ****
  string dinkus ⁂
 loopParser
@@ -720,14 +728,12 @@ snippetsParser
   snippets index
  javascript
   makeSnippet(file, compileSettings) {
-    const {scrollProgram} = file
-    const snippetBreak = scrollProgram.getNode("endSnippet")
-    if (!snippetBreak) return scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
-    const indexOfBreak = snippetBreak.getIndex()
+    const {scrollProgram, endSnippetIndex} = file
+    if (endSnippetIndex === -1) return scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
     const linkRelativeToCompileTarget = compileSettings.relativePath + file.permalink
     const joinChar = "\n"
     const html = scrollProgram
-        .map((child, index) => (index >= indexOfBreak ? "" : child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+        .map((child, index) => (index >= endSnippetIndex ? "" : child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
         .filter(i => i)
         .join(joinChar)
         .trim() +
@@ -899,6 +905,10 @@ relatedParser
   related fishing camping
   # Related Posts
   relatedList
+ extends abstractTopLevelSingleMetaParser
+titleParser
+ catchAllCellType personNameCell
+ description Title of the page for meta tags. Prints nothing by itself. Use "printTitle" to print this title in a big HTML tag.
  extends abstractTopLevelSingleMetaParser
 viewSourceUrlParser
  catchAllCellType urlCell
