@@ -584,12 +584,18 @@ printTitleParser
    if (content === undefined)
     this.setContent(this.parent.get("title"))
    const { permalink } = this.parent.file
-   if (!permalink) return super.compile(compileSettings)
+   if (!permalink) {
+    this.setContent(content) // Restore it as it was.
+    return super.compile(compileSettings)
+   }
    const newLine = this.appendLine(`link ${permalink}`)
    const compiled = super.compile(compileSettings)
    newLine.destroy()
    this.setContent(content) // Restore it as it was.
    return compiled
+  }
+  get originalText() {
+   return this.content ?? this.parent.get("title") ?? ""
   }
   defaultClassName = "scrollTitle"
   tag = "h1"
@@ -944,6 +950,7 @@ codeWithLanguageParser
  pattern ^[a-zA-Z0-9_]+Code$
 abstractScrollWithRequirementsParser
  extends abstractScrollParser
+ cruxFromId
  javascript
   compile(compileSettings) {
     const {requireOnce} = this
@@ -956,7 +963,6 @@ abstractScrollWithRequirementsParser
     return requireSnippet + this.compileInstance()
   }
 copyButtonsParser
- cruxFromId
  extends abstractScrollWithRequirementsParser
  description Make code snippets copyable.
  javascript
@@ -979,7 +985,6 @@ copyButtonsParser
   ))
   </script>
 katexParser
- cruxFromId
  extends abstractScrollWithRequirementsParser
  catchAllCellType codeCell
  catchAllParser lineOfCodeParser
@@ -1004,7 +1009,6 @@ katexParser
    return `<div class="scrollKatex" id="${id}">${content + this.childrenToString()}</div>`
   }
 mapParser
- cruxFromId
  inScope latParser longParser
  zoomParser
   cells keywordCell integerCell
@@ -1053,7 +1057,6 @@ mapParser
   </script>`
   }
 helpfulNotFoundParser
- cruxFromId
  extends abstractScrollWithRequirementsParser
  string copyFromExternal helpfulNotFound.js
  string requireOnce
@@ -1063,8 +1066,23 @@ helpfulNotFoundParser
   compileInstance() {
    return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1>`
   }
+slideshowParser
+ description Turns a page into a slideshow. A dinkus (***) separates slides. Left and right arrows navigate.
+ extends abstractScrollWithRequirementsParser
+ string copyFromExternal jquery-3.7.1.min.js slideshow.js
+ example
+  slideshow
+  Why did the cow cross the road?
+  ***
+  Because it wanted to go to the MOOOO-vies.
+  ***
+  THE END
+  ****
+ javascript
+  compile() {
+   return `<style>html {font-size: var(--base-font-size, 28px);} body {margin: auto; width: 500px;}.slideshowNav{text-align: center; margin-bottom:20px; font-size: 14px;} a{text-decoration: none;</style><script defer src="jquery-3.7.1.min.js"></script><div class="slideshowNav"></div><script defer src="slideshow.js"></script>`
+  }
 tableSearchParser
- cruxFromId
  extends abstractScrollWithRequirementsParser
  string copyFromExternal jquery-3.7.1.min.js dataTables.dataTables.min.css dataTables.min.js
  string requireOnce
@@ -1205,7 +1223,7 @@ loadConceptsParser
    const path = require("path")
    const {file} = this.parent
    const folder = path.join(file.folderPath, this.getWord(1))
-   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(fullPath => Disk.read(fullPath) + `\nfilename ${path.basename(fullPath)}\n`).join("\n\n").replace(/import .+/g, "")
+   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(fullPath => Disk.read(fullPath) + `\nfilename ${path.basename(fullPath)}\n`).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
     this.parent.concat(ONE_BIG_FILE)
    //console.log(ONE_BIG_FILE)
    return ""
@@ -1424,7 +1442,7 @@ aboveAsCodeParser
 abstractThemeCssParser
  description Extend this to create a Scroll CSS theme.
  extends abstractScrollParser
- inScope tagsParser
+ inScope themeTagsParser
  cruxFromId
  catchAllCellType stringCell
  string scrollStyles
@@ -2189,11 +2207,28 @@ abstractStringMeasureParser
  string typeForCsvDocs string
  catchAllCellType stringCell
  extends abstractMeasureParser
-idParser
+abstractIdParser
+ crux id
  description What is the ID of this concept?
  extends abstractStringMeasureParser
  int sortIndex 0
-filenameParser
+ boolean isRequired true
+ javascript
+  getErrors() {
+    const errors = super.getErrors()
+    let requiredMeasureNames = this.parent.file.measures.filter(measure => measure.IsRequired).map(measure => measure.Name).filter(name => name !== "id")
+    if (!requiredMeasureNames.length) return errors
+    let next = this.next
+    while (requiredMeasureNames.length && next.firstWord !== "id" && next.getIndex() !== 0) {
+      requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.firstWord)
+      next = next.next
+    }
+    requiredMeasureNames.forEach(name => {
+      errors.push({toObject: () => {return { message: `Concept "${this.content}" is missing required measure "${name}".`}}})
+    })
+    return errors
+  }
+abstractFilenameParser
  // Added by the loadConcepts keyword
  description What is the name of the file holding this concept?
  extends abstractStringMeasureParser
@@ -2250,7 +2285,7 @@ metaTagsParser
   compile() {
    const { file } = this.parent
    const { title, description, openGraphImage, SCROLL_VERSION, canonicalLink } = file
-   const rssFeedUrl = file.get("rssFeedUrl")
+   const rssFeedUrl = this.parent.get("rssFeedUrl")
    let rssTag = ""
    if (rssFeedUrl) {
     rssTag = `link
@@ -3206,10 +3241,10 @@ rowParser
 plainTextLineParser
  catchAllCellType stringCell
  catchAllParser plainTextLineParser
-tagsParser
+themeTagsParser
  // Todo: there may be a bug with having scoped parsers in abstract classes not being available to child classes.
  cells keywordCell booleanCell
- cruxFromId
+ crux tags
 treeRowContentParser
  description Any blob content in a cell.
  cells stringCell

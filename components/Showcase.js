@@ -7,6 +7,13 @@ class ShowcaseComponent extends AbstractTreeComponentParser {
 
   refresh() {
     document.getElementById("theIframe").srcdoc = this.html
+    jQuery("#theIframe")
+      .contents()
+      .find("a")
+      .on("click", function(event) {
+        event.preventDefault()
+        return false
+      })
   }
 
   treeComponentDidMount() {
