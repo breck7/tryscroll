@@ -1,4 +1,4 @@
-const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
 
 class ExportComponent extends AbstractTreeComponentParser {
   toStumpCode() {

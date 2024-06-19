@@ -39,7 +39,7 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
   createParserCombinator() {
     return new TreeNode.ParserCombinator(undefined, {
-      value: TreeNode
+      value: TreeNode,
     })
   }
 
@@ -67,14 +67,14 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
     // todo: what if 2 errors?
     this.codeMirrorInstance.operation(() => {
-      this.codeWidgets.forEach(widget => this.codeMirrorInstance.removeLineWidget(widget))
+      this.codeWidgets.forEach((widget) => this.codeMirrorInstance.removeLineWidget(widget))
       this.codeWidgets.length = 0
 
       errs
-        .filter(err => !err.isBlankLineError())
-        .filter(err => !err.isCursorOnWord(cursor.line, cursor.ch))
+        .filter((err) => !err.isBlankLineError())
+        .filter((err) => !err.isCursorOnWord(cursor.line, cursor.ch))
         .slice(0, 1) // Only show 1 error at a time. Otherwise UX is not fun.
-        .forEach(err => {
+        .forEach((err) => {
           const el = err.getCodeMirrorLineWidgetElement(() => {
             this.codeMirrorInstance.setValue(this.program.asString)
             this._onCodeKeyUp()
@@ -126,11 +126,11 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
+    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
-        lineNumbers: false
+        lineNumbers: false,
       })
     this.codeMirrorInstance.on("keyup", () => this._onCodeKeyUp())
     this.setSize()
@@ -218,7 +218,7 @@ class EditorApp extends AbstractTreeComponentParser {
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
-      ShowcaseComponent
+      ShowcaseComponent,
     })
   }
 
@@ -260,7 +260,7 @@ class EditorApp extends AbstractTreeComponentParser {
 
   dumpErrorsCommand() {
     const errs = new scrollParser(this.scrollCode).getAllErrors()
-    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
+    console.log(new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
   get mainDocument() {
@@ -277,8 +277,8 @@ class EditorApp extends AbstractTreeComponentParser {
     this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
-    Object.keys(keyboardShortcuts).forEach(key => {
-      willowBrowser.getMousetrap().bind(key, function(evt) {
+    Object.keys(keyboardShortcuts).forEach((key) => {
+      willowBrowser.getMousetrap().bind(key, function (evt) {
         keyboardShortcuts[key]()
         // todo: handle the below when we need to
         if (evt.preventDefault) evt.preventDefault()
@@ -304,7 +304,7 @@ class EditorApp extends AbstractTreeComponentParser {
   _getKeyboardShortcuts() {
     return {
       d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
-      w: () => this.resizeEditorCommand()
+      w: () => this.resizeEditorCommand(),
     }
   }
 
@@ -365,13 +365,13 @@ class EditorHandleComponent extends AbstractTreeComponentParser {
     const root = this.root
     jQuery(this.getStumpNode().getShadow().element).draggable({
       axis: "x",
-      drag: function(event, ui) {
+      drag: function (event, ui) {
         if ("ontouchend" in document) return // do not update live on a touch device. otherwise buggy.
         root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
       },
-      stop: function(event, ui) {
+      stop: function (event, ui) {
         root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
-      }
+      },
     })
   }
 
@@ -472,7 +472,7 @@ class ShowcaseComponent extends AbstractTreeComponentParser {
     jQuery("#theIframe")
       .contents()
       .find("a")
-      .on("click", function(event) {
+      .on("click", function (event) {
         event.preventDefault()
         return false
       })
@@ -504,7 +504,7 @@ class TopBarComponent extends AbstractTreeComponentParser {
   createParserCombinator() {
     return new TreeNode.ParserCombinator(undefined, {
       ShareComponent,
-      ExportComponent
+      ExportComponent,
     })
   }
 }
@@ -616,8 +616,8 @@ class BrowserGlue extends AbstractTreeComponentParser {
 		return DEFAULT_PROGRAM
 	}
 
-	async init(grammarCode) {
-		window.scrollParser = new HandGrammarProgram(grammarCode).compileAndReturnRootParser()
+	async init(parsersCode) {
+		window.scrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
 		const scrollCode = await this.fetchCode()
 
 		window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)

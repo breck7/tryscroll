@@ -20,9 +20,10 @@ class SlideShow {
   get slides() {
     return jQuery(".dinkus")
       .map(function () {
-        return $(this).prevUntil(".dinkus").addBack().prev()
+        return jQuery(this).prevUntil(".dinkus").addBack().prev()
       })
       .get()
+      .slice(1)
   }
 
   renderAll() {
@@ -55,13 +56,14 @@ class SlideShow {
       event.preventDefault()
       that.page = parseInt(jQuery(this).attr("href").replace("#", ""))
       that.renderAll()
+      window.location.hash = "#" + that.page
     })
   }
 
   page = 1
 
   get pages() {
-    return jQuery(".dinkus").length
+    return this.slides.length
   }
 
   get previousPage() {

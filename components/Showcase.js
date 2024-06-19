@@ -1,4 +1,4 @@
-const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
+const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
 
 class ShowcaseComponent extends AbstractTreeComponentParser {
   get html() {
@@ -10,7 +10,7 @@ class ShowcaseComponent extends AbstractTreeComponentParser {
     jQuery("#theIframe")
       .contents()
       .find("a")
-      .on("click", function(event) {
+      .on("click", function (event) {
         event.preventDefault()
         return false
       })

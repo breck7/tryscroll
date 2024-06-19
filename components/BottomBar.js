@@ -1,5 +1,5 @@
-const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
-const { TreeNode } = require("jtree/products/TreeNode.js")
+const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { TreeNode } = require("scrollsdk/products/TreeNode.js")
 
 class BottomBarComponent extends AbstractTreeComponentParser {
   createParserCombinator() {

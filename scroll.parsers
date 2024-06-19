@@ -187,6 +187,9 @@
 
 
 
+
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -216,7 +219,7 @@ floatCell
 percentCell
  highlightScope constant.numeric.float
  extends stringCell
- // todo: this currently extends from stringCell b/c jtree needs to be fixed. seems like if extending from number then the hard coded number typescript regex takes precedence over a custom regex
+ // todo: this currently extends from stringCell b/c scrollsdk needs to be fixed. seems like if extending from number then the hard coded number typescript regex takes precedence over a custom regex
 countCell
  extends integerCell
 yearCell
@@ -283,6 +286,17 @@ abstractScrollParser
   compileTextVersion() {
     return ""
   }
+  getHtmlRequirements(compileSettings) {
+    const {requireOnce} = this
+    if (!requireOnce)
+      return ""
+    const set = compileSettings?.alreadyRequired || this.root.alreadyRequired
+    if (set.has(requireOnce))
+      return ""
+    
+    set.add(requireOnce)
+    return requireOnce + "\n\n"
+  }
 abstractAftertextParser
  description Text followed by markup commands.
  extends abstractScrollParser
@@ -337,6 +351,8 @@ abstractAftertextParser
   }
   tag = "p"
   get className() {
+   if (this.get("classes"))
+     return this.get("classes")
    const classLine = this.getNode("class")
    if (classLine && classLine.applyToParentElement) return classLine.content
    return this.defaultClassName
@@ -353,7 +369,7 @@ abstractAftertextParser
    const tag = this.get("tag") || this.tag
    if (tag === "none") // Allow no tag for aftertext in tables
      return this.text
-   return `<${tag} ${this.divAttributes}${classAttr}>${this.text}</${tag}>`
+   return this.getHtmlRequirements(compileSettings) + `<${tag} ${this.divAttributes}${classAttr}>${this.text}</${tag}>`
   }
   get divAttributes() {
    const attrs = this.filter(node => node.isAttribute)
@@ -461,6 +477,15 @@ listAftertextParser
   }
   tag = "li"
   listType = "ul"
+abstractCustomListItemParser
+ extends listAftertextParser
+ javascript
+  get requireOnce() {
+    return `<style>\n.${this.constructor.name} li::marker {content: "${this.firstWord} ";}\n</style>`
+  }
+  get attributes() {
+    return `class="${this.constructor.name}"`
+  }
 orderedListAftertextParser
  extends listAftertextParser
  description A list item.
@@ -495,7 +520,7 @@ footnoteDefinitionParser
  extends paragraphParser
  boolean isFootnote true
  pattern ^\^.+$
- // We need to quickLinks back in scope because there is currently a bug in JTree/Grammar where if a parser extending a parent class has a child parser defined, then any regex parsers in the parent class will not be tested unless explicitly included in scope again.
+ // We need to quickLinks back in scope because there is currently a bug in ScrollSDK/parsers where if a parser extending a parent class has a child parser defined, then any regex parsers in the parent class will not be tested unless explicitly included in scope again.
  inScope quickLinkParser
  labelParser
   description If you want to show a custom label for a footnote. Default label is the note definition index.
@@ -789,28 +814,36 @@ viewSourceParser
    a View source
     href ${viewSourceUrl}`)
   }
-byLineParser
+printAuthorParser
  description Prints a byline with the author's name and optionally a link to them.
  extends abstractScrollParser
  cruxFromId
- cells keywordCell urlCell
- catchAllCellType personNameCell
+ // todo: we need pattern matching added to sdk to support having no params or a url and personNameCell
+ cells keywordCell
+ catchAllCellType anyCell
  example
   // With Link:
-  byLine https://breckyunits.com Breck Yunits
+  printAuthor https://breckyunits.com Breck Yunits
   // No link:
-  byLine  Breck Yunits
+  printAuthor  Breck Yunits
  javascript
   compile() {
-   const link = this.getWord(1)
-   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${this.name}</a></div>`
+   const {link, name} = this
+   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${name}</a></div>`
+  }
+  get link() {
+    return this.getWord(1) || this.parent.getNode("author")?.getWord(1)
   }
   get name() {
-    return this.getWordsFrom(2).join(" ") || this.parent.get("author")
+    return this.getWordsFrom(2).join(" ") || this.parent.getNode("author")?.getWordsFrom(2).join(" ")
   }
   compileTextVersion() {
     return `by ${this.name}`
   }
+byLineParser
+ extends printAuthorParser
+ boolean isDeprecated true
+ description DEPRECATED! Use "printAuthor" instead.
 abstractTopLevelSingleMetaParser
  description Use these keywords once per file.
  extends abstractScrollParser
@@ -824,6 +857,7 @@ abstractTopLevelSingleMetaParser
    return ""
   }
 authorParser
+ cells keywordCell urlCell
  catchAllCellType personNameCell
  description Set the author(s) for a post. Prints nothing by itself, but is printed with the title in text mode and in various metadata outputs.
  extends abstractTopLevelSingleMetaParser
@@ -838,27 +872,35 @@ abstractFileSettingParser
   compile() {
    return ""
   }
+emailParser
+ description Email address for the site owner.
+ extends abstractFileSettingParser
+ cruxFromId
+ cells keywordCell emailAddressCell
 abstractUrlSettingParser
  extends abstractFileSettingParser
  cells keywordCell urlCell
  cruxFromId
-baseUrlParser
- description Root url of this published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
- extends abstractUrlSettingParser
-homeLinkParser
- description In the default Scroll theme the home button will link to "index.html". You can override this with this setting.
- extends abstractUrlSettingParser
 viewSourceBaseUrlParser
  description The base link to be used to generate the "View source" link.
  extends abstractUrlSettingParser
 gitParser
  description A link to the web Git UI for this site.
  extends abstractUrlSettingParser
-canonicalLinkParser
+canonicalUrlParser
  description Canonical URL for SEO. If undefined Scroll generates this from the baseUrl and permalink.
  extends abstractUrlSettingParser
 openGraphImageParser
  description URL for Open Graph Image. https://ogp.me/. If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ extends abstractUrlSettingParser
+baseUrlParser
+ description Root url of this published site on the web. Must be provided for RSS Feeds and OpenGraph tags to work, but has no effect locally.
+ extends abstractUrlSettingParser
+downloadUrlParser
+ description In the default Scroll theme the download button will link to this.
+ extends abstractUrlSettingParser
+homeUrlParser
+ description In the default Scroll theme the home button will link to "index.html". You can override this with this setting.
  extends abstractUrlSettingParser
 rssFeedUrlParser
  description URL for RSS feed, if any.
@@ -867,15 +909,6 @@ abstractSiteStringSettingParser
  extends abstractFileSettingParser
  catchAllCellType stringCell
  cruxFromId
-emailParser
- description Email address for the site owner.
- extends abstractFileSettingParser
- cruxFromId
- cells keywordCell emailAddressCell
-permalinkParser
- description When compiling, Scroll will save this file to {permalink}
- extends abstractTopLevelSingleMetaParser
- cells keywordCell permalinkCell
 groupsParser
  description Add this file to zero or more groups.
  cruxFromId
@@ -900,6 +933,10 @@ descriptionParser
  catchAllCellType stringCell
  description Description for Open Graph. https://ogp.me/. If not defined, Scroll will try to generate it's own.
  extends abstractTopLevelSingleMetaParser
+permalinkParser
+ description When compiling, Scroll will save this file to {permalink}
+ extends abstractTopLevelSingleMetaParser
+ cells keywordCell permalinkCell
 relatedParser
  catchAllCellType permalinkCell
  cruxFromId
@@ -953,14 +990,7 @@ abstractScrollWithRequirementsParser
  cruxFromId
  javascript
   compile(compileSettings) {
-    const {requireOnce} = this
-    const set = compileSettings?.alreadyRequired || this.root.alreadyRequired
-    let requireSnippet = ""
-    if (!set.has(requireOnce)) {
-      set.add(requireOnce)
-      requireSnippet = requireOnce + "\n\n"
-    }
-    return requireSnippet + this.compileInstance()
+    return this.getHtmlRequirements(compileSettings) + this.compileInstance()
   }
 copyButtonsParser
  extends abstractScrollWithRequirementsParser
@@ -1008,6 +1038,9 @@ katexParser
    const content = this.content === undefined ? "" : this.content
    return `<div class="scrollKatex" id="${id}">${content + this.childrenToString()}</div>`
   }
+  compileTextVersion() {
+    return ( this.content ? this.content : "" )+ this.childrenToString()
+  }
 mapParser
  inScope latParser longParser
  zoomParser
@@ -1030,7 +1063,7 @@ mapParser
  description Uses LeafletJs
  string copyFromExternal leaflet.css leaflet.js
  string requireOnce
-  <link rel="stylesheet" href="leaflet.css" />
+  <link rel="stylesheet" href="leaflet.css">
   <script src="leaflet.js"></script>
  javascript
   compileInstance() {
@@ -1058,13 +1091,12 @@ mapParser
   }
 helpfulNotFoundParser
  extends abstractScrollWithRequirementsParser
+ catchAllCellType filePathCell
  string copyFromExternal helpfulNotFound.js
- string requireOnce
-  <script defer src="helpfulNotFound.js"></script>
  description Add a helpful not found element to the page.
  javascript
   compileInstance() {
-   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1>`
+   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1><script defer src="/helpfulNotFound.js"></script><script>document.addEventListener("DOMContentLoaded", () => new NotFoundApp('${this.content}'))</script>`
   }
 slideshowParser
  description Turns a page into a slideshow. A dinkus (***) separates slides. Left and right arrows navigate.
@@ -1084,46 +1116,14 @@ slideshowParser
   }
 tableSearchParser
  extends abstractScrollWithRequirementsParser
- string copyFromExternal jquery-3.7.1.min.js dataTables.dataTables.min.css dataTables.min.js
+ string copyFromExternal jquery-3.7.1.min.js dataTables.dataTables.min.css dataTables.min.js tableSearch.js
  string requireOnce
   <script defer src="jquery-3.7.1.min.js"></script>
   <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
-  <link rel="stylesheet" href="dataTables.dataTables.min.css" />
+  <link rel="stylesheet" href="dataTables.dataTables.min.css">
   <script defer src="dataTables.min.js"></script>
-  <script defer>
-   document.addEventListener("DOMContentLoaded", function () {
-     const getSearch = () => {
-       const hashParams = window.location.hash
-         .substr(1)
-         .split("&")
-         .reduce(function (p, e) {
-           var a = e.split("=")
-           p[decodeURIComponent(a[0])] = decodeURIComponent(a[1])
-           return p
-         }, {})
-       return hashParams.q || ""
-     }
-     const dataTable = jQuery("table").DataTable({
-       order: [],
-       paging: false,
-       stateSave: true,
-       stateSaveCallback: function (settings, data) {
-         if (data.search.search)
-          window.location.hash = "q=" + encodeURIComponent(data.search.search)
-         else
-          window.location.hash = ""
-       },
-       // Set the search input to the initial value extracted from the URL
-       search: { search: getSearch() },
-       stateLoadCallback: function (settings) {
-         return { search: { search: getSearch() } }
-       }
-     })
-     // Listen for hash changes to update the DataTable search
-     window.addEventListener("hashchange", () => dataTable.search(getSearch()).draw(false))
-   })
-  </script>
- description Add table search to all tables on the page.
+  <script defer src="tableSearch.js"></script>
+ description Add table search and sort to all tables on the page.
  javascript
   compileInstance() {
    return ""
@@ -1219,11 +1219,11 @@ loadConceptsParser
  javascript
   compile() {
    // A little hacky
-   const { Disk } = require("jtree/products/Disk.node.js")
+   const { Disk } = require("scrollsdk/products/Disk.node.js")
    const path = require("path")
    const {file} = this.parent
    const folder = path.join(file.folderPath, this.getWord(1))
-   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(fullPath => Disk.read(fullPath) + `\nfilename ${path.basename(fullPath)}\n`).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
+   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(Disk.read).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
     this.parent.concat(ONE_BIG_FILE)
    //console.log(ONE_BIG_FILE)
    return ""
@@ -1385,6 +1385,28 @@ dashboardParser
   compileTextVersion() {
     return this.childrenToString()
   }
+printDateParser
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell
+ javascript
+  compile() {
+   return `<div style="text-align: center;" class="scrollDateline">${this.day}</div>`
+  }
+  get day() {
+   let day = this.content || this.root.get("date")
+   if (!day) return ""
+   try {
+    const dayjs = require("dayjs")
+    return dayjs(day).format(`MMMM D, YYYY`)
+   } catch (err) {
+    console.error(err)
+   }
+   return day || ""
+  }
+  compileTextVersion() {
+    return this.day
+  }
 belowAsCodeParser
  description Print the Scroll code of the next node.
  extends abstractScrollParser
@@ -1512,7 +1534,7 @@ abstractThemeCssParser
     return !(this.get("tags") === "false")
   }
   compile() {
-   return this.useTags ? `<style>${this.css}</style>` : this.css
+   return this.useTags ? `<style>\n${this.css}\n</style>` : this.css
   }
   compileEmbeddedVersion() {
    return ""
@@ -2030,16 +2052,6 @@ tufteCssParser
            width: 100%;
       }
   }`
-scrollParserDefinitionParser
- extends abstractScrollParser
- // todo Figure out best pattern for integrating Scroll and Grammar?
- pattern ^[a-zA-Z0-9_]+Parser$
- description Define your own parsers in the Grammar language for using in your Scroll files.
- baseParser blobParser
- javascript
-  compile() {
-   return ""
-  }
 htmlParser
  description A catch all block to drop in any loose html. Use for HTML one liners and/or blocks of HTML.
  cruxFromId
@@ -2177,7 +2189,7 @@ abstractMeasureParser
  cells measureNameCell
  cruxFromId
  boolean isMeasure true
- int sortIndex 1000
+ float sortIndex 1.9
  boolean isComputed false
  string typeForCsvDocs unspecified
  extends abstractScrollParser
@@ -2211,12 +2223,12 @@ abstractIdParser
  crux id
  description What is the ID of this concept?
  extends abstractStringMeasureParser
- int sortIndex 0
- boolean isRequired true
+ float sortIndex 1
+ boolean isMeasureRequired true
  javascript
   getErrors() {
     const errors = super.getErrors()
-    let requiredMeasureNames = this.parent.file.measures.filter(measure => measure.IsRequired).map(measure => measure.Name).filter(name => name !== "id")
+    let requiredMeasureNames = this.parent.file.measures.filter(measure => measure.isMeasureRequired).map(measure => measure.Name).filter(name => name !== "id")
     if (!requiredMeasureNames.length) return errors
     let next = this.next
     while (requiredMeasureNames.length && next.firstWord !== "id" && next.getIndex() !== 0) {
@@ -2227,16 +2239,6 @@ abstractIdParser
       errors.push({toObject: () => {return { message: `Concept "${this.content}" is missing required measure "${name}".`}}})
     })
     return errors
-  }
-abstractFilenameParser
- // Added by the loadConcepts keyword
- description What is the name of the file holding this concept?
- extends abstractStringMeasureParser
- boolean isComputed true
- int sortIndex 1
- javascript
-  computeValue(concept, measureName, parsedProgram) {
-    return concept.get("filename") || parsedProgram.file.filename
   }
 abstractNumericMeasureParser
  string typeForCsvDocs number
@@ -2284,48 +2286,28 @@ metaTagsParser
   }
   compile() {
    const { file } = this.parent
-   const { title, description, openGraphImage, SCROLL_VERSION, canonicalLink } = file
+   const { title, description, openGraphImage, SCROLL_VERSION, canonicalUrl } = file
    const rssFeedUrl = this.parent.get("rssFeedUrl")
    let rssTag = ""
-   if (rssFeedUrl) {
-    rssTag = `link
-   rel alternate
-   type application/rss+xml
-   title ${title}
-   href ${rssFeedUrl}`
-   }
-   return file.compileStumpCode(`meta
-   charset utf-8
-  titleTag ${title}
-  script /* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. https://scroll.pub */
-  styleTag @media print {.doNotPrint {display: none !important;}}
-  link
-   rel canonical
-   href ${canonicalLink}
-  meta
-   charset iso-8859-1
-  meta
-   name viewport
-   content width=device-width,initial-scale=1
-  meta
-   name description
-   content ${description}
-  meta
-   name generator
-   content Scroll v${SCROLL_VERSION}
-  meta
-   property og:title
-   content ${title}
-  meta
-   property og:description
-   content ${description}
-  meta
-   property og:image
-   content ${openGraphImage}
-  ${rssTag}
-  meta
-   name twitter:card
-   content summary_large_image`)
+   if (rssFeedUrl)
+    rssTag = `<link rel="alternate" type="application/rss+xml" title="${title}" href="${rssFeedUrl}">`
+   // todo: cleanup the head/body stuff.
+   return `<head>
+   <meta charset="utf-8">
+   <title>${title}</title>
+   <script>/* This HTML was generated by 📜 Scroll v${SCROLL_VERSION}. https://scroll.pub */</script>
+   <style>@media print {.doNotPrint {display: none !important;}}</style>
+   <link rel="canonical" href="${canonicalUrl}">
+   <meta name="viewport" content="width=device-width,initial-scale=1">
+   <meta name="description" content="${description}">
+   <meta name="generator" content="Scroll v${SCROLL_VERSION}">
+   <meta property="og:title" content="${title}">
+   <meta property="og:description" content="${description}">
+   <meta property="og:image" content="${openGraphImage}">
+   ${rssTag}
+   <meta name="twitter:card" content="summary_large_image">
+  </head>
+  <body>`
   }
 pageFooterParser
  cruxFromId
@@ -2374,6 +2356,8 @@ pageFooterParser
    class pageFooter doNotPrint
    a ${SVGS.email}
     href mailto:${file.email}
+   a ${SVGS.download}
+    href ${file.downloadUrl}
    a ${SVGS.git}
     href ${file.git}
    a Built with Scroll v${SCROLL_VERSION}
@@ -2384,6 +2368,7 @@ pageFooterParser
   }
 gazetteFooterParser
  extends pageFooterParser
+ boolean isDeprecated true
  description DEPRECATED! Use "pageFooter" instead.
 pageHeaderParser
  cruxFromId
@@ -2422,20 +2407,20 @@ pageHeaderParser
    const { SVGS, linkToPrevious, linkToNext } = file
    let previousButton = ""
    if (linkToPrevious)
-    previousButton = `a <
+    previousButton = `a &lt;
     style left:.1875rem;
     href ${linkToPrevious}`
    let nextButton = ""
    if (linkToNext)
-    nextButton = `a >
+    nextButton = `a &gt;
     style right:.1875rem;
     href ${linkToNext}`
-   return `<style>${this.css}</style>` + file.compileStumpCode(`div
+   return `<style>\n${this.css}\n</style>` + file.compileStumpCode(`div
    class pageHeader doNotPrint
    ${previousButton}
    a ${SVGS.home}
     style text-align:left;left:1.5625rem;
-    href ${file.get("homeLink") || "index.html"}
+    href ${file.get("homeUrl") || "index.html"}
    a ${SVGS.git}
     style text-align:right;right: 1.5625rem;
     href ${file.git}
@@ -2443,7 +2428,18 @@ pageHeaderParser
   }
 gazetteHeaderParser
  extends pageHeaderParser
+ boolean isDeprecated true
  description DEPRECATED! Use "pageHeader" instead.
+scrollParserDefinitionParser
+ extends abstractScrollParser
+ // todo Figure out best pattern for merging Scroll and Parsers?
+ pattern ^[a-zA-Z0-9_]+Parser$
+ description Define your own Parsers.
+ baseParser blobParser
+ javascript
+  compile() {
+   return ""
+  }
 quoteParser
  cruxFromId
  description A blockquote.
@@ -2611,7 +2607,7 @@ tabTableParser
  extends abstractTableParser
  string delimiter \t
 treeTableParser
- description A table of data written in Tree Notation form. Useful when a column contains a text blob.
+ description A table of data written in Scroll Notation form. Useful when a column contains a text blob.
  extends abstractTableParser
  catchAllParser treeRowParser
  javascript
@@ -2744,7 +2740,7 @@ abstractAftertextDirectiveParser
     const errors = super.getErrors()
     if (!this.isMarkup || this.matchWholeLine) return errors
     const inserts = this.getInserts(this.parent.originalTextPostLinkify)
-    // todo: make AbstractTreeError class exported by Grammar to allow Parsers to define their own error types.
+    // todo: make AbstractTreeError class exported by sdk to allow Parsers to define their own error types.
     // todo: also need to be able to map lines back to their line in source (pre-imports)
     if (!inserts.length)
       errors.push({toObject: () => {return { message: `No match found for "${this.getLine()}".`}}})
@@ -2842,10 +2838,18 @@ classMarkupParser
    return [`class="${this.className}"`]
   }
   get matchWholeLine() {
-    return this.getWordsFrom(2).length === 0
+    return this.applyToParentElement
   }
   get pattern() {
    return this.matchWholeLine ? this.parent.content : this.getWordsFrom(2).join(" ")
+  }
+classesMarkupParser
+ extends classMarkupParser
+ crux classes
+ javascript
+  applyToParentElement = true
+  get className() {
+   return this.content
   }
 hoverNoteParser
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
@@ -2963,7 +2967,7 @@ wrapsOnParser
    return [...text.matchAll(pattern)].map(match => {
     const { index } = match
     const endIndex = index + match[0].length
-    // I'm too lazy to clean up Grammar to write a proper inline markup parser so doing this for now.
+    // I'm too lazy to clean up sdk to write a proper inline markup parser so doing this for now.
     // The exclusive idea is to not try and apply bold or italic styles inside a TeX or code inline style.
     // Note that the way this is currently implemented any TeX in an inline code will get rendered, but code
     // inline of TeX will not. Seems like an okay tradeoff until a proper refactor and cleanup can be done.
@@ -3190,7 +3194,7 @@ scrollParser
   }
   get hakonParser() {
     if (this.isNodeJs())
-      return require("jtree/products/hakon.nodejs.js")
+      return require("scrollsdk/products/hakon.nodejs.js")
     return hakonParser
   }
   alreadyRequired = new Set()

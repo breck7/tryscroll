@@ -1,4 +1,7 @@
-<!DOCTYPE html><html lang="en"><link rel="stylesheet" href="katex.min.css">
+<!DOCTYPE html>
+<html lang="en">
+<body>
+<link rel="stylesheet" href="katex.min.css">
 <script defer src="katex.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollKatex").forEach(el =>
@@ -11,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".
 </script>
 
 <div class="scrollKatex" id="1"></div>
-<link rel="stylesheet" href="leaflet.css" />
+<link rel="stylesheet" href="leaflet.css">
 <script src="leaflet.js"></script>
 
 <div id="map2" style="height: 500px;"></div>
@@ -35,44 +38,12 @@ document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".
 </script>
 <script defer src="jquery-3.7.1.min.js"></script>
 <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
-<link rel="stylesheet" href="dataTables.dataTables.min.css" />
+<link rel="stylesheet" href="dataTables.dataTables.min.css">
 <script defer src="dataTables.min.js"></script>
-<script defer>
- document.addEventListener("DOMContentLoaded", function () {
-   const getSearch = () => {
-     const hashParams = window.location.hash
-       .substr(1)
-       .split("&")
-       .reduce(function (p, e) {
-         var a = e.split("=")
-         p[decodeURIComponent(a[0])] = decodeURIComponent(a[1])
-         return p
-       }, {})
-     return hashParams.q || ""
-   }
-   const dataTable = jQuery("table").DataTable({
-     order: [],
-     paging: false,
-     stateSave: true,
-     stateSaveCallback: function (settings, data) {
-       if (data.search.search)
-        window.location.hash = "q=" + encodeURIComponent(data.search.search)
-       else
-        window.location.hash = ""
-     },
-     // Set the search input to the initial value extracted from the URL
-     search: { search: getSearch() },
-     stateLoadCallback: function (settings) {
-       return { search: { search: getSearch() } }
-     }
-   })
-   // Listen for hash changes to update the DataTable search
-   window.addEventListener("hashchange", () => dataTable.search(getSearch()).draw(false))
- })
-</script>
+<script defer src="tableSearch.js"></script>
 
 
 <style>html {font-size: var(--base-font-size, 28px);} body {margin: auto; width: 500px;}.slideshowNav{text-align: center; margin-bottom:20px; font-size: 14px;} a{text-decoration: none;</style><script defer src="jquery-3.7.1.min.js"></script><div class="slideshowNav"></div><script defer src="slideshow.js"></script>
-<script defer src="helpfulNotFound.js"></script>
-
-<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1></html>
+<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1><script defer src="/helpfulNotFound.js"></script><script>document.addEventListener("DOMContentLoaded", () => new NotFoundApp('undefined'))</script>
+</body>
+</html>

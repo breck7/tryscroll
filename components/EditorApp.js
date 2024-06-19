@@ -1,6 +1,6 @@
 // prettier-ignore
-/*NODE_JS_ONLY*/ const { AbstractTreeComponentParser, TreeComponentFrameworkDebuggerComponent } = require("jtree/products/TreeComponentFramework.node.js")
-const { TreeNode } = require("jtree/products/TreeNode.js")
+/*NODE_JS_ONLY*/ const { AbstractTreeComponentParser, TreeComponentFrameworkDebuggerComponent } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { TreeNode } = require("scrollsdk/products/TreeNode.js")
 
 const { TopBarComponent } = require("./TopBar.js")
 const { CodeEditorComponent } = require("./CodeEditor.js")
@@ -61,7 +61,7 @@ class EditorApp extends AbstractTreeComponentParser {
       TreeComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
-      ShowcaseComponent
+      ShowcaseComponent,
     })
   }
 
@@ -103,7 +103,7 @@ class EditorApp extends AbstractTreeComponentParser {
 
   dumpErrorsCommand() {
     const errs = new scrollParser(this.scrollCode).getAllErrors()
-    console.log(new TreeNode(errs.map(err => err.toObject())).toFormattedTable(200))
+    console.log(new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
   get mainDocument() {
@@ -120,8 +120,8 @@ class EditorApp extends AbstractTreeComponentParser {
     this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
-    Object.keys(keyboardShortcuts).forEach(key => {
-      willowBrowser.getMousetrap().bind(key, function(evt) {
+    Object.keys(keyboardShortcuts).forEach((key) => {
+      willowBrowser.getMousetrap().bind(key, function (evt) {
         keyboardShortcuts[key]()
         // todo: handle the below when we need to
         if (evt.preventDefault) evt.preventDefault()
@@ -147,7 +147,7 @@ class EditorApp extends AbstractTreeComponentParser {
   _getKeyboardShortcuts() {
     return {
       d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
-      w: () => this.resizeEditorCommand()
+      w: () => this.resizeEditorCommand(),
     }
   }
 

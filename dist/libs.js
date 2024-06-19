@@ -10321,6 +10321,9 @@ class Utils {
     const match = filepath.match(/\.([^\.]+)$/)
     return (match && match[1]) || ""
   }
+  static ensureFolderEndsInSlash(folder) {
+    return folder.replace(/\/$/, "") + "/"
+  }
   static runCommand(instance, command = "", param = undefined) {
     const run = name => {
       console.log(`Running ${name}:`)
@@ -10354,11 +10357,14 @@ class Utils {
   }
   // Only allow text content and inline styling. Don't allow HTML tags or any nested scroll tags or escape characters.
   static escapeScrollAndHtml(content = "") {
-    return content
-      .replace(/</g, "&lt;")
-      .replace(/\n/g, "")
-      .replace(/\r/g, "")
-      .replace(/\\/g, "")
+    return content.replace(/</g, "&lt;").replace(/\n/g, "").replace(/\r/g, "").replace(/\\/g, "")
+  }
+  static colorize(message, colorNameOrString = "red") {
+    // ANSI: https://en.wikipedia.org/wiki/ANSI_escape_code
+    const colors = { red: "\x1b[31m", green: "\x1b[32m", yellow: "\x1b[33m" }
+    const color = colors[colorNameOrString] || colorNameOrString
+    const reset = "\x1b[0m"
+    return `${color}${message}${reset}`
   }
   static ensureDelimiterNotFound(strings, delimiter) {
     const hit = strings.find(word => word.includes(delimiter))
@@ -10513,11 +10519,13 @@ class Utils {
     return filename ? filename.replace(/\.[^\.]+$/, "") : ""
   }
   static getFileName(path) {
-    const parts = path.split("/") // todo: change for windows?
+    const normalizedPath = path.replace(/\\/g, "/")
+    const parts = normalizedPath.split("/")
     return parts.pop()
   }
   static getPathWithoutFileName(path) {
-    const parts = path.split("/") // todo: change for windows?
+    const normalizedPath = path.replace(/\\/g, "/")
+    const parts = normalizedPath.split("/")
     parts.pop()
     return parts.join("/")
   }
@@ -10532,12 +10540,7 @@ class Utils {
   }
   // Only allows a-zA-Z0-9-_  (And optionally .)
   static _permalink(str, reg) {
-    return str.length
-      ? str
-          .toLowerCase()
-          .replace(reg, "")
-          .replace(/ /g, "-")
-      : ""
+    return str.length ? str.toLowerCase().replace(reg, "").replace(/ /g, "-") : ""
   }
   static isValueEmpty(value) {
     return value === undefined || value === "" || (typeof value === "number" && isNaN(value)) || (value instanceof Date && isNaN(value))
@@ -10783,7 +10786,7 @@ class Utils {
   // adapted from https://gist.github.com/blixt/f17b47c62508be59987b
   // 1993 Park-Miller LCG
   static _getPseudoRandom0to1FloatGenerator(seed) {
-    return function() {
+    return function () {
       seed = Math.imul(48271, seed) | 0 % 2147483647
       return (seed & 2147483647) / 2147483648
     }
@@ -10954,29 +10957,32 @@ Utils.MAX_INT = Math.pow(2, 32) - 1
 window.Utils = Utils
 
 
-let _jtreeLatestTime = 0
-let _jtreeMinTimeIncrement = 0.000000000001
+let _scrollsdkLatestTime = 0
+let _scrollsdkMinTimeIncrement = 0.000000000001
 class AbstractNode {
   _getProcessTimeInMilliseconds() {
     // We add this loop to restore monotonically increasing .now():
     // https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
     let time = performance.now()
-    while (time <= _jtreeLatestTime) {
-      if (time === time + _jtreeMinTimeIncrement)
+    while (time <= _scrollsdkLatestTime) {
+      if (time === time + _scrollsdkMinTimeIncrement)
         // Some browsers have different return values for perf.now()
-        _jtreeMinTimeIncrement = 10 * _jtreeMinTimeIncrement
-      time += _jtreeMinTimeIncrement
+        _scrollsdkMinTimeIncrement = 10 * _scrollsdkMinTimeIncrement
+      time += _scrollsdkMinTimeIncrement
     }
-    _jtreeLatestTime = time
+    _scrollsdkLatestTime = time
     return time
   }
 }
 var FileFormat
-;(function(FileFormat) {
+;(function (FileFormat) {
   FileFormat["csv"] = "csv"
   FileFormat["tsv"] = "tsv"
   FileFormat["tree"] = "tree"
 })(FileFormat || (FileFormat = {}))
+const TN_WORD_BREAK_SYMBOL = " "
+const TN_EDGE_SYMBOL = " "
+const TN_NODE_BREAK_SYMBOL = "\n"
 class AbstractTreeEvent {
   constructor(targetNode) {
     this.targetNode = targetNode
@@ -11000,7 +11006,7 @@ class TreeWord {
 }
 const TreeEvents = { ChildAddedTreeEvent, ChildRemovedTreeEvent, DescendantChangedTreeEvent, LineChangedTreeEvent }
 var WhereOperators
-;(function(WhereOperators) {
+;(function (WhereOperators) {
   WhereOperators["equal"] = "="
   WhereOperators["notEqual"] = "!="
   WhereOperators["lessThan"] = "<"
@@ -11014,10 +11020,10 @@ var WhereOperators
   WhereOperators["empty"] = "empty"
   WhereOperators["notEmpty"] = "notEmpty"
 })(WhereOperators || (WhereOperators = {}))
-var TreeNotationConstants
-;(function(TreeNotationConstants) {
-  TreeNotationConstants["extends"] = "extends"
-})(TreeNotationConstants || (TreeNotationConstants = {}))
+var ScrollNotationConstants
+;(function (ScrollNotationConstants) {
+  ScrollNotationConstants["extends"] = "extends"
+})(ScrollNotationConstants || (ScrollNotationConstants = {}))
 class ParserCombinator {
   constructor(catchAllParser, firstWordMap = {}, regexTests = undefined) {
     this._catchAllParser = catchAllParser
@@ -11040,7 +11046,7 @@ class ParserCombinator {
     }
     return obj
   }
-  _getParser(line, contextNode, wordBreakSymbol = " ") {
+  _getParser(line, contextNode, wordBreakSymbol = TN_WORD_BREAK_SYMBOL) {
     return this._getFirstWordMap().get(this._getFirstWord(line, wordBreakSymbol)) || this._getParserFromRegexTests(line) || this._getCatchAllParser(contextNode)
   }
   _getCatchAllParser(contextNode) {
@@ -12246,10 +12252,10 @@ class TreeNode extends AbstractNode {
     return this.toDelimited("\t")
   }
   get nodeBreakSymbol() {
-    return "\n"
+    return TN_NODE_BREAK_SYMBOL
   }
   get wordBreakSymbol() {
-    return " "
+    return TN_WORD_BREAK_SYMBOL
   }
   get edgeSymbolRegex() {
     return new RegExp(this.edgeSymbol, "g")
@@ -12258,7 +12264,7 @@ class TreeNode extends AbstractNode {
     return new RegExp(this.nodeBreakSymbol, "g")
   }
   get edgeSymbol() {
-    return " "
+    return TN_EDGE_SYMBOL
   }
   _textToContentAndChildrenTuple(text) {
     const lines = text.split(this.nodeBreakSymbolRegex)
@@ -12463,9 +12469,7 @@ class TreeNode extends AbstractNode {
     return this.getChildren().find(fn)
   }
   findLast(fn) {
-    return this.getChildren()
-      .reverse()
-      .find(fn)
+    return this.getChildren().reverse().find(fn)
   }
   every(fn) {
     let index = 0
@@ -12613,7 +12617,7 @@ class TreeNode extends AbstractNode {
   }
   // todo: add more testing.
   // todo: solve issue with where extend should overwrite or append
-  // todo: should take a grammar? to decide whether to overwrite or append.
+  // todo: should take a parsers? to decide whether to overwrite or append.
   // todo: this is slow.
   extend(nodeOrStr) {
     const node = nodeOrStr instanceof TreeNode ? nodeOrStr : new TreeNode(nodeOrStr)
@@ -13470,8 +13474,8 @@ class TreeNode extends AbstractNode {
     return headerRow
   }
   static nest(str, xValue) {
-    const NodeBreakSymbol = "\n"
-    const WordBreakSymbol = " "
+    const NodeBreakSymbol = TN_NODE_BREAK_SYMBOL
+    const WordBreakSymbol = TN_WORD_BREAK_SYMBOL
     const indent = NodeBreakSymbol + WordBreakSymbol.repeat(xValue)
     return str ? indent + str.replace(/\n/g, indent) : ""
   }
@@ -13510,7 +13514,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "73.0.1"
+TreeNode.getVersion = () => "80.0.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13521,7 +13525,7 @@ class AbstractExtendibleTreeNode extends TreeNode {
     this.forEach(node => {
       const path = node._getAncestorsArray().map(node => node.id)
       path.reverse()
-      tree.touchNode(path.join(" "))
+      tree.touchNode(path.join(TN_EDGE_SYMBOL))
     })
     return tree
   }
@@ -13558,7 +13562,7 @@ class AbstractExtendibleTreeNode extends TreeNode {
     return this._cache_ancestorsArray
   }
   get idThatThisExtends() {
-    return this.get(TreeNotationConstants.extends)
+    return this.get(ScrollNotationConstants.extends)
   }
   _initAncestorsArrayCache(cannotContainNodes) {
     if (this._cache_ancestorsArray) return undefined
@@ -13600,24 +13604,24 @@ window.TreeWord = TreeWord
 const GlobalNamespaceAdditions = {
   Utils: "Utils.js",
   TreeNode: "TreeNode.js",
-  HandGrammarProgram: "GrammarLanguage.js",
-  GrammarBackedNode: "GrammarLanguage.js"
+  HandParsersProgram: "Parsers.js",
+  ParserBackedNode: "Parsers.js"
 }
-var GrammarConstantsCompiler
-;(function(GrammarConstantsCompiler) {
-  GrammarConstantsCompiler["stringTemplate"] = "stringTemplate"
-  GrammarConstantsCompiler["indentCharacter"] = "indentCharacter"
-  GrammarConstantsCompiler["catchAllCellDelimiter"] = "catchAllCellDelimiter"
-  GrammarConstantsCompiler["openChildren"] = "openChildren"
-  GrammarConstantsCompiler["joinChildrenWith"] = "joinChildrenWith"
-  GrammarConstantsCompiler["closeChildren"] = "closeChildren"
-})(GrammarConstantsCompiler || (GrammarConstantsCompiler = {}))
-var GrammarConstantsMisc
-;(function(GrammarConstantsMisc) {
-  GrammarConstantsMisc["doNotSynthesize"] = "doNotSynthesize"
-})(GrammarConstantsMisc || (GrammarConstantsMisc = {}))
+var ParsersConstantsCompiler
+;(function (ParsersConstantsCompiler) {
+  ParsersConstantsCompiler["stringTemplate"] = "stringTemplate"
+  ParsersConstantsCompiler["indentCharacter"] = "indentCharacter"
+  ParsersConstantsCompiler["catchAllCellDelimiter"] = "catchAllCellDelimiter"
+  ParsersConstantsCompiler["openChildren"] = "openChildren"
+  ParsersConstantsCompiler["joinChildrenWith"] = "joinChildrenWith"
+  ParsersConstantsCompiler["closeChildren"] = "closeChildren"
+})(ParsersConstantsCompiler || (ParsersConstantsCompiler = {}))
+var ParsersConstantsMisc
+;(function (ParsersConstantsMisc) {
+  ParsersConstantsMisc["doNotSynthesize"] = "doNotSynthesize"
+})(ParsersConstantsMisc || (ParsersConstantsMisc = {}))
 var PreludeCellTypeIds
-;(function(PreludeCellTypeIds) {
+;(function (PreludeCellTypeIds) {
   PreludeCellTypeIds["anyCell"] = "anyCell"
   PreludeCellTypeIds["keywordCell"] = "keywordCell"
   PreludeCellTypeIds["extraWordCell"] = "extraWordCell"
@@ -13627,88 +13631,88 @@ var PreludeCellTypeIds
   PreludeCellTypeIds["boolCell"] = "boolCell"
   PreludeCellTypeIds["intCell"] = "intCell"
 })(PreludeCellTypeIds || (PreludeCellTypeIds = {}))
-var GrammarConstantsConstantTypes
-;(function(GrammarConstantsConstantTypes) {
-  GrammarConstantsConstantTypes["boolean"] = "boolean"
-  GrammarConstantsConstantTypes["string"] = "string"
-  GrammarConstantsConstantTypes["int"] = "int"
-  GrammarConstantsConstantTypes["float"] = "float"
-})(GrammarConstantsConstantTypes || (GrammarConstantsConstantTypes = {}))
-var GrammarBundleFiles
-;(function(GrammarBundleFiles) {
-  GrammarBundleFiles["package"] = "package.json"
-  GrammarBundleFiles["readme"] = "readme.md"
-  GrammarBundleFiles["indexHtml"] = "index.html"
-  GrammarBundleFiles["indexJs"] = "index.js"
-  GrammarBundleFiles["testJs"] = "test.js"
-})(GrammarBundleFiles || (GrammarBundleFiles = {}))
-var GrammarCellParser
-;(function(GrammarCellParser) {
-  GrammarCellParser["prefix"] = "prefix"
-  GrammarCellParser["postfix"] = "postfix"
-  GrammarCellParser["omnifix"] = "omnifix"
-})(GrammarCellParser || (GrammarCellParser = {}))
-var GrammarConstants
-;(function(GrammarConstants) {
+var ParsersConstantsConstantTypes
+;(function (ParsersConstantsConstantTypes) {
+  ParsersConstantsConstantTypes["boolean"] = "boolean"
+  ParsersConstantsConstantTypes["string"] = "string"
+  ParsersConstantsConstantTypes["int"] = "int"
+  ParsersConstantsConstantTypes["float"] = "float"
+})(ParsersConstantsConstantTypes || (ParsersConstantsConstantTypes = {}))
+var ParsersBundleFiles
+;(function (ParsersBundleFiles) {
+  ParsersBundleFiles["package"] = "package.json"
+  ParsersBundleFiles["readme"] = "readme.md"
+  ParsersBundleFiles["indexHtml"] = "index.html"
+  ParsersBundleFiles["indexJs"] = "index.js"
+  ParsersBundleFiles["testJs"] = "test.js"
+})(ParsersBundleFiles || (ParsersBundleFiles = {}))
+var ParsersCellParser
+;(function (ParsersCellParser) {
+  ParsersCellParser["prefix"] = "prefix"
+  ParsersCellParser["postfix"] = "postfix"
+  ParsersCellParser["omnifix"] = "omnifix"
+})(ParsersCellParser || (ParsersCellParser = {}))
+var ParsersConstants
+;(function (ParsersConstants) {
   // node types
-  GrammarConstants["extensions"] = "extensions"
-  GrammarConstants["comment"] = "//"
-  GrammarConstants["version"] = "version"
-  GrammarConstants["parser"] = "parser"
-  GrammarConstants["cellType"] = "cellType"
-  GrammarConstants["grammarFileExtension"] = "grammar"
-  GrammarConstants["abstractParserPrefix"] = "abstract"
-  GrammarConstants["parserSuffix"] = "Parser"
-  GrammarConstants["cellTypeSuffix"] = "Cell"
+  ParsersConstants["extensions"] = "extensions"
+  ParsersConstants["comment"] = "//"
+  ParsersConstants["version"] = "version"
+  ParsersConstants["parser"] = "parser"
+  ParsersConstants["cellType"] = "cellType"
+  ParsersConstants["parsersFileExtension"] = "parsers"
+  ParsersConstants["abstractParserPrefix"] = "abstract"
+  ParsersConstants["parserSuffix"] = "Parser"
+  ParsersConstants["cellTypeSuffix"] = "Cell"
   // error check time
-  GrammarConstants["regex"] = "regex"
-  GrammarConstants["reservedWords"] = "reservedWords"
-  GrammarConstants["enumFromCellTypes"] = "enumFromCellTypes"
-  GrammarConstants["enum"] = "enum"
-  GrammarConstants["examples"] = "examples"
-  GrammarConstants["min"] = "min"
-  GrammarConstants["max"] = "max"
+  ParsersConstants["regex"] = "regex"
+  ParsersConstants["reservedWords"] = "reservedWords"
+  ParsersConstants["enumFromCellTypes"] = "enumFromCellTypes"
+  ParsersConstants["enum"] = "enum"
+  ParsersConstants["examples"] = "examples"
+  ParsersConstants["min"] = "min"
+  ParsersConstants["max"] = "max"
   // baseParsers
-  GrammarConstants["baseParser"] = "baseParser"
-  GrammarConstants["blobParser"] = "blobParser"
-  GrammarConstants["errorParser"] = "errorParser"
+  ParsersConstants["baseParser"] = "baseParser"
+  ParsersConstants["blobParser"] = "blobParser"
+  ParsersConstants["errorParser"] = "errorParser"
   // parse time
-  GrammarConstants["extends"] = "extends"
-  GrammarConstants["root"] = "root"
-  GrammarConstants["crux"] = "crux"
-  GrammarConstants["cruxFromId"] = "cruxFromId"
-  GrammarConstants["pattern"] = "pattern"
-  GrammarConstants["inScope"] = "inScope"
-  GrammarConstants["cells"] = "cells"
-  GrammarConstants["listDelimiter"] = "listDelimiter"
-  GrammarConstants["contentKey"] = "contentKey"
-  GrammarConstants["childrenKey"] = "childrenKey"
-  GrammarConstants["uniqueFirstWord"] = "uniqueFirstWord"
-  GrammarConstants["catchAllCellType"] = "catchAllCellType"
-  GrammarConstants["cellParser"] = "cellParser"
-  GrammarConstants["catchAllParser"] = "catchAllParser"
-  GrammarConstants["constants"] = "constants"
-  GrammarConstants["required"] = "required"
-  GrammarConstants["single"] = "single"
-  GrammarConstants["uniqueLine"] = "uniqueLine"
-  GrammarConstants["tags"] = "tags"
-  GrammarConstants["_extendsJsClass"] = "_extendsJsClass"
-  GrammarConstants["_rootNodeJsHeader"] = "_rootNodeJsHeader"
+  ParsersConstants["extends"] = "extends"
+  ParsersConstants["root"] = "root"
+  ParsersConstants["crux"] = "crux"
+  ParsersConstants["cruxFromId"] = "cruxFromId"
+  ParsersConstants["pattern"] = "pattern"
+  ParsersConstants["inScope"] = "inScope"
+  ParsersConstants["cells"] = "cells"
+  ParsersConstants["listDelimiter"] = "listDelimiter"
+  ParsersConstants["contentKey"] = "contentKey"
+  ParsersConstants["childrenKey"] = "childrenKey"
+  ParsersConstants["uniqueFirstWord"] = "uniqueFirstWord"
+  ParsersConstants["catchAllCellType"] = "catchAllCellType"
+  ParsersConstants["cellParser"] = "cellParser"
+  ParsersConstants["catchAllParser"] = "catchAllParser"
+  ParsersConstants["constants"] = "constants"
+  ParsersConstants["required"] = "required"
+  ParsersConstants["single"] = "single"
+  ParsersConstants["uniqueLine"] = "uniqueLine"
+  ParsersConstants["tags"] = "tags"
+  ParsersConstants["_extendsJsClass"] = "_extendsJsClass"
+  ParsersConstants["_rootNodeJsHeader"] = "_rootNodeJsHeader"
   // default catchAll parser
-  GrammarConstants["BlobParser"] = "BlobParser"
-  GrammarConstants["DefaultRootParser"] = "DefaultRootParser"
+  ParsersConstants["BlobParser"] = "BlobParser"
+  ParsersConstants["DefaultRootParser"] = "DefaultRootParser"
   // code
-  GrammarConstants["javascript"] = "javascript"
+  ParsersConstants["javascript"] = "javascript"
   // compile time
-  GrammarConstants["compilerParser"] = "compiler"
-  GrammarConstants["compilesTo"] = "compilesTo"
+  ParsersConstants["compilerParser"] = "compiler"
+  ParsersConstants["compilesTo"] = "compilesTo"
   // develop time
-  GrammarConstants["description"] = "description"
-  GrammarConstants["example"] = "example"
-  GrammarConstants["sortTemplate"] = "sortTemplate"
-  GrammarConstants["frequency"] = "frequency"
-  GrammarConstants["highlightScope"] = "highlightScope"
-})(GrammarConstants || (GrammarConstants = {}))
+  ParsersConstants["description"] = "description"
+  ParsersConstants["example"] = "example"
+  ParsersConstants["sortTemplate"] = "sortTemplate"
+  ParsersConstants["frequency"] = "frequency"
+  ParsersConstants["highlightScope"] = "highlightScope"
+})(ParsersConstants || (ParsersConstants = {}))
 class TypedWord extends TreeWord {
   constructor(node, cellIndex, type) {
     super(node, cellIndex)
@@ -13722,13 +13726,13 @@ class TypedWord extends TreeWord {
   }
 }
 // todo: can we merge these methods into base TreeNode and ditch this class?
-class GrammarBackedNode extends TreeNode {
+class ParserBackedNode extends TreeNode {
   get definition() {
     if (this._definition) return this._definition
-    this._definition = this.isRoot() ? this.handGrammarProgram : this.parent.definition.getParserDefinitionByParserId(this.constructor.name)
+    this._definition = this.isRoot() ? this.handParsersProgram : this.parent.definition.getParserDefinitionByParserId(this.constructor.name)
     return this._definition
   }
-  get rootGrammarTree() {
+  get rootParsersTree() {
     return this.definition.root
   }
   getAutocompleteResults(partialWord, cellIndex) {
@@ -13795,11 +13799,11 @@ class GrammarBackedNode extends TreeNode {
     const cell = this.parsedCells[cellIndex]
     return cell ? cell.getAutoCompleteWords(partialWord) : []
   }
-  // note: this is overwritten by the root node of a runtime grammar program.
+  // note: this is overwritten by the root node of a runtime parsers program.
   // some of the magic that makes this all work. but maybe there's a better way.
-  get handGrammarProgram() {
-    if (this.isRoot()) throw new Error(`Root node without getHandGrammarProgram defined.`)
-    return this.root.handGrammarProgram
+  get handParsersProgram() {
+    if (this.isRoot()) throw new Error(`Root node without getHandParsersProgram defined.`)
+    return this.root.handParsersProgram
   }
   getRunTimeEnumOptions(cell) {
     return undefined
@@ -13867,7 +13871,7 @@ class GrammarBackedNode extends TreeNode {
       })
     ).toFormattedTable(maxColumnWidth)
   }
-  // Helper method for selecting potential parsers needed to update grammar file.
+  // Helper method for selecting potential parsers needed to update parsers file.
   get invalidParsers() {
     return Array.from(
       new Set(
@@ -13924,7 +13928,7 @@ class GrammarBackedNode extends TreeNode {
     }
   }
   _sortWithParentParsersUpTop() {
-    const familyTree = new HandGrammarProgram(this.toString()).parserFamilyTree
+    const familyTree = new HandParsersProgram(this.toString()).parserFamilyTree
     const rank = {}
     familyTree.topDownArray.forEach((node, index) => {
       rank[node.getWord(0)] = index
@@ -13987,8 +13991,8 @@ class GrammarBackedNode extends TreeNode {
   getParserUsage(filepath = "") {
     // returns a report on what parsers from its language the program uses
     const usage = new TreeNode()
-    const handGrammarProgram = this.handGrammarProgram
-    handGrammarProgram.validConcreteAndAbstractParserDefinitions.forEach(def => {
+    const handParsersProgram = this.handParsersProgram
+    handParsersProgram.validConcreteAndAbstractParserDefinitions.forEach(def => {
       const requiredCellTypeIds = def.cellParser.getRequiredCellTypeIds()
       usage.appendLine([def.parserIdFromDefinition, "line-id", "parser", requiredCellTypeIds.join(" ")].join(" "))
     })
@@ -14096,7 +14100,7 @@ class GrammarBackedNode extends TreeNode {
     return this.parsedCells.map(cell => cell.definitionLineNumber)
   }
   _getCompiledIndentation() {
-    const indentCharacter = this.definition._getCompilerObject()[GrammarConstantsCompiler.indentCharacter]
+    const indentCharacter = this.definition._getCompilerObject()[ParsersConstantsCompiler.indentCharacter]
     const indent = this.indentation
     return indentCharacter !== undefined ? indentCharacter.repeat(indent.length) : indent
   }
@@ -14111,24 +14115,24 @@ class GrammarBackedNode extends TreeNode {
   }
   _getCompiledLine() {
     const compiler = this.definition._getCompilerObject()
-    const catchAllCellDelimiter = compiler[GrammarConstantsCompiler.catchAllCellDelimiter]
-    const str = compiler[GrammarConstantsCompiler.stringTemplate]
+    const catchAllCellDelimiter = compiler[ParsersConstantsCompiler.catchAllCellDelimiter]
+    const str = compiler[ParsersConstantsCompiler.stringTemplate]
     return str !== undefined ? Utils.formatStr(str, catchAllCellDelimiter, Object.assign(this._getFields(), this.cells)) : this.getLine()
   }
   get listDelimiter() {
-    return this.definition._getFromExtended(GrammarConstants.listDelimiter)
+    return this.definition._getFromExtended(ParsersConstants.listDelimiter)
   }
   get contentKey() {
-    return this.definition._getFromExtended(GrammarConstants.contentKey)
+    return this.definition._getFromExtended(ParsersConstants.contentKey)
   }
   get childrenKey() {
-    return this.definition._getFromExtended(GrammarConstants.childrenKey)
+    return this.definition._getFromExtended(ParsersConstants.childrenKey)
   }
   get childrenAreTextBlob() {
     return this.definition._isBlobParser()
   }
   get isArrayElement() {
-    return this.definition._hasFromExtended(GrammarConstants.uniqueFirstWord) ? false : !this.definition.isSingle
+    return this.definition._hasFromExtended(ParsersConstants.uniqueFirstWord) ? false : !this.definition.isSingle
   }
   get list() {
     return this.listDelimiter ? this.content.split(this.listDelimiter) : super.list
@@ -14190,9 +14194,9 @@ class GrammarBackedNode extends TreeNode {
     const compiledLine = this._getCompiledLine()
     if (def.isTerminalParser()) return indent + compiledLine
     const compiler = def._getCompilerObject()
-    const openChildrenString = compiler[GrammarConstantsCompiler.openChildren] || ""
-    const closeChildrenString = compiler[GrammarConstantsCompiler.closeChildren] || ""
-    const childJoinCharacter = compiler[GrammarConstantsCompiler.joinChildrenWith] || "\n"
+    const openChildrenString = compiler[ParsersConstantsCompiler.openChildren] || ""
+    const closeChildrenString = compiler[ParsersConstantsCompiler.closeChildren] || ""
+    const childJoinCharacter = compiler[ParsersConstantsCompiler.joinChildrenWith] || "\n"
     const compiledChildren = this.map(child => child.compile()).join(childJoinCharacter)
     return `${indent + compiledLine}${openChildrenString}
 ${compiledChildren}
@@ -14212,7 +14216,7 @@ ${indent}${closeChildrenString}`
     return cells
   }
 }
-class BlobParser extends GrammarBackedNode {
+class BlobParser extends ParserBackedNode {
   createParserCombinator() {
     return new TreeNode.ParserCombinator(BlobParser, {})
   }
@@ -14221,7 +14225,7 @@ class BlobParser extends GrammarBackedNode {
   }
 }
 // todo: can we remove this? hard to extend.
-class UnknownParserNode extends GrammarBackedNode {
+class UnknownParserNode extends ParserBackedNode {
   createParserCombinator() {
     return new TreeNode.ParserCombinator(UnknownParserNode, {})
   }
@@ -14232,7 +14236,7 @@ class UnknownParserNode extends GrammarBackedNode {
 /*
 A cell contains a word but also the type information for that word.
 */
-class AbstractGrammarBackedCell {
+class AbstractParsersBackedCell {
   constructor(node, index, typeDef, cellTypeId, isCatchAll, parserDefinitionParser) {
     this._typeDef = typeDef
     this._node = node
@@ -14260,13 +14264,13 @@ class AbstractGrammarBackedCell {
     return this._isCatchAll
   }
   get min() {
-    return this.cellTypeDefinition.get(GrammarConstants.min) || "0"
+    return this.cellTypeDefinition.get(ParsersConstants.min) || "0"
   }
   get max() {
-    return this.cellTypeDefinition.get(GrammarConstants.max) || "100"
+    return this.cellTypeDefinition.get(ParsersConstants.max) || "100"
   }
   get placeholder() {
-    return this.cellTypeDefinition.get(GrammarConstants.examples) || ""
+    return this.cellTypeDefinition.get(ParsersConstants.examples) || ""
   }
   get highlightScope() {
     const definition = this.cellTypeDefinition
@@ -14288,13 +14292,13 @@ class AbstractGrammarBackedCell {
   synthesizeCell(seed = Date.now()) {
     // todo: cleanup
     const cellDef = this.cellTypeDefinition
-    const enumOptions = cellDef._getFromExtended(GrammarConstants.enum)
+    const enumOptions = cellDef._getFromExtended(ParsersConstants.enum)
     if (enumOptions) return Utils.getRandomString(1, enumOptions.split(" "))
     return this._synthesizeCell(seed)
   }
   _getStumpEnumInput(crux) {
     const cellDef = this.cellTypeDefinition
-    const enumOptions = cellDef._getFromExtended(GrammarConstants.enum)
+    const enumOptions = cellDef._getFromExtended(ParsersConstants.enum)
     if (!enumOptions) return undefined
     const options = new TreeNode(
       enumOptions
@@ -14319,9 +14323,7 @@ ${options.toString(1)}`
     return this._typeDef
   }
   _getErrorContext() {
-    return this.getNode()
-      .getLine()
-      .split(" ")[0] // todo: WordBreakSymbol
+    return this.getNode().getLine().split(" ")[0] // todo: WordBreakSymbol
   }
   isValid() {
     const runTimeOptions = this.getNode().getRunTimeEnumOptions(this)
@@ -14336,8 +14338,8 @@ ${options.toString(1)}`
     return word === undefined || word === "" ? new MissingWordError(this) : new InvalidWordError(this)
   }
 }
-AbstractGrammarBackedCell.parserFunctionName = ""
-class GrammarBitCell extends AbstractGrammarBackedCell {
+AbstractParsersBackedCell.parserFunctionName = ""
+class ParsersBitCell extends AbstractParsersBackedCell {
   _isValid() {
     const word = this.getWord()
     return word === "0" || word === "1"
@@ -14353,8 +14355,8 @@ class GrammarBitCell extends AbstractGrammarBackedCell {
     return !!parseInt(word)
   }
 }
-GrammarBitCell.defaultHighlightScope = "constant.numeric"
-class GrammarNumericCell extends AbstractGrammarBackedCell {
+ParsersBitCell.defaultHighlightScope = "constant.numeric"
+class ParsersNumericCell extends AbstractParsersBackedCell {
   _toStumpInput(crux) {
     return `input
  name ${crux}
@@ -14364,7 +14366,7 @@ class GrammarNumericCell extends AbstractGrammarBackedCell {
  max ${this.max}`
   }
 }
-class GrammarIntCell extends GrammarNumericCell {
+class ParsersIntCell extends ParsersNumericCell {
   _isValid() {
     const word = this.getWord()
     const num = parseInt(word)
@@ -14382,9 +14384,9 @@ class GrammarIntCell extends GrammarNumericCell {
     return parseInt(word)
   }
 }
-GrammarIntCell.defaultHighlightScope = "constant.numeric.integer"
-GrammarIntCell.parserFunctionName = "parseInt"
-class GrammarFloatCell extends GrammarNumericCell {
+ParsersIntCell.defaultHighlightScope = "constant.numeric.integer"
+ParsersIntCell.parserFunctionName = "parseInt"
+class ParsersFloatCell extends ParsersNumericCell {
   _isValid() {
     const word = this.getWord()
     const num = parseFloat(word)
@@ -14401,10 +14403,10 @@ class GrammarFloatCell extends GrammarNumericCell {
     return parseFloat(word)
   }
 }
-GrammarFloatCell.defaultHighlightScope = "constant.numeric.float"
-GrammarFloatCell.parserFunctionName = "parseFloat"
-// ErrorCellType => grammar asks for a '' cell type here but the grammar does not specify a '' cell type. (todo: bring in didyoumean?)
-class GrammarBoolCell extends AbstractGrammarBackedCell {
+ParsersFloatCell.defaultHighlightScope = "constant.numeric.float"
+ParsersFloatCell.parserFunctionName = "parseFloat"
+// ErrorCellType => parsers asks for a '' cell type here but the parsers does not specify a '' cell type. (todo: bring in didyoumean?)
+class ParsersBoolCell extends AbstractParsersBackedCell {
   constructor() {
     super(...arguments)
     this._trues = new Set(["1", "true", "t", "yes"])
@@ -14429,13 +14431,13 @@ class GrammarBoolCell extends AbstractGrammarBackedCell {
     return this._trues.has(word.toLowerCase())
   }
 }
-GrammarBoolCell.defaultHighlightScope = "constant.numeric"
-class GrammarAnyCell extends AbstractGrammarBackedCell {
+ParsersBoolCell.defaultHighlightScope = "constant.numeric"
+class ParsersAnyCell extends AbstractParsersBackedCell {
   _isValid() {
     return true
   }
   _synthesizeCell() {
-    const examples = this.cellTypeDefinition._getFromExtended(GrammarConstants.examples)
+    const examples = this.cellTypeDefinition._getFromExtended(ParsersConstants.examples)
     if (examples) return Utils.getRandomString(1, examples.split(" "))
     return this._parserDefinitionParser.parserIdFromDefinition + "-" + this.constructor.name
   }
@@ -14446,18 +14448,18 @@ class GrammarAnyCell extends AbstractGrammarBackedCell {
     return this.getWord()
   }
 }
-class GrammarKeywordCell extends GrammarAnyCell {
+class ParsersKeywordCell extends ParsersAnyCell {
   _synthesizeCell() {
     return this._parserDefinitionParser.cruxIfAny
   }
 }
-GrammarKeywordCell.defaultHighlightScope = "keyword"
-class GrammarExtraWordCellTypeCell extends AbstractGrammarBackedCell {
+ParsersKeywordCell.defaultHighlightScope = "keyword"
+class ParsersExtraWordCellTypeCell extends AbstractParsersBackedCell {
   _isValid() {
     return false
   }
   synthesizeCell() {
-    throw new Error(`Trying to synthesize a GrammarExtraWordCellTypeCell`)
+    throw new Error(`Trying to synthesize a ParsersExtraWordCellTypeCell`)
     return this._synthesizeCell()
   }
   _synthesizeCell() {
@@ -14470,12 +14472,12 @@ class GrammarExtraWordCellTypeCell extends AbstractGrammarBackedCell {
     return new ExtraWordError(this)
   }
 }
-class GrammarUnknownCellTypeCell extends AbstractGrammarBackedCell {
+class ParsersUnknownCellTypeCell extends AbstractParsersBackedCell {
   _isValid() {
     return false
   }
   synthesizeCell() {
-    throw new Error(`Trying to synthesize an GrammarUnknownCellTypeCell`)
+    throw new Error(`Trying to synthesize an ParsersUnknownCellTypeCell`)
     return this._synthesizeCell()
   }
   _synthesizeCell() {
@@ -14550,7 +14552,7 @@ class AbstractTreeError {
     return this.getNode().getLine()
   }
   getExtension() {
-    return this.getNode().handGrammarProgram.extensionName
+    return this.getNode().handParsersProgram.extensionName
   }
   getNode() {
     return this._node
@@ -14679,7 +14681,7 @@ class LineAppearsMultipleTimesError extends AbstractTreeError {
 }
 class UnknownCellTypeError extends AbstractCellError {
   get message() {
-    return super.message + ` No cellType "${this.cell.cellTypeId}" found. Language grammar for "${this.getExtension()}" may need to be fixed.`
+    return super.message + ` No cellType "${this.cell.cellTypeId}" found. Language parsers for "${this.getExtension()}" may need to be fixed.`
   }
 }
 class InvalidWordError extends AbstractCellError {
@@ -14718,21 +14720,21 @@ class MissingWordError extends AbstractCellError {
   }
 }
 // todo: add standard types, enum types, from disk types
-class AbstractGrammarWordTestParser extends TreeNode {}
-class GrammarRegexTestParser extends AbstractGrammarWordTestParser {
+class AbstractParsersWordTestParser extends TreeNode {}
+class ParsersRegexTestParser extends AbstractParsersWordTestParser {
   isValid(str) {
     if (!this._regex) this._regex = new RegExp("^" + this.content + "$")
     return !!str.match(this._regex)
   }
 }
-class GrammarReservedWordsTestParser extends AbstractGrammarWordTestParser {
+class ParsersReservedWordsTestParser extends AbstractParsersWordTestParser {
   isValid(str) {
     if (!this._set) this._set = new Set(this.content.split(" "))
     return !this._set.has(str)
   }
 }
 // todo: remove in favor of custom word type constructors
-class EnumFromCellTypesTestParser extends AbstractGrammarWordTestParser {
+class EnumFromCellTypesTestParser extends AbstractParsersWordTestParser {
   _getEnumFromCellTypes(programRootNode) {
     const cellTypeIds = this.getWordsFrom(1)
     const enumGroup = cellTypeIds.join(" ")
@@ -14756,7 +14758,7 @@ class EnumFromCellTypesTestParser extends AbstractGrammarWordTestParser {
     return this._getEnumFromCellTypes(programRootNode)[str] === true
   }
 }
-class GrammarEnumTestNode extends AbstractGrammarWordTestParser {
+class ParsersEnumTestNode extends AbstractParsersWordTestParser {
   isValid(str) {
     // enum c c++ java
     return !!this.getOptions()[str]
@@ -14769,17 +14771,17 @@ class GrammarEnumTestNode extends AbstractGrammarWordTestParser {
 class cellTypeDefinitionParser extends AbstractExtendibleTreeNode {
   createParserCombinator() {
     const types = {}
-    types[GrammarConstants.regex] = GrammarRegexTestParser
-    types[GrammarConstants.reservedWords] = GrammarReservedWordsTestParser
-    types[GrammarConstants.enumFromCellTypes] = EnumFromCellTypesTestParser
-    types[GrammarConstants.enum] = GrammarEnumTestNode
-    types[GrammarConstants.highlightScope] = TreeNode
-    types[GrammarConstants.comment] = TreeNode
-    types[GrammarConstants.examples] = TreeNode
-    types[GrammarConstants.min] = TreeNode
-    types[GrammarConstants.max] = TreeNode
-    types[GrammarConstants.description] = TreeNode
-    types[GrammarConstants.extends] = TreeNode
+    types[ParsersConstants.regex] = ParsersRegexTestParser
+    types[ParsersConstants.reservedWords] = ParsersReservedWordsTestParser
+    types[ParsersConstants.enumFromCellTypes] = EnumFromCellTypesTestParser
+    types[ParsersConstants.enum] = ParsersEnumTestNode
+    types[ParsersConstants.highlightScope] = TreeNode
+    types[ParsersConstants.comment] = TreeNode
+    types[ParsersConstants.examples] = TreeNode
+    types[ParsersConstants.min] = TreeNode
+    types[ParsersConstants.max] = TreeNode
+    types[ParsersConstants.description] = TreeNode
+    types[ParsersConstants.extends] = TreeNode
     return new TreeNode.ParserCombinator(undefined, types)
   }
   get id() {
@@ -14803,7 +14805,7 @@ class cellTypeDefinitionParser extends AbstractExtendibleTreeNode {
   // `this.getWordsFrom(${requireds.length + 1})`
   // todo: cleanup typings. todo: remove this hidden logic. have a "baseType" property?
   getCellConstructor() {
-    return this.preludeKind || GrammarAnyCell
+    return this.preludeKind || ParsersAnyCell
   }
   get preludeKind() {
     return PreludeKinds[this.getWord(0)] || PreludeKinds[this._getExtendedCellTypeId()]
@@ -14818,22 +14820,22 @@ class cellTypeDefinitionParser extends AbstractExtendibleTreeNode {
     return arr[arr.length - 1].id
   }
   get highlightScope() {
-    const hs = this._getFromExtended(GrammarConstants.highlightScope)
+    const hs = this._getFromExtended(ParsersConstants.highlightScope)
     if (hs) return hs
     const preludeKind = this.preludeKind
     if (preludeKind) return preludeKind.defaultHighlightScope
   }
   _getEnumOptions() {
-    const enumNode = this._getNodeFromExtended(GrammarConstants.enum)
+    const enumNode = this._getNodeFromExtended(ParsersConstants.enum)
     if (!enumNode) return undefined
     // we sort by longest first to capture longest match first. todo: add test
-    const options = Object.keys(enumNode.getNode(GrammarConstants.enum).getOptions())
+    const options = Object.keys(enumNode.getNode(ParsersConstants.enum).getOptions())
     options.sort((a, b) => b.length - a.length)
     return options
   }
   _getEnumFromCellTypeOptions(program) {
-    const node = this._getNodeFromExtended(GrammarConstants.enumFromCellTypes)
-    return node ? Object.keys(node.getNode(GrammarConstants.enumFromCellTypes)._getEnumFromCellTypes(program)) : undefined
+    const node = this._getNodeFromExtended(ParsersConstants.enumFromCellTypes)
+    return node ? Object.keys(node.getNode(ParsersConstants.enumFromCellTypes)._getEnumFromCellTypes(program)) : undefined
   }
   _getAutocompleteWordOptions(program) {
     return this._getEnumOptions() || this._getEnumFromCellTypeOptions(program) || []
@@ -14841,10 +14843,10 @@ class cellTypeDefinitionParser extends AbstractExtendibleTreeNode {
   get regexString() {
     // todo: enum
     const enumOptions = this._getEnumOptions()
-    return this._getFromExtended(GrammarConstants.regex) || (enumOptions ? "(?:" + enumOptions.join("|") + ")" : "[^ ]*")
+    return this._getFromExtended(ParsersConstants.regex) || (enumOptions ? "(?:" + enumOptions.join("|") + ")" : "[^ ]*")
   }
   _getAllTests() {
-    return this._getChildrenByParserInExtended(AbstractGrammarWordTestParser)
+    return this._getChildrenByParserInExtended(AbstractParsersWordTestParser)
   }
   isValid(str, programRootNode) {
     return this._getAllTests().every(node => node.isValid(str, programRootNode))
@@ -14858,7 +14860,7 @@ class AbstractCellParser {
     this._definition = definition
   }
   get catchAllCellTypeId() {
-    return this._definition._getFromExtended(GrammarConstants.catchAllCellType)
+    return this._definition._getFromExtended(ParsersConstants.catchAllCellType)
   }
   // todo: improve layout (use bold?)
   get lineHints() {
@@ -14868,7 +14870,7 @@ class AbstractCellParser {
   }
   getRequiredCellTypeIds() {
     if (!this._requiredCellTypeIds) {
-      const parameters = this._definition._getFromExtended(GrammarConstants.cells)
+      const parameters = this._definition._getFromExtended(ParsersConstants.cells)
       this._requiredCellTypeIds = parameters ? parameters.split(" ") : []
     }
     return this._requiredCellTypeIds
@@ -14882,7 +14884,7 @@ class AbstractCellParser {
   getCellArray(node = undefined) {
     const wordCount = node ? node.words.length : 0
     const def = this._definition
-    const grammarProgram = def.languageDefinitionProgram
+    const parsersProgram = def.languageDefinitionProgram
     const requiredCellTypeIds = this.getRequiredCellTypeIds()
     const numberOfRequiredCells = requiredCellTypeIds.length
     const actualWordCountOrRequiredCellCount = Math.max(wordCount, numberOfRequiredCells)
@@ -14891,14 +14893,14 @@ class AbstractCellParser {
     for (let cellIndex = 0; cellIndex < actualWordCountOrRequiredCellCount; cellIndex++) {
       const isCatchAll = this._isCatchAllCell(cellIndex, numberOfRequiredCells, wordCount)
       let cellTypeId = isCatchAll ? this.catchAllCellTypeId : this._getCellTypeId(cellIndex, requiredCellTypeIds, wordCount)
-      let cellTypeDefinition = grammarProgram.getCellTypeDefinitionById(cellTypeId)
+      let cellTypeDefinition = parsersProgram.getCellTypeDefinitionById(cellTypeId)
       let cellConstructor
       if (cellTypeDefinition) cellConstructor = cellTypeDefinition.getCellConstructor()
-      else if (cellTypeId) cellConstructor = GrammarUnknownCellTypeCell
+      else if (cellTypeId) cellConstructor = ParsersUnknownCellTypeCell
       else {
-        cellConstructor = GrammarExtraWordCellTypeCell
+        cellConstructor = ParsersExtraWordCellTypeCell
         cellTypeId = PreludeCellTypeIds.extraWordCell
-        cellTypeDefinition = grammarProgram.getCellTypeDefinitionById(cellTypeId)
+        cellTypeDefinition = parsersProgram.getCellTypeDefinitionById(cellTypeId)
       }
       const anyCellConstructor = cellConstructor
       cells[cellIndex] = new anyCellConstructor(node, cellIndex, cellTypeDefinition, cellTypeId, isCatchAll, def)
@@ -14921,11 +14923,11 @@ class OmnifixCellParser extends AbstractCellParser {
     const cells = []
     const def = this._definition
     const program = node ? node.root : undefined
-    const grammarProgram = def.languageDefinitionProgram
+    const parsersProgram = def.languageDefinitionProgram
     const words = node ? node.words : []
-    const requiredCellTypeDefs = this.getRequiredCellTypeIds().map(cellTypeId => grammarProgram.getCellTypeDefinitionById(cellTypeId))
+    const requiredCellTypeDefs = this.getRequiredCellTypeIds().map(cellTypeId => parsersProgram.getCellTypeDefinitionById(cellTypeId))
     const catchAllCellTypeId = this.catchAllCellTypeId
-    const catchAllCellTypeDef = catchAllCellTypeId && grammarProgram.getCellTypeDefinitionById(catchAllCellTypeId)
+    const catchAllCellTypeDef = catchAllCellTypeId && parsersProgram.getCellTypeDefinitionById(catchAllCellTypeId)
     words.forEach((word, wordIndex) => {
       let cellConstructor
       for (let index = 0; index < requiredCellTypeDefs.length; index++) {
@@ -14943,7 +14945,7 @@ class OmnifixCellParser extends AbstractCellParser {
         cells.push(new cellConstructor(node, wordIndex, catchAllCellTypeDef, catchAllCellTypeId, true, def))
         return true
       }
-      cells.push(new GrammarUnknownCellTypeCell(node, wordIndex, undefined, undefined, false, def))
+      cells.push(new ParsersUnknownCellTypeCell(node, wordIndex, undefined, undefined, false, def))
     })
     const wordCount = words.length
     requiredCellTypeDefs.forEach((cellTypeDef, index) => {
@@ -14953,16 +14955,16 @@ class OmnifixCellParser extends AbstractCellParser {
     return cells
   }
 }
-class GrammarExampleParser extends TreeNode {}
-class GrammarCompilerParser extends TreeNode {
+class ParsersExampleParser extends TreeNode {}
+class ParsersCompilerParser extends TreeNode {
   createParserCombinator() {
     const types = [
-      GrammarConstantsCompiler.stringTemplate,
-      GrammarConstantsCompiler.indentCharacter,
-      GrammarConstantsCompiler.catchAllCellDelimiter,
-      GrammarConstantsCompiler.joinChildrenWith,
-      GrammarConstantsCompiler.openChildren,
-      GrammarConstantsCompiler.closeChildren
+      ParsersConstantsCompiler.stringTemplate,
+      ParsersConstantsCompiler.indentCharacter,
+      ParsersConstantsCompiler.catchAllCellDelimiter,
+      ParsersConstantsCompiler.joinChildrenWith,
+      ParsersConstantsCompiler.openChildren,
+      ParsersConstantsCompiler.closeChildren
     ]
     const map = {}
     types.forEach(type => {
@@ -14990,8 +14992,8 @@ class AbstractParserConstantParser extends TreeNode {
     return JSON.parse(this.constantValueAsJsText)
   }
 }
-class GrammarParserConstantInt extends AbstractParserConstantParser {}
-class GrammarParserConstantString extends AbstractParserConstantParser {
+class ParsersParserConstantInt extends AbstractParserConstantParser {}
+class ParsersParserConstantString extends AbstractParserConstantParser {
   get constantValueAsJsText() {
     return "`" + Utils.escapeBackTicks(this.constantValue) + "`"
   }
@@ -14999,59 +15001,59 @@ class GrammarParserConstantString extends AbstractParserConstantParser {
     return this.length ? this.childrenToString() : this.getWordsFrom(2).join(" ")
   }
 }
-class GrammarParserConstantFloat extends AbstractParserConstantParser {}
-class GrammarParserConstantBoolean extends AbstractParserConstantParser {}
+class ParsersParserConstantFloat extends AbstractParserConstantParser {}
+class ParsersParserConstantBoolean extends AbstractParserConstantParser {}
 class AbstractParserDefinitionParser extends AbstractExtendibleTreeNode {
   createParserCombinator() {
     // todo: some of these should just be on nonRootNodes
     const types = [
-      GrammarConstants.frequency,
-      GrammarConstants.inScope,
-      GrammarConstants.cells,
-      GrammarConstants.extends,
-      GrammarConstants.description,
-      GrammarConstants.catchAllParser,
-      GrammarConstants.catchAllCellType,
-      GrammarConstants.cellParser,
-      GrammarConstants.extensions,
-      GrammarConstants.version,
-      GrammarConstants.sortTemplate,
-      GrammarConstants.tags,
-      GrammarConstants.crux,
-      GrammarConstants.cruxFromId,
-      GrammarConstants.listDelimiter,
-      GrammarConstants.contentKey,
-      GrammarConstants.childrenKey,
-      GrammarConstants.uniqueFirstWord,
-      GrammarConstants.uniqueLine,
-      GrammarConstants.pattern,
-      GrammarConstants.baseParser,
-      GrammarConstants.required,
-      GrammarConstants.root,
-      GrammarConstants._extendsJsClass,
-      GrammarConstants._rootNodeJsHeader,
-      GrammarConstants.javascript,
-      GrammarConstants.compilesTo,
-      GrammarConstants.javascript,
-      GrammarConstants.single,
-      GrammarConstants.comment
+      ParsersConstants.frequency,
+      ParsersConstants.inScope,
+      ParsersConstants.cells,
+      ParsersConstants.extends,
+      ParsersConstants.description,
+      ParsersConstants.catchAllParser,
+      ParsersConstants.catchAllCellType,
+      ParsersConstants.cellParser,
+      ParsersConstants.extensions,
+      ParsersConstants.version,
+      ParsersConstants.sortTemplate,
+      ParsersConstants.tags,
+      ParsersConstants.crux,
+      ParsersConstants.cruxFromId,
+      ParsersConstants.listDelimiter,
+      ParsersConstants.contentKey,
+      ParsersConstants.childrenKey,
+      ParsersConstants.uniqueFirstWord,
+      ParsersConstants.uniqueLine,
+      ParsersConstants.pattern,
+      ParsersConstants.baseParser,
+      ParsersConstants.required,
+      ParsersConstants.root,
+      ParsersConstants._extendsJsClass,
+      ParsersConstants._rootNodeJsHeader,
+      ParsersConstants.javascript,
+      ParsersConstants.compilesTo,
+      ParsersConstants.javascript,
+      ParsersConstants.single,
+      ParsersConstants.comment
     ]
     const map = {}
     types.forEach(type => {
       map[type] = TreeNode
     })
-    map[GrammarConstantsConstantTypes.boolean] = GrammarParserConstantBoolean
-    map[GrammarConstantsConstantTypes.int] = GrammarParserConstantInt
-    map[GrammarConstantsConstantTypes.string] = GrammarParserConstantString
-    map[GrammarConstantsConstantTypes.float] = GrammarParserConstantFloat
-    map[GrammarConstants.compilerParser] = GrammarCompilerParser
-    map[GrammarConstants.example] = GrammarExampleParser
-    return new TreeNode.ParserCombinator(undefined, map, [{ regex: HandGrammarProgram.parserFullRegex, parser: parserDefinitionParser }])
+    map[ParsersConstantsConstantTypes.boolean] = ParsersParserConstantBoolean
+    map[ParsersConstantsConstantTypes.int] = ParsersParserConstantInt
+    map[ParsersConstantsConstantTypes.string] = ParsersParserConstantString
+    map[ParsersConstantsConstantTypes.float] = ParsersParserConstantFloat
+    map[ParsersConstants.compilerParser] = ParsersCompilerParser
+    map[ParsersConstants.example] = ParsersExampleParser
+    return new TreeNode.ParserCombinator(undefined, map, [{ regex: HandParsersProgram.parserFullRegex, parser: parserDefinitionParser }])
   }
   get sortSpec() {
     const sortSections = new Map()
     const sortIndices = new Map()
-    const sortTemplate = this.get(GrammarConstants.sortTemplate)
+    const sortTemplate = this.get(ParsersConstants.sortTemplate)
     if (!sortTemplate) return { sortSections, sortIndices }
     sortTemplate.split("  ").forEach((section, sectionIndex) => section.split(" ").forEach(word => sortSections.set(word, sectionIndex)))
     sortTemplate.split(" ").forEach((word, index) => sortIndices.set(word, index))
@@ -15088,7 +15090,7 @@ ${properties.join("\n")}
     return this.getWord(0)
   }
   get idWithoutSuffix() {
-    return this.id.replace(HandGrammarProgram.parserSuffixRegex, "")
+    return this.id.replace(HandParsersProgram.parserSuffixRegex, "")
   }
   get constantsObject() {
     const obj = this._getUniqueConstantNodes()
@@ -15103,7 +15105,7 @@ ${properties.join("\n")}
     return obj
   }
   get examples() {
-    return this._getChildrenByParserInExtended(GrammarExampleParser)
+    return this._getChildrenByParserInExtended(ParsersExampleParser)
   }
   get parserIdFromDefinition() {
     return this.getWord(0)
@@ -15116,13 +15118,13 @@ ${properties.join("\n")}
     return !!this.generatedClassName
   }
   _isAbstract() {
-    return this.id.startsWith(GrammarConstants.abstractParserPrefix)
+    return this.id.startsWith(ParsersConstants.abstractParserPrefix)
   }
   get cruxIfAny() {
-    return this.get(GrammarConstants.crux) || (this._hasFromExtended(GrammarConstants.cruxFromId) ? this.idWithoutSuffix : undefined)
+    return this.get(ParsersConstants.crux) || (this._hasFromExtended(ParsersConstants.cruxFromId) ? this.idWithoutSuffix : undefined)
   }
   get regexMatch() {
-    return this.get(GrammarConstants.pattern)
+    return this.get(ParsersConstants.pattern)
   }
   get firstCellEnumOptions() {
     const firstCellDef = this._getMyCellTypeDefs()[0]
@@ -15132,8 +15134,8 @@ ${properties.join("\n")}
     return this.root
   }
   get customJavascriptMethods() {
-    const hasJsCode = this.has(GrammarConstants.javascript)
-    return hasJsCode ? this.getNode(GrammarConstants.javascript).childrenToString() : ""
+    const hasJsCode = this.has(ParsersConstants.javascript)
+    return hasJsCode ? this.getNode(ParsersConstants.javascript).childrenToString() : ""
   }
   get firstWordMapWithDefinitions() {
     if (!this._cache_firstWordToNodeDefMap) this._cache_firstWordToNodeDefMap = this._createParserInfo(this._getInScopeParserIds()).firstWordMap
@@ -15144,11 +15146,11 @@ ${properties.join("\n")}
     return this._getParser().getFirstWordOptions()
   }
   _getMyCellTypeDefs() {
-    const requiredCells = this.get(GrammarConstants.cells)
+    const requiredCells = this.get(ParsersConstants.cells)
     if (!requiredCells) return []
-    const grammarProgram = this.languageDefinitionProgram
+    const parsersProgram = this.languageDefinitionProgram
     return requiredCells.split(" ").map(cellTypeId => {
-      const cellTypeDef = grammarProgram.getCellTypeDefinitionById(cellTypeId)
+      const cellTypeDef = parsersProgram.getCellTypeDefinitionById(cellTypeId)
       if (!cellTypeDef) throw new Error(`No cellType "${cellTypeId}" found`)
       return cellTypeDef
     })
@@ -15156,10 +15158,10 @@ ${properties.join("\n")}
   // todo: what happens when you have a cell getter and constant with same name?
   get cellGettersAndParserConstants() {
     // todo: add cellType parsings
-    const grammarProgram = this.languageDefinitionProgram
+    const parsersProgram = this.languageDefinitionProgram
     const getters = this._getMyCellTypeDefs().map((cellTypeDef, index) => cellTypeDef.getGetter(index))
-    const catchAllCellTypeId = this.get(GrammarConstants.catchAllCellType)
-    if (catchAllCellTypeId) getters.push(grammarProgram.getCellTypeDefinitionById(catchAllCellTypeId).getCatchAllGetter(getters.length))
+    const catchAllCellTypeId = this.get(ParsersConstants.catchAllCellType)
+    if (catchAllCellTypeId) getters.push(parsersProgram.getCellTypeDefinitionById(catchAllCellTypeId).getCatchAllGetter(getters.length))
     // Constants
     Object.values(this._getUniqueConstantNodes(false)).forEach(node => getters.push(node.getGetter()))
     return getters.join("\n")
@@ -15196,7 +15198,7 @@ ${properties.join("\n")}
     return arr
   }
   _getMyInScopeParserIds(target = this) {
-    const parsersNode = target.getNode(GrammarConstants.inScope)
+    const parsersNode = target.getNode(ParsersConstants.inScope)
     const scopedDefinitionIds = target.myScopedParserDefinitions.map(def => def.id)
     return parsersNode ? parsersNode.getWordsFrom(1).concat(scopedDefinitionIds) : scopedDefinitionIds
   }
@@ -15207,15 +15209,15 @@ ${properties.join("\n")}
     return parentDef ? ids.concat(parentDef._getInScopeParserIds()) : ids
   }
   get isSingle() {
-    const hit = this._getNodeFromExtended(GrammarConstants.single)
-    return hit && hit.get(GrammarConstants.single) !== "false"
+    const hit = this._getNodeFromExtended(ParsersConstants.single)
+    return hit && hit.get(ParsersConstants.single) !== "false"
   }
   get isUniqueLine() {
-    const hit = this._getNodeFromExtended(GrammarConstants.uniqueLine)
-    return hit && hit.get(GrammarConstants.uniqueLine) !== "false"
+    const hit = this._getNodeFromExtended(ParsersConstants.uniqueLine)
+    return hit && hit.get(ParsersConstants.uniqueLine) !== "false"
   }
   isRequired() {
-    return this._hasFromExtended(GrammarConstants.required)
+    return this._hasFromExtended(ParsersConstants.required)
   }
   getParserDefinitionByParserId(parserId) {
     // todo: return catch all?
@@ -15240,11 +15242,11 @@ ${properties.join("\n")}
     return this.root.rootParserDefinition
   }
   _isErrorParser() {
-    return this.get(GrammarConstants.baseParser) === GrammarConstants.errorParser
+    return this.get(ParsersConstants.baseParser) === ParsersConstants.errorParser
   }
   _isBlobParser() {
     // Do not check extended classes. Only do once.
-    return this._getFromExtended(GrammarConstants.baseParser) === GrammarConstants.blobParser
+    return this._getFromExtended(ParsersConstants.baseParser) === ParsersConstants.blobParser
   }
   get errorMethodToJavascript() {
     if (this._isBlobParser()) return "getErrors() { return [] }" // Skips parsing child nodes for perf gains.
@@ -15285,7 +15287,7 @@ ${properties.join("\n")}
   }
   get catchAllParserToJavascript() {
     if (this._isBlobParser()) return "this._getBlobParserCatchAllParser()"
-    const parserId = this.get(GrammarConstants.catchAllParser)
+    const parserId = this.get(ParsersConstants.catchAllParser)
     if (!parserId) return ""
     const nodeDef = this.getParserDefinitionByParserId(parserId)
     return nodeDef.generatedClassName
@@ -15294,9 +15296,9 @@ ${properties.join("\n")}
     const components = [this.parserAsJavascript, this.errorMethodToJavascript, this.cellGettersAndParserConstants, this.customJavascriptMethods].filter(identity => identity)
     const thisClassName = this.generatedClassName
     if (this._amIRoot()) {
-      components.push(`static cachedHandGrammarProgramRoot = new HandGrammarProgram(\`${Utils.escapeBackTicks(this.parent.toString().replace(/\\/g, "\\\\"))}\`)
-        get handGrammarProgram() {
-          return this.constructor.cachedHandGrammarProgramRoot
+      components.push(`static cachedHandParsersProgramRoot = new HandParsersProgram(\`${Utils.escapeBackTicks(this.parent.toString().replace(/\\/g, "\\\\"))}\`)
+        get handParsersProgram() {
+          return this.constructor.cachedHandParsersProgramRoot
       }`)
       components.push(`static rootParser = ${thisClassName}`)
     }
@@ -15306,14 +15308,14 @@ ${properties.join("\n")}
   }
   _getExtendsClassName() {
     // todo: this is hopefully a temporary line in place for now for the case where you want your base class to extend something other than another treeclass
-    const hardCodedExtend = this.get(GrammarConstants._extendsJsClass)
+    const hardCodedExtend = this.get(ParsersConstants._extendsJsClass)
     if (hardCodedExtend) return hardCodedExtend
     const extendedDef = this._getExtendedParent()
-    return extendedDef ? extendedDef.generatedClassName : "GrammarBackedNode"
+    return extendedDef ? extendedDef.generatedClassName : "ParserBackedNode"
   }
   _getCompilerObject() {
     let obj = {}
-    const items = this._getChildrenByParserInExtended(GrammarCompilerParser)
+    const items = this._getChildrenByParserInExtended(ParsersCompilerParser)
     items.reverse() // Last definition wins.
     items.forEach(node => {
       obj = Object.assign(obj, node.toObject()) // todo: what about multiline strings?
@@ -15329,7 +15331,7 @@ ${properties.join("\n")}
     return firstWordsInScope.some(firstWord => chain.has(firstWord))
   }
   isTerminalParser() {
-    return !this._getFromExtended(GrammarConstants.inScope) && !this._getFromExtended(GrammarConstants.catchAllParser)
+    return !this._getFromExtended(ParsersConstants.inScope) && !this._getFromExtended(ParsersConstants.catchAllParser)
   }
   get sublimeMatchLine() {
     const regexMatch = this.regexMatch
@@ -15356,7 +15358,7 @@ ${properties.join("\n")}
     const captures = requiredCellTypeIds
       .map((cellTypeId, index) => {
         const cellTypeDefinition = program.getCellTypeDefinitionById(cellTypeId) // todo: cleanup
-        if (!cellTypeDefinition) throw new Error(`No ${GrammarConstants.cellType} ${cellTypeId} found`) // todo: standardize error/capture error at grammar time
+        if (!cellTypeDefinition) throw new Error(`No ${ParsersConstants.cellType} ${cellTypeId} found`) // todo: standardize error/capture error at parsers time
         return `        ${index + 1}: ${(cellTypeDefinition.highlightScope || defaultHighlightScope) + "." + cellTypeDefinition.cellTypeId}`
       })
       .join("\n")
@@ -15394,10 +15396,10 @@ ${captures}
     return cache
   }
   get description() {
-    return this._getFromExtended(GrammarConstants.description) || ""
+    return this._getFromExtended(ParsersConstants.description) || ""
   }
   get frequency() {
-    const val = this._getFromExtended(GrammarConstants.frequency)
+    const val = this._getFromExtended(ParsersConstants.frequency)
     return val ? parseFloat(val) : 0
   }
   _getExtendedParserId() {
@@ -15433,8 +15435,8 @@ ${cells.toString(1)}`
   _shouldSynthesize(def, parserChain) {
     if (def._isErrorParser() || def._isAbstract()) return false
     if (parserChain.includes(def.id)) return false
-    const tags = def.get(GrammarConstants.tags)
-    if (tags && tags.includes(GrammarConstantsMisc.doNotSynthesize)) return false
+    const tags = def.get(ParsersConstants.tags)
+    if (tags && tags.includes(ParsersConstantsMisc.doNotSynthesize)) return false
     return true
   }
   // Get all definitions in this current scope down, even ones that are scoped inside other definitions.
@@ -15479,7 +15481,7 @@ ${cells.toString(1)}`
   // todo: refactor
   synthesizeNode(nodeCount = 1, indentCount = -1, parsersAlreadySynthesized = [], seed = Date.now()) {
     let inScopeParserIds = this._getInScopeParserIds()
-    const catchAllParserId = this._getFromExtended(GrammarConstants.catchAllParser)
+    const catchAllParserId = this._getFromExtended(ParsersConstants.catchAllParser)
     if (catchAllParserId) inScopeParserIds.push(catchAllParserId)
     const thisId = this.id
     if (!parsersAlreadySynthesized.includes(thisId)) parsersAlreadySynthesized.push(thisId)
@@ -15500,9 +15502,9 @@ ${cells.toString(1)}`
   }
   get cellParser() {
     if (!this._cellParser) {
-      const cellParsingStrategy = this._getFromExtended(GrammarConstants.cellParser)
-      if (cellParsingStrategy === GrammarCellParser.postfix) this._cellParser = new PostfixCellParser(this)
-      else if (cellParsingStrategy === GrammarCellParser.omnifix) this._cellParser = new OmnifixCellParser(this)
+      const cellParsingStrategy = this._getFromExtended(ParsersConstants.cellParser)
+      if (cellParsingStrategy === ParsersCellParser.postfix) this._cellParser = new PostfixCellParser(this)
+      else if (cellParsingStrategy === ParsersCellParser.omnifix) this._cellParser = new OmnifixCellParser(this)
       else this._cellParser = new PrefixCellParser(this)
     }
     return this._cellParser
@@ -15510,16 +15512,16 @@ ${cells.toString(1)}`
 }
 // todo: remove?
 class parserDefinitionParser extends AbstractParserDefinitionParser {}
-// HandGrammarProgram is a constructor that takes a grammar file, and builds a new
+// HandParsersProgram is a constructor that takes a parsers file, and builds a new
 // constructor for new language that takes files in that language to execute, compile, etc.
-class HandGrammarProgram extends AbstractParserDefinitionParser {
+class HandParsersProgram extends AbstractParserDefinitionParser {
   createParserCombinator() {
     const map = {}
-    map[GrammarConstants.comment] = TreeNode
+    map[ParsersConstants.comment] = TreeNode
     return new TreeNode.ParserCombinator(UnknownParserNode, map, [
-      { regex: HandGrammarProgram.blankLineRegex, parser: TreeNode },
-      { regex: HandGrammarProgram.parserFullRegex, parser: parserDefinitionParser },
-      { regex: HandGrammarProgram.cellTypeFullRegex, parser: cellTypeDefinitionParser }
+      { regex: HandParsersProgram.blankLineRegex, parser: TreeNode },
+      { regex: HandParsersProgram.parserFullRegex, parser: parserDefinitionParser },
+      { regex: HandParsersProgram.cellTypeFullRegex, parser: cellTypeDefinitionParser }
     ])
   }
   // rootParser
@@ -15624,7 +15626,7 @@ class HandGrammarProgram extends AbstractParserDefinitionParser {
       return vm.runInThisContext(code)
     } catch (err) {
       // todo: figure out best error pattern here for debugging
-      console.log(`Error in compiled grammar code for language "${this.grammarName}"`)
+      console.log(`Error in compiled parsers code for language "${this.parsersName}"`)
       // console.log(new TreeNode(code).toStringWithLineNumbers())
       console.log(err)
       throw err
@@ -15697,7 +15699,7 @@ ${this.topDownArray
   .join("\n")}
 
 paragraph This readme was auto-generated using the
- link https://github.com/treenotation/jtree JTree library.`
+ link https://github.com/breck7/scrollsdk ScrollSDK.`
   }
   toBundle() {
     const files = {}
@@ -15705,18 +15707,18 @@ paragraph This readme was auto-generated using the
     const languageName = this.extensionName
     const example = rootNodeDef.examples[0]
     const sampleCode = example ? example.childrenToString() : ""
-    files[GrammarBundleFiles.package] = JSON.stringify(
+    files[ParsersBundleFiles.package] = JSON.stringify(
       {
         name: languageName,
         private: true,
         dependencies: {
-          jtree: TreeNode.getVersion()
+          scrollsdk: TreeNode.getVersion()
         }
       },
       null,
       2
     )
-    files[GrammarBundleFiles.readme] = this.toReadMe()
+    files[ParsersBundleFiles.readme] = this.toReadMe()
     const testCode = `const program = new ${languageName}(sampleCode)
 const errors = program.getAllErrors()
 console.log("Sample program compiled with " + errors.length + " errors.")
@@ -15724,12 +15726,12 @@ if (errors.length)
  console.log(errors.map(error => error.message))`
     const nodePath = `${languageName}.node.js`
     files[nodePath] = this.toNodeJsJavascript()
-    files[GrammarBundleFiles.indexJs] = `module.exports = require("./${nodePath}")`
+    files[ParsersBundleFiles.indexJs] = `module.exports = require("./${nodePath}")`
     const browserPath = `${languageName}.browser.js`
     files[browserPath] = this.toBrowserJavascript()
-    files[GrammarBundleFiles.indexHtml] = `<script src="node_modules/jtree/products/Utils.browser.js"></script>
-<script src="node_modules/jtree/products/TreeNode.browser.js"></script>
-<script src="node_modules/jtree/products/GrammarLanguage.browser.js"></script>
+    files[ParsersBundleFiles.indexHtml] = `<script src="node_modules/scrollsdk/products/Utils.browser.js"></script>
+<script src="node_modules/scrollsdk/products/TreeNode.browser.js"></script>
+<script src="node_modules/scrollsdk/products/Parsers.ts.browser.js"></script>
 <script src="${browserPath}"></script>
 <script>
 const sampleCode = \`${sampleCode.toString()}\`
@@ -15737,13 +15739,13 @@ ${testCode}
 </script>`
     const samplePath = "sample." + this.extensionName
     files[samplePath] = sampleCode.toString()
-    files[GrammarBundleFiles.testJs] = `const ${languageName} = require("./index.js")
+    files[ParsersBundleFiles.testJs] = `const ${languageName} = require("./index.js")
 /*keep-line*/ const sampleCode = require("fs").readFileSync("${samplePath}", "utf8")
 ${testCode}`
     return files
   }
   get targetExtension() {
-    return this.rootParserDefinition.get(GrammarConstants.compilesTo)
+    return this.rootParserDefinition.get(ParsersConstants.compilesTo)
   }
   get cellTypeDefinitions() {
     if (this._cache_cellTypes) return this._cache_cellTypes
@@ -15769,7 +15771,7 @@ ${testCode}`
     return this.getChildrenByParser(parserDefinitionParser).filter(node => node._hasValidParserId())
   }
   get lastRootParserDefinitionNode() {
-    return this.findLast(def => def instanceof AbstractParserDefinitionParser && def.has(GrammarConstants.root) && def._hasValidParserId())
+    return this.findLast(def => def instanceof AbstractParserDefinitionParser && def.has(ParsersConstants.root) && def._hasValidParserId())
   }
   _initRootParserDefinitionNode() {
     if (this._cache_rootParserNode) return
@@ -15777,9 +15779,9 @@ ${testCode}`
     // By default, have a very permissive basic root node.
     // todo: whats the best design pattern to use for this sort of thing?
     if (!this._cache_rootParserNode) {
-      this._cache_rootParserNode = this.concat(`${GrammarConstants.DefaultRootParser}
- ${GrammarConstants.root}
- ${GrammarConstants.catchAllParser} ${GrammarConstants.BlobParser}`)[0]
+      this._cache_rootParserNode = this.concat(`${ParsersConstants.DefaultRootParser}
+ ${ParsersConstants.root}
+ ${ParsersConstants.catchAllParser} ${ParsersConstants.BlobParser}`)[0]
       this._addDefaultCatchAllBlobParser()
     }
   }
@@ -15791,11 +15793,11 @@ ${testCode}`
     if (this._addedCatchAll) return
     this._addedCatchAll = true
     delete this._cache_parserDefinitionParsers
-    this.concat(`${GrammarConstants.BlobParser}
- ${GrammarConstants.baseParser} ${GrammarConstants.blobParser}`)
+    this.concat(`${ParsersConstants.BlobParser}
+ ${ParsersConstants.baseParser} ${ParsersConstants.blobParser}`)
   }
   get extensionName() {
-    return this.grammarName
+    return this.parsersName
   }
   get id() {
     return this.rootParserId
@@ -15803,14 +15805,14 @@ ${testCode}`
   get rootParserId() {
     return this.rootParserDefinition.parserIdFromDefinition
   }
-  get grammarName() {
-    return this.rootParserId.replace(HandGrammarProgram.parserSuffixRegex, "")
+  get parsersName() {
+    return this.rootParserId.replace(HandParsersProgram.parserSuffixRegex, "")
   }
   _getMyInScopeParserIds() {
     return super._getMyInScopeParserIds(this.rootParserDefinition)
   }
   _getInScopeParserIds() {
-    const parsersNode = this.rootParserDefinition.getNode(GrammarConstants.inScope)
+    const parsersNode = this.rootParserDefinition.getNode(ParsersConstants.inScope)
     return parsersNode ? parsersNode.getWordsFrom(1) : []
   }
   makeProgramParserDefinitionCache() {
@@ -15826,25 +15828,20 @@ ${testCode}`
     return this._cached_rootParser
   }
   get fileExtensions() {
-    return this.rootParserDefinition.get(GrammarConstants.extensions)
-      ? this.rootParserDefinition
-          .get(GrammarConstants.extensions)
-          .split(" ")
-          .join(",")
-      : this.extensionName
+    return this.rootParserDefinition.get(ParsersConstants.extensions) ? this.rootParserDefinition.get(ParsersConstants.extensions).split(" ").join(",") : this.extensionName
   }
-  toNodeJsJavascript(jtreeProductsPath = "jtree/products") {
-    return this._rootNodeDefToJavascriptClass(jtreeProductsPath, true).trim()
+  toNodeJsJavascript(scrollsdkProductsPath = "scrollsdk/products") {
+    return this._rootNodeDefToJavascriptClass(scrollsdkProductsPath, true).trim()
   }
   toBrowserJavascript() {
     return this._rootNodeDefToJavascriptClass("", false).trim()
   }
-  _rootNodeDefToJavascriptClass(jtreeProductsPath, forNodeJs = true) {
+  _rootNodeDefToJavascriptClass(scrollsdkProductsPath, forNodeJs = true) {
     const defs = this.validConcreteAndAbstractParserDefinitions
     // todo: throw if there is no root node defined
     const parserClasses = defs.map(def => def.asJavascriptClass).join("\n\n")
     const rootDef = this.rootParserDefinition
-    const rootNodeJsHeader = forNodeJs && rootDef._getConcatBlockStringFromExtended(GrammarConstants._rootNodeJsHeader)
+    const rootNodeJsHeader = forNodeJs && rootDef._getConcatBlockStringFromExtended(ParsersConstants._rootNodeJsHeader)
     const rootName = rootDef.generatedClassName
     if (!rootName) throw new Error(`Root Node Type Has No Name`)
     let exportScript = ""
@@ -15853,11 +15850,16 @@ ${testCode}`
 ${rootName}`
     else exportScript = `window.${rootName} = ${rootName}`
     let nodeJsImports = ``
-    if (forNodeJs)
+    if (forNodeJs) {
+      const path = require("path")
       nodeJsImports = Object.keys(GlobalNamespaceAdditions)
-        .map(key => `const { ${key} } = require("${jtreeProductsPath}/${GlobalNamespaceAdditions[key]}")`)
+        .map(key => {
+          const thePath = scrollsdkProductsPath + "/" + GlobalNamespaceAdditions[key]
+          return `const { ${key} } = require("${thePath.replace(/\\/g, "\\\\")}")` // escape windows backslashes
+        })
         .join("\n")
-    // todo: we can expose the previous "constants" export, if needed, via the grammar, which we preserve.
+    }
+    // todo: we can expose the previous "constants" export, if needed, via the parsers, which we preserve.
     return `{
 ${nodeJsImports}
 ${rootNodeJsHeader ? rootNodeJsHeader : ""}
@@ -15891,35 +15893,35 @@ ${includes}
 ${parserContexts}`
   }
 }
-HandGrammarProgram.makeParserId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandGrammarProgram.parserSuffixRegex, "") + GrammarConstants.parserSuffix
-HandGrammarProgram.makeCellTypeId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandGrammarProgram.cellTypeSuffixRegex, "") + GrammarConstants.cellTypeSuffix
-HandGrammarProgram.parserSuffixRegex = new RegExp(GrammarConstants.parserSuffix + "$")
-HandGrammarProgram.parserFullRegex = new RegExp("^[a-zA-Z0-9_]+" + GrammarConstants.parserSuffix + "$")
-HandGrammarProgram.blankLineRegex = new RegExp("^$")
-HandGrammarProgram.cellTypeSuffixRegex = new RegExp(GrammarConstants.cellTypeSuffix + "$")
-HandGrammarProgram.cellTypeFullRegex = new RegExp("^[a-zA-Z0-9_]+" + GrammarConstants.cellTypeSuffix + "$")
-HandGrammarProgram._languages = {}
-HandGrammarProgram._parsers = {}
+HandParsersProgram.makeParserId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandParsersProgram.parserSuffixRegex, "") + ParsersConstants.parserSuffix
+HandParsersProgram.makeCellTypeId = str => Utils._replaceNonAlphaNumericCharactersWithCharCodes(str).replace(HandParsersProgram.cellTypeSuffixRegex, "") + ParsersConstants.cellTypeSuffix
+HandParsersProgram.parserSuffixRegex = new RegExp(ParsersConstants.parserSuffix + "$")
+HandParsersProgram.parserFullRegex = new RegExp("^[a-zA-Z0-9_]+" + ParsersConstants.parserSuffix + "$")
+HandParsersProgram.blankLineRegex = new RegExp("^$")
+HandParsersProgram.cellTypeSuffixRegex = new RegExp(ParsersConstants.cellTypeSuffix + "$")
+HandParsersProgram.cellTypeFullRegex = new RegExp("^[a-zA-Z0-9_]+" + ParsersConstants.cellTypeSuffix + "$")
+HandParsersProgram._languages = {}
+HandParsersProgram._parsers = {}
 const PreludeKinds = {}
-PreludeKinds[PreludeCellTypeIds.anyCell] = GrammarAnyCell
-PreludeKinds[PreludeCellTypeIds.keywordCell] = GrammarKeywordCell
-PreludeKinds[PreludeCellTypeIds.floatCell] = GrammarFloatCell
-PreludeKinds[PreludeCellTypeIds.numberCell] = GrammarFloatCell
-PreludeKinds[PreludeCellTypeIds.bitCell] = GrammarBitCell
-PreludeKinds[PreludeCellTypeIds.boolCell] = GrammarBoolCell
-PreludeKinds[PreludeCellTypeIds.intCell] = GrammarIntCell
-class UnknownGrammarProgram extends TreeNode {
-  _inferRootNodeForAPrefixLanguage(grammarName) {
-    grammarName = HandGrammarProgram.makeParserId(grammarName)
-    const rootNode = new TreeNode(`${grammarName}
- ${GrammarConstants.root}`)
-    // note: right now we assume 1 global cellTypeMap and parserMap per grammar. But we may have scopes in the future?
+PreludeKinds[PreludeCellTypeIds.anyCell] = ParsersAnyCell
+PreludeKinds[PreludeCellTypeIds.keywordCell] = ParsersKeywordCell
+PreludeKinds[PreludeCellTypeIds.floatCell] = ParsersFloatCell
+PreludeKinds[PreludeCellTypeIds.numberCell] = ParsersFloatCell
+PreludeKinds[PreludeCellTypeIds.bitCell] = ParsersBitCell
+PreludeKinds[PreludeCellTypeIds.boolCell] = ParsersBoolCell
+PreludeKinds[PreludeCellTypeIds.intCell] = ParsersIntCell
+class UnknownParsersProgram extends TreeNode {
+  _inferRootNodeForAPrefixLanguage(parsersName) {
+    parsersName = HandParsersProgram.makeParserId(parsersName)
+    const rootNode = new TreeNode(`${parsersName}
+ ${ParsersConstants.root}`)
+    // note: right now we assume 1 global cellTypeMap and parserMap per parsers. But we may have scopes in the future?
     const rootNodeNames = this.getFirstWords()
       .filter(identity => identity)
-      .map(word => HandGrammarProgram.makeParserId(word))
+      .map(word => HandParsersProgram.makeParserId(word))
     rootNode
       .nodeAt(0)
-      .touchNode(GrammarConstants.inScope)
+      .touchNode(ParsersConstants.inScope)
       .setWordsFrom(1, Array.from(new Set(rootNodeNames)))
     return rootNode
   }
@@ -15928,7 +15930,7 @@ class UnknownGrammarProgram extends TreeNode {
     for (let node of clone.getTopDownArrayIterator()) {
       const firstWordIsAnInteger = !!node.firstWord.match(/^\d+$/)
       const parentFirstWord = node.parent.firstWord
-      if (firstWordIsAnInteger && parentFirstWord) node.setFirstWord(HandGrammarProgram.makeParserId(parentFirstWord + UnknownGrammarProgram._childSuffix))
+      if (firstWordIsAnInteger && parentFirstWord) node.setFirstWord(HandParsersProgram.makeParserId(parentFirstWord + UnknownParsersProgram._childSuffix))
     }
   }
   _getKeywordMaps(clone) {
@@ -15945,10 +15947,10 @@ class UnknownGrammarProgram extends TreeNode {
   }
   _inferParserDef(firstWord, globalCellTypeMap, childFirstWords, instances) {
     const edgeSymbol = this.edgeSymbol
-    const parserId = HandGrammarProgram.makeParserId(firstWord)
+    const parserId = HandParsersProgram.makeParserId(firstWord)
     const nodeDefNode = new TreeNode(parserId).nodeAt(0)
-    const childParserIds = childFirstWords.map(word => HandGrammarProgram.makeParserId(word))
-    if (childParserIds.length) nodeDefNode.touchNode(GrammarConstants.inScope).setWordsFrom(1, childParserIds)
+    const childParserIds = childFirstWords.map(word => HandParsersProgram.makeParserId(word))
+    if (childParserIds.length) nodeDefNode.touchNode(ParsersConstants.inScope).setWordsFrom(1, childParserIds)
     const cellsForAllInstances = instances
       .map(line => line.content)
       .filter(identity => identity)
@@ -15975,29 +15977,29 @@ class UnknownGrammarProgram extends TreeNode {
         cellTypeIds.pop()
       }
     }
-    const needsCruxProperty = !firstWord.endsWith(UnknownGrammarProgram._childSuffix + GrammarConstants.parserSuffix) // todo: cleanup
-    if (needsCruxProperty) nodeDefNode.set(GrammarConstants.crux, firstWord)
-    if (catchAllCellType) nodeDefNode.set(GrammarConstants.catchAllCellType, catchAllCellType)
+    const needsCruxProperty = !firstWord.endsWith(UnknownParsersProgram._childSuffix + ParsersConstants.parserSuffix) // todo: cleanup
+    if (needsCruxProperty) nodeDefNode.set(ParsersConstants.crux, firstWord)
+    if (catchAllCellType) nodeDefNode.set(ParsersConstants.catchAllCellType, catchAllCellType)
     const cellLine = cellTypeIds.slice()
     cellLine.unshift(PreludeCellTypeIds.keywordCell)
-    if (cellLine.length > 0) nodeDefNode.set(GrammarConstants.cells, cellLine.join(edgeSymbol))
-    //if (!catchAllCellType && cellTypeIds.length === 1) nodeDefNode.set(GrammarConstants.cells, cellTypeIds[0])
+    if (cellLine.length > 0) nodeDefNode.set(ParsersConstants.cells, cellLine.join(edgeSymbol))
+    //if (!catchAllCellType && cellTypeIds.length === 1) nodeDefNode.set(ParsersConstants.cells, cellTypeIds[0])
     // Todo: add conditional frequencies
     return nodeDefNode.parent.toString()
   }
-  //  inferGrammarFileForAnSSVLanguage(grammarName: string): string {
-  //     grammarName = HandGrammarProgram.makeParserId(grammarName)
-  //    const rootNode = new TreeNode(`${grammarName}
-  // ${GrammarConstants.root}`)
-  //    // note: right now we assume 1 global cellTypeMap and parserMap per grammar. But we may have scopes in the future?
-  //    const rootNodeNames = this.getFirstWords().map(word => HandGrammarProgram.makeParserId(word))
+  //  inferParsersFileForAnSSVLanguage(parsersName: string): string {
+  //     parsersName = HandParsersProgram.makeParserId(parsersName)
+  //    const rootNode = new TreeNode(`${parsersName}
+  // ${ParsersConstants.root}`)
+  //    // note: right now we assume 1 global cellTypeMap and parserMap per parsers. But we may have scopes in the future?
+  //    const rootNodeNames = this.getFirstWords().map(word => HandParsersProgram.makeParserId(word))
   //    rootNode
   //      .nodeAt(0)
-  //      .touchNode(GrammarConstants.inScope)
+  //      .touchNode(ParsersConstants.inScope)
   //      .setWordsFrom(1, Array.from(new Set(rootNodeNames)))
   //    return rootNode
   //  }
-  inferGrammarFileForAKeywordLanguage(grammarName) {
+  inferParsersFileForAKeywordLanguage(parsersName) {
     const clone = this.clone()
     this._renameIntegerKeywords(clone)
     const { keywordsToChildKeywords, keywordsToNodeInstances } = this._getKeywordMaps(clone)
@@ -16009,13 +16011,13 @@ class UnknownGrammarProgram extends TreeNode {
     const cellTypeDefs = []
     globalCellTypeMap.forEach((def, id) => cellTypeDefs.push(def ? def : id))
     const nodeBreakSymbol = this.nodeBreakSymbol
-    return this._formatCode([this._inferRootNodeForAPrefixLanguage(grammarName).toString(), cellTypeDefs.join(nodeBreakSymbol), parserDefs.join(nodeBreakSymbol)].filter(identity => identity).join("\n"))
+    return this._formatCode([this._inferRootNodeForAPrefixLanguage(parsersName).toString(), cellTypeDefs.join(nodeBreakSymbol), parserDefs.join(nodeBreakSymbol)].filter(identity => identity).join("\n"))
   }
   _formatCode(code) {
     // todo: make this run in browser too
     if (!this.isNodeJs()) return code
-    const grammarProgram = new HandGrammarProgram(TreeNode.fromDisk(__dirname + "/../langs/grammar/grammar.grammar"))
-    const rootParser = grammarProgram.compileAndReturnRootParser()
+    const parsersProgram = new HandParsersProgram(TreeNode.fromDisk(__dirname + "/../langs/parsers/parsers.parsers"))
+    const rootParser = parsersProgram.compileAndReturnRootParser()
     const program = new rootParser(code)
     return program.format().toString()
   }
@@ -16046,26 +16048,26 @@ class UnknownGrammarProgram extends TreeNode {
     const enumLimit = 30
     if (instanceCount > 1 && maxCellsOnLine === 1 && allValues.length > asSet.size && asSet.size < enumLimit)
       return {
-        cellTypeId: HandGrammarProgram.makeCellTypeId(firstWord),
-        cellTypeDefinition: `${HandGrammarProgram.makeCellTypeId(firstWord)}
+        cellTypeId: HandParsersProgram.makeCellTypeId(firstWord),
+        cellTypeDefinition: `${HandParsersProgram.makeCellTypeId(firstWord)}
  enum ${values.join(edgeSymbol)}`
       }
     return { cellTypeId: PreludeCellTypeIds.anyCell }
   }
 }
-UnknownGrammarProgram._childSuffix = "Child"
-window.GrammarConstants = GrammarConstants
+UnknownParsersProgram._childSuffix = "Child"
+window.ParsersConstants = ParsersConstants
 window.PreludeCellTypeIds = PreludeCellTypeIds
-window.HandGrammarProgram = HandGrammarProgram
-window.GrammarBackedNode = GrammarBackedNode
+window.HandParsersProgram = HandParsersProgram
+window.ParserBackedNode = ParserBackedNode
 window.UnknownParserError = UnknownParserError
-window.UnknownGrammarProgram = UnknownGrammarProgram
+window.UnknownParsersProgram = UnknownParsersProgram
 
 
 "use strict"
 // Adapted from https://github.com/NeekSandhu/codemirror-textmate/blob/master/src/tmToCm.ts
 var CmToken
-;(function(CmToken) {
+;(function (CmToken) {
   CmToken["Atom"] = "atom"
   CmToken["Attribute"] = "attribute"
   CmToken["Bracket"] = "bracket"
@@ -16243,7 +16245,7 @@ const textMateScopeToCodeMirrorStyle = (scopeSegments, styleTree = tmToCm) => {
   const matchingBranch = styleTree[scopeSegments.shift()]
   return matchingBranch ? textMateScopeToCodeMirrorStyle(scopeSegments, matchingBranch) || matchingBranch.$ || null : null
 }
-class GrammarCodeMirrorMode {
+class ParsersCodeMirrorMode {
   constructor(name, getRootParserFn, getProgramCodeFn, codeMirrorLib = undefined) {
     this._name = name
     this._getRootParserFn = getRootParserFn
@@ -16260,42 +16262,42 @@ class GrammarCodeMirrorMode {
   }
   _getExcludedIntelliSenseTriggerKeys() {
     return {
-      "8": "backspace",
-      "9": "tab",
-      "13": "enter",
-      "16": "shift",
-      "17": "ctrl",
-      "18": "alt",
-      "19": "pause",
-      "20": "capslock",
-      "27": "escape",
-      "33": "pageup",
-      "34": "pagedown",
-      "35": "end",
-      "36": "home",
-      "37": "left",
-      "38": "up",
-      "39": "right",
-      "40": "down",
-      "45": "insert",
-      "46": "delete",
-      "91": "left window key",
-      "92": "right window key",
-      "93": "select",
-      "112": "f1",
-      "113": "f2",
-      "114": "f3",
-      "115": "f4",
-      "116": "f5",
-      "117": "f6",
-      "118": "f7",
-      "119": "f8",
-      "120": "f9",
-      "121": "f10",
-      "122": "f11",
-      "123": "f12",
-      "144": "numlock",
-      "145": "scrolllock"
+      8: "backspace",
+      9: "tab",
+      13: "enter",
+      16: "shift",
+      17: "ctrl",
+      18: "alt",
+      19: "pause",
+      20: "capslock",
+      27: "escape",
+      33: "pageup",
+      34: "pagedown",
+      35: "end",
+      36: "home",
+      37: "left",
+      38: "up",
+      39: "right",
+      40: "down",
+      45: "insert",
+      46: "delete",
+      91: "left window key",
+      92: "right window key",
+      93: "select",
+      112: "f1",
+      113: "f2",
+      114: "f3",
+      115: "f4",
+      116: "f5",
+      117: "f6",
+      118: "f7",
+      119: "f8",
+      120: "f9",
+      121: "f10",
+      122: "f11",
+      123: "f12",
+      144: "numlock",
+      145: "scrolllock"
     }
   }
   token(stream, state) {
@@ -16386,7 +16388,7 @@ class GrammarCodeMirrorMode {
     if (!program.getCellHighlightScopeAtPosition) console.log(program)
     const highlightScope = program.getCellHighlightScopeAtPosition(lineIndex, cellIndex)
     const style = highlightScope ? textMateScopeToCodeMirrorStyle(highlightScope.split(".")) : undefined
-    return style || "noHighlightScopeDefinedInGrammar"
+    return style || "noHighlightScopeDefinedInParsers"
   }
   // todo: remove.
   startState() {
@@ -16398,11 +16400,11 @@ class GrammarCodeMirrorMode {
     state.cellIndex = 0
   }
 }
-window.GrammarCodeMirrorMode = GrammarCodeMirrorMode
+window.ParsersCodeMirrorMode = ParsersCodeMirrorMode
 
 
 {
-  class stumpParser extends GrammarBackedNode {
+  class stumpParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(
         errorParser,
@@ -16530,7 +16532,7 @@ window.GrammarCodeMirrorMode = GrammarCodeMirrorMode
     _getHtmlJoinByCharacter() {
       return ""
     }
-    static cachedHandGrammarProgramRoot = new HandGrammarProgram(`// Cell parsers
+    static cachedHandParsersProgramRoot = new HandParsersProgram(`// Cell parsers
 anyCell
 keywordCell
 emptyCell
@@ -16558,7 +16560,7 @@ bernKeywordCell
 // Line parsers
 stumpParser
  root
- description A prefix Tree Language that compiles to HTML.
+ description A prefix Language that compiles to HTML.
  catchAllParser errorParser
  inScope htmlTagParser blankLineParser
  example
@@ -16799,13 +16801,13 @@ bernParser
   }
   getTextContent() {return ""}
  cells bernKeywordCell`)
-    get handGrammarProgram() {
-      return this.constructor.cachedHandGrammarProgramRoot
+    get handParsersProgram() {
+      return this.constructor.cachedHandParsersProgramRoot
     }
     static rootParser = stumpParser
   }
 
-  class blankLineParser extends GrammarBackedNode {
+  class blankLineParser extends ParserBackedNode {
     get emptyCell() {
       return this.getWord(0)
     }
@@ -16817,7 +16819,7 @@ bernParser
     }
   }
 
-  class htmlTagParser extends GrammarBackedNode {
+  class htmlTagParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(
         undefined,
@@ -17164,9 +17166,7 @@ bernParser
       const indentForChildParsers = !collapse && this.getChildInstancesOfParserId("htmlTagParser").length > 0
       const suid = withSuid ? ` stumpUid="${this._getUid()}"` : ""
       const oneLiner = this._getOneLiner()
-      return `${!collapse ? indent : ""}<${tag}${attributesStr}${suid}>${oneLiner}${indentForChildParsers ? "\n" : ""}${children}</${tag}>${
-        collapse ? "" : "\n"
-      }`
+      return `${!collapse ? indent : ""}<${tag}${attributesStr}${suid}>${oneLiner}${indentForChildParsers ? "\n" : ""}${children}</${tag}>${collapse ? "" : "\n"}`
     }
     removeCssStumpNode() {
       return this.removeStumpNode()
@@ -17278,7 +17278,7 @@ bernParser
     }
   }
 
-  class errorParser extends GrammarBackedNode {
+  class errorParser extends ParserBackedNode {
     getErrors() {
       return this._getErrorParserErrors()
     }
@@ -17293,7 +17293,7 @@ bernParser
     }
   }
 
-  class htmlAttributeParser extends GrammarBackedNode {
+  class htmlAttributeParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(errorParser, undefined, undefined)
     }
@@ -17326,7 +17326,7 @@ bernParser
     }
   }
 
-  class lineOfHtmlContentParser extends GrammarBackedNode {
+  class lineOfHtmlContentParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(lineOfHtmlContentParser, undefined, undefined)
     }
@@ -17341,7 +17341,7 @@ bernParser
     }
   }
 
-  class bernParser extends GrammarBackedNode {
+  class bernParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(lineOfHtmlContentParser, undefined, undefined)
     }
@@ -17364,13 +17364,9 @@ bernParser
 
 
 {
-  class hakonParser extends GrammarBackedNode {
+  class hakonParser extends ParserBackedNode {
     createParserCombinator() {
-      return new TreeNode.ParserCombinator(
-        selectorParser,
-        Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), { comment: commentParser }),
-        undefined
-      )
+      return new TreeNode.ParserCombinator(selectorParser, Object.assign(Object.assign({}, super.createParserCombinator()._getFirstWordMapAsObject()), { comment: commentParser }), undefined)
     }
     getSelector() {
       return ""
@@ -17381,7 +17377,7 @@ bernParser
         .map(child => child.compile())
         .join("")
     }
-    static cachedHandGrammarProgramRoot = new HandGrammarProgram(`// Cell Parsers
+    static cachedHandParsersProgramRoot = new HandParsersProgram(`// Cell Parsers
 anyCell
 keywordCell
 commentKeywordCell
@@ -17414,7 +17410,7 @@ commentCell
 hakonParser
  root
  // todo Add variables?
- description A prefix Tree Language that compiles to CSS
+ description A prefix Language that compiles to CSS
  compilesTo css
  inScope commentParser
  catchAllParser selectorParser
@@ -17484,13 +17480,13 @@ selectorParser
   }\\n\`
   }
  cells selectorCell`)
-    get handGrammarProgram() {
-      return this.constructor.cachedHandGrammarProgramRoot
+    get handParsersProgram() {
+      return this.constructor.cachedHandParsersProgramRoot
     }
     static rootParser = hakonParser
   }
 
-  class propertyParser extends GrammarBackedNode {
+  class propertyParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(errorParser, undefined, undefined)
     }
@@ -17513,7 +17509,7 @@ selectorParser
     }
   }
 
-  class errorParser extends GrammarBackedNode {
+  class errorParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(errorParser, undefined, undefined)
     }
@@ -17525,7 +17521,7 @@ selectorParser
     }
   }
 
-  class commentParser extends GrammarBackedNode {
+  class commentParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(commentParser, undefined, undefined)
     }
@@ -17537,7 +17533,7 @@ selectorParser
     }
   }
 
-  class selectorParser extends GrammarBackedNode {
+  class selectorParser extends ParserBackedNode {
     createParserCombinator() {
       return new TreeNode.ParserCombinator(
         selectorParser,
@@ -17788,7 +17784,7 @@ ${propertyParsers.map(child => child.compile(spaces)).join("\n")}
 }
 
 
-//onsave jtree build produce TreeComponentFramework.browser.js
+//onsave scrollsdk build produce TreeComponentFramework.browser.js
 const BrowserEvents = {}
 BrowserEvents.click = "click"
 BrowserEvents.change = "change"
@@ -17842,7 +17838,7 @@ WillowConstants.checkedSelector = ":checked"
 WillowConstants.contenteditable = "contenteditable"
 WillowConstants.inputTypes = ["input", "textarea"]
 var CacheType
-;(function(CacheType) {
+;(function (CacheType) {
   CacheType["inBrowserMemory"] = "inBrowserMemory"
 })(CacheType || (CacheType = {}))
 class WillowHTTPResponse {
@@ -18370,7 +18366,7 @@ class WillowBrowserShadow extends AbstractWillowShadow {
     return this
   }
   onShadowEventWithSelector(event, selector, fn) {
-    this.element.addEventListener(event, function(evt) {
+    this.element.addEventListener(event, function (evt) {
       let target = evt.target
       while (target !== null) {
         if (target.matches(selector)) {
@@ -18521,13 +18517,13 @@ class RealWillowBrowser extends AbstractWillowBrowser {
   }
   _appendScript(url) {
     //https://bradb.net/blog/promise-based-js-script-loader/
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
       let resolved = false
       const scriptEl = document.createElement("script")
       scriptEl.type = "text/javascript"
       scriptEl.src = url
       scriptEl.async = true
-      scriptEl.onload = scriptEl.onreadystatechange = function() {
+      scriptEl.onload = scriptEl.onreadystatechange = function () {
         if (!resolved && (!this.readyState || this.readyState == "complete")) {
           resolved = true
           resolve(this)
@@ -18608,7 +18604,7 @@ class RealWillowBrowser extends AbstractWillowBrowser {
         // Add the help, and then hopefull we'll get a dragover event on the dragOverHelp, then
         // 50ms later, add the dragleave handler, and from now on drag leave will only happen on the help
         // div
-        setTimeout(function() {
+        setTimeout(function () {
           bodyShadow.onShadowEvent(BrowserEvents.dragleave, dragleaveHandler)
         }, 50)
       }
@@ -18640,7 +18636,7 @@ class RealWillowBrowser extends AbstractWillowBrowser {
     bodyShadow.onShadowEvent(BrowserEvents.dragover, dragoverHandler)
     bodyShadow.onShadowEvent(BrowserEvents.drop, dropHandler)
     // todo: why do we do this?
-    bodyShadow.onShadowEvent(BrowserEvents.dragenter, function(event) {
+    bodyShadow.onShadowEvent(BrowserEvents.dragenter, function (event) {
       event.preventDefault()
       event.stopPropagation()
     })
@@ -18689,7 +18685,7 @@ class AbstractTheme {
   }
 }
 class DefaultTheme extends AbstractTheme {}
-class AbstractTreeComponentParser extends GrammarBackedNode {
+class AbstractTreeComponentParser extends ParserBackedNode {
   async startWhenReady() {
     if (this.isNodeJs()) return this.start()
     document.addEventListener(
@@ -18808,28 +18804,28 @@ class AbstractTreeComponentParser extends GrammarBackedNode {
       this._executeCommandOnStumpNode(stumpNode, stumpNode.getStumpNodeAttr(attr))
       return false
     }
-    bodyShadow.onShadowEventWithSelector(BrowserEvents.contextmenu, `[${WillowConstants.contextMenuCommand}]`, function(target, evt) {
+    bodyShadow.onShadowEventWithSelector(BrowserEvents.contextmenu, `[${WillowConstants.contextMenuCommand}]`, function (target, evt) {
       if (evt.ctrlKey) return true
       app._setMouseEvent(evt) // todo: remove?
       return checkAndExecute(target, WillowConstants.contextMenuCommand, evt)
     })
-    bodyShadow.onShadowEventWithSelector(BrowserEvents.click, `[${WillowConstants.clickCommand}]`, function(target, evt) {
+    bodyShadow.onShadowEventWithSelector(BrowserEvents.click, `[${WillowConstants.clickCommand}]`, function (target, evt) {
       if (evt.shiftKey) return checkAndExecute(this, WillowConstants.shiftClickCommand, evt)
       app._setMouseEvent(evt) // todo: remove?
       return checkAndExecute(target, WillowConstants.clickCommand, evt)
     })
-    bodyShadow.onShadowEventWithSelector(BrowserEvents.dblclick, `[${WillowConstants.doubleClickCommand}]`, function(target, evt) {
+    bodyShadow.onShadowEventWithSelector(BrowserEvents.dblclick, `[${WillowConstants.doubleClickCommand}]`, function (target, evt) {
       if (evt.target !== evt.currentTarget) return true // direct dblclicks only
       app._setMouseEvent(evt) // todo: remove?
       return checkAndExecute(target, WillowConstants.doubleClickCommand, evt)
     })
-    bodyShadow.onShadowEventWithSelector(BrowserEvents.blur, `[${WillowConstants.blurCommand}]`, function(target, evt) {
+    bodyShadow.onShadowEventWithSelector(BrowserEvents.blur, `[${WillowConstants.blurCommand}]`, function (target, evt) {
       return checkAndExecute(target, WillowConstants.blurCommand, evt)
     })
-    bodyShadow.onShadowEventWithSelector(BrowserEvents.keyup, `[${WillowConstants.keyUpCommand}]`, function(target, evt) {
+    bodyShadow.onShadowEventWithSelector(BrowserEvents.keyup, `[${WillowConstants.keyUpCommand}]`, function (target, evt) {
       return checkAndExecute(target, WillowConstants.keyUpCommand, evt)
     })
-    bodyShadow.onShadowEventWithSelector(BrowserEvents.change, `[${WillowConstants.changeCommand}]`, function(target, evt) {
+    bodyShadow.onShadowEventWithSelector(BrowserEvents.change, `[${WillowConstants.changeCommand}]`, function (target, evt) {
       return checkAndExecute(target, WillowConstants.changeCommand, evt)
     })
   }
@@ -19164,7 +19160,7 @@ class TreeComponentFrameworkDebuggerComponent extends AbstractTreeComponentParse
  div
   span This app is powered by the
   a Tree Component Framework
-   href https://github.com/treenotation/jtree/tree/main/treeComponentFramework
+   href https://github.com/breck7/scrollsdk/tree/main/treeComponentFramework
  p ${app.numberOfLines} components loaded. ${WillowBrowser._stumpsOnPage} stumps on page.
  pre
   bern
@@ -19174,7 +19170,7 @@ ${app.toString(3)}`
 class AbstractGithubTriangleComponent extends AbstractTreeComponentParser {
   constructor() {
     super(...arguments)
-    this.githubLink = `https://github.com/treenotation/jtree`
+    this.githubLink = `https://github.com/breck7/scrollsdk`
   }
   toHakonCode() {
     return `.AbstractGithubTriangleComponent

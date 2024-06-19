@@ -1,5 +1,5 @@
-const { TreeNode } = require("jtree/products/TreeNode.js")
-const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
+const { TreeNode } = require("scrollsdk/products/TreeNode.js")
+const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
 
 // prettier-ignore
 /*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollParser)
@@ -28,7 +28,7 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
   createParserCombinator() {
     return new TreeNode.ParserCombinator(undefined, {
-      value: TreeNode
+      value: TreeNode,
     })
   }
 
@@ -56,14 +56,14 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
     // todo: what if 2 errors?
     this.codeMirrorInstance.operation(() => {
-      this.codeWidgets.forEach(widget => this.codeMirrorInstance.removeLineWidget(widget))
+      this.codeWidgets.forEach((widget) => this.codeMirrorInstance.removeLineWidget(widget))
       this.codeWidgets.length = 0
 
       errs
-        .filter(err => !err.isBlankLineError())
-        .filter(err => !err.isCursorOnWord(cursor.line, cursor.ch))
+        .filter((err) => !err.isBlankLineError())
+        .filter((err) => !err.isCursorOnWord(cursor.line, cursor.ch))
         .slice(0, 1) // Only show 1 error at a time. Otherwise UX is not fun.
-        .forEach(err => {
+        .forEach((err) => {
           const el = err.getCodeMirrorLineWidgetElement(() => {
             this.codeMirrorInstance.setValue(this.program.asString)
             this._onCodeKeyUp()
@@ -115,11 +115,11 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new GrammarCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
+    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
-        lineNumbers: false
+        lineNumbers: false,
       })
     this.codeMirrorInstance.on("keyup", () => this._onCodeKeyUp())
     this.setSize()

@@ -1,6 +1,6 @@
-const { TreeNode } = require("jtree/products/TreeNode.js")
-const { HandGrammarProgram } = require("jtree/products/GrammarLanguage.js")
-const { AbstractTreeComponentParser } = require("jtree/products/TreeComponentFramework.node.js")
+const { TreeNode } = require("scrollsdk/products/TreeNode.js")
+const { HandParsersProgram } = require("scrollsdk/products/Parsers.ts.js")
+const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
 const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
@@ -87,8 +87,8 @@ class BrowserGlue extends AbstractTreeComponentParser {
 		return DEFAULT_PROGRAM
 	}
 
-	async init(grammarCode) {
-		window.scrollParser = new HandGrammarProgram(grammarCode).compileAndReturnRootParser()
+	async init(parsersCode) {
+		window.scrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
 		const scrollCode = await this.fetchCode()
 
 		window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)
