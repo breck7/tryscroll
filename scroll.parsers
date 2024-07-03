@@ -200,6 +200,9 @@
 
 
 
+
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -216,6 +219,9 @@ wordCell
  highlightScope string
  description A non-empty single word string.
  regex .+
+semanticVersionCell
+ highlightScope string
+ description A 3 part sem version string like 1.2.1
 dateCell
  highlightScope string
 numberCell
@@ -287,13 +293,15 @@ measureNameCell
  regex [a-zA-Z][a-zA-Z0-9]*
 javascriptCell
  extends stringCell
+scriptAnyCell
+ extends anyCell
 abstractScrollParser
  cells keywordCell
  javascript
   compileEmbeddedVersion(compileSettings) {
    return this.compile(compileSettings)
   }
-  compileTextVersion() {
+  compileTxt() {
     return ""
   }
   getHtmlRequirements(compileSettings) {
@@ -401,8 +409,8 @@ paragraphParser
     newLine.destroy()
    return compiled
   }
-  compileTextVersion() {
-    const children = this.filter(node => node.compileTextVersion).map(node => node.compileTextVersion()).filter(i => i).join("\n")
+  compileTxt() {
+    const children = this.filter(node => node.compileTxt).map(node => node.compileTxt()).filter(i => i).join("\n")
     const dateline = this.getNode("dateline")
     return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
@@ -441,8 +449,8 @@ indentableParagraphParser
      .trim()
    )
   }
-  compileTextVersion() {
-    return this.getWord(0) + " " + super.compileTextVersion()
+  compileTxt() {
+    return this.getWord(0) + " " + super.compileTxt()
   }
 checklistTodoParser
  extends indentableParagraphParser
@@ -520,7 +528,7 @@ expanderParser
    this.parent.sectionStack.push("</details>")
    return `<details>${super.compile()}`
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.content
   }
   tag = "summary"
@@ -557,8 +565,8 @@ footnoteDefinitionParser
   get noteDefinitionIndex() {
    return this.parent.footnotes.indexOf(this) + 1
   }
-  compileTextVersion() {
-    return this.getWord(0) + ": " + super.compileTextVersion()
+  compileTxt() {
+    return this.getWord(0) + ": " + super.compileTxt()
   }
 abstractHeaderParser
  extends paragraphParser
@@ -568,8 +576,8 @@ abstractHeaderParser
    this.parent.sectionStack.push("</div>")
    return `<div class="scrollSection">` + super.compile(compileSettings)
   }
-  compileTextVersion() {
-    const line = super.compileTextVersion()
+  compileTxt() {
+    const line = super.compileTxt()
     return line + "\n" + "=".repeat(line.length)
   }
 h1Parser
@@ -617,7 +625,7 @@ printTitleParser
    // Hacky, I know.
    const {content} = this
    if (content === undefined)
-    this.setContent(this.parent.get("title"))
+    this.setContent(this.parent.file.title)
    const { permalink } = this.parent.file
    if (!permalink) {
     this.setContent(content) // Restore it as it was.
@@ -630,7 +638,7 @@ printTitleParser
    return compiled
   }
   get originalText() {
-   return this.content ?? this.parent.get("title") ?? ""
+   return this.content ?? this.parent.file.title ?? ""
   }
   defaultClassName = "scrollTitle"
   tag = "h1"
@@ -693,7 +701,7 @@ abstractDinkusParser
   compile() {
    return `<div class="dinkus"><span>${this.dinkus}</span></div>`
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.getLine()
   }
 horizontalRuleParser
@@ -758,7 +766,7 @@ loremIpsumParser
    const text = `Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
    return text.repeat(this.getWord(1) ? parseInt(this.getWord(1)) : 1)
   }
-snippetsParser
+printSnippetsParser
  // todo: why are we extending AT here and not loops? Is it for class/id etc?
  extends abstractAftertextParser
  cruxFromId
@@ -766,7 +774,7 @@ snippetsParser
  catchAllCellType groupNameWithOptionalFolderCell
  description Prints the snippets of all files in the named group(s).
  example
-  snippets index
+  printSnippets index
  javascript
   makeSnippet(file, compileSettings) {
     const {scrollProgram, endSnippetIndex} = file
@@ -781,28 +789,27 @@ snippetsParser
       `<a class="scrollContinueReadingLink" href="${linkRelativeToCompileTarget}">Continue reading...</a>`
     return html
   }
+  get files() {
+   return this.parent.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1), this.has("limit") ? parseInt(this.get("limit")) : undefined)
+  }
   compile() {
-   const file = this.parent.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
    const alreadyRequired = this.root.alreadyRequired
-   const snippets = files.map(file => {
+   const snippets = this.files.map(file => {
     const compileSettings = {relativePath: file.relativePath, alreadyRequired }
     return `<div class="scrollSnippetContainer">${this.makeSnippet(file.file, compileSettings)}</div>`
     }).join("\n\n")
    return `<div class="scrollColumns" style="column-width:35ch;">${snippets}</div>`
   }
-  compileTextVersion() {
-   const file = this.parent.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
-   return files.map(file =>  {
+  compileTxt() {
+   return this.files.map(file =>  {
     const title = file.file.title
     const ruler = "=".repeat(title.length)
     // Note: I tried to print the description here but the description generating code needs work.
     return `${title}\n${ruler}\n${file.file.date}\n${file.file.absoluteLink}`
    }).join("\n\n")
   }
-fullSnippetsParser
- extends snippetsParser
+printFullSnippetsParser
+ extends printSnippetsParser
  cruxFromId
  description Prints the full contents of files that are in the named group.
  javascript
@@ -847,7 +854,7 @@ printAuthorParser
   get name() {
     return this.getWordsFrom(2).join(" ") || this.parent.getNode("author")?.getWordsFrom(2).join(" ")
   }
-  compileTextVersion() {
+  compileTxt() {
     return `by ${this.name}`
   }
 byLineParser
@@ -967,6 +974,46 @@ viewSourceUrlParser
  catchAllCellType urlCell
  description Use this to override the link to the source code for a scroll file.
  extends abstractTopLevelSingleMetaParser
+abstractBuildCommandParser
+ extends abstractScrollParser
+ cruxFromId
+ cells keywordCell
+ catchAllCellType filePathCell
+ inScope slashCommentParser
+ javascript
+  isTopMatter = true
+  compile() {
+   return ""
+  }
+buildConceptsParser
+ cruxFromId
+ description Compiles concepts to a delimited file and write to disk.
+ extends abstractBuildCommandParser
+ sortByParser
+  cruxFromId
+  cells keywordCell anyCell
+buildCssParser
+ description Compile a file to CSS and save to disk.
+ extends abstractBuildCommandParser
+buildHtmlParser
+ description Compile a post to html and save to disk.
+ extends abstractBuildCommandParser
+buildMeasuresParser
+ cruxFromId
+ description Writes measure statistics to a delimited file and write to disk.
+ extends abstractBuildCommandParser
+ sortByParser
+  cruxFromId
+  cells keywordCell anyCell
+buildRssParser
+ description Compile a folder to RSS and save to disk.
+ extends abstractBuildCommandParser
+buildJsParser
+ description Compile a file to JS and save to disk.
+ extends abstractBuildCommandParser
+buildTxtParser
+ description Compile a post to text and save to disk.
+ extends abstractBuildCommandParser
 chatParser
  description A dialogue between two people.
  catchAllParser chatLineParser
@@ -976,7 +1023,7 @@ chatParser
   compile() {
    return this.map((line, index) => `<div style="text-align: ${index % 2 ? "right" : "left"};" class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>`).join("")
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.childrenToString()
   }
 codeParser
@@ -987,7 +1034,7 @@ codeParser
   compile() {
    return `<code class="scrollCodeBlock">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.childrenToString()
   }
  cruxFromId
@@ -1048,7 +1095,7 @@ katexParser
    const content = this.content === undefined ? "" : this.content
    return `<div class="scrollKatex" id="${id}">${content + this.childrenToString()}</div>`
   }
-  compileTextVersion() {
+  compileTxt() {
     return ( this.content ? this.content : "" )+ this.childrenToString()
   }
 mapParser
@@ -1298,7 +1345,7 @@ tabularDataParser
  pattern \t
  extends abstractCommentParser
  javascript
-  compileTextVersion() {
+  compileTxt() {
     return ""
   }
   get headerNode() {
@@ -1344,36 +1391,6 @@ loadConceptsParser
    //console.log(ONE_BIG_FILE)
    return ""
   }
-abstractCommandParser
- extends abstractScrollParser
- cruxFromId
- cells keywordCell
- inScope slashCommentParser
- javascript
-  isTopMatter = true
-  compile() {
-   return ""
-  }
-writeConceptsParser
- cruxFromId
- catchAllCellType filePathCell
- description Compiles concepts to a delimited file and write to disk.
- extends abstractCommandParser
- sortByParser
-  cruxFromId
-  cells keywordCell anyCell
-writeMeasuresParser
- cruxFromId
- catchAllCellType filePathCell
- description Writes measure statistics to a delimited file and write to disk.
- extends abstractCommandParser
- sortByParser
-  cruxFromId
-  cells keywordCell anyCell
-writeTextParser
- cruxFromId
- description Compile a post to text rather than html and save to disk.
- extends abstractCommandParser
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
@@ -1382,7 +1399,13 @@ cssParser
  catchAllCellType cssAnyCell
  javascript
   compile() {
-   return `<style>${this.content ?? ""}${this.childrenToString()}</style>`
+   return `<style>${this.css}</style>`
+  }
+  get css() {
+    return this.content ?? this.childrenToString()
+  }
+  compileCss() {
+    return this.css
   }
 abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
@@ -1400,7 +1423,7 @@ printFeedParser
  example
   printFeed index
   printFeed cars/index
-  permalink feed.xml
+  buildRss feed.xml
  javascript
   compile() {
    const dayjs = require("dayjs")
@@ -1419,12 +1442,15 @@ printFeedParser
   </channel>
   </rss>`
   }
+  compileTxt() {
+    return this.compile()
+  }
 printCsvParser
  description Prints out a group as a CSV.
  extends printFeedParser
  example
   printCsv index
-  permalink posts.csv
+  buildTxt posts.csv
  javascript
   compile() {
    const file = this.root.file
@@ -1437,7 +1463,7 @@ printSourceParser
  extends printFeedParser
  example
   printSource index
-  permalink source.txt
+  buildTxt source.txt
  javascript
   compile() {
    const file = this.root.file
@@ -1473,6 +1499,9 @@ printSiteMapParser
    const { baseUrl } = file
    return this.files.map(file => baseUrl + file.relativePath + file.file.permalink).join("\n")
   }
+  compileTxt() {
+    return this.compile()
+  }
 dashboardParser
  description Display key stats in a big font.
  catchAllParser rowParser
@@ -1498,7 +1527,7 @@ dashboardParser
   compile() {
    return `<table class="scrollDashboard">${this.tableBody}</table>`
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.childrenToString()
   }
 printDateParser
@@ -1510,7 +1539,7 @@ printDateParser
    return `<div style="text-align: center;" class="scrollDateline">${this.day}</div>`
   }
   get day() {
-   let day = this.content || this.root.get("date")
+   let day = this.content || this.root.get("date") || this.root.file?.date
    if (!day) return ""
    try {
     const dayjs = require("dayjs")
@@ -1520,7 +1549,7 @@ printDateParser
    }
    return day || ""
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.day
   }
 belowAsCodeParser
@@ -1646,11 +1675,14 @@ abstractThemeCssParser
   .scrollCopiedButton::after
    content "[✓]"
  javascript
-  get useTags() {
-    return !(this.get("tags") === "false")
-  }
   compile() {
-   return this.useTags ? `<style>\n${this.css}\n</style>` : this.css
+   return `<style>\n${this.css}\n</style>`
+  }
+  compileTxt() {
+    return ""
+  }
+  compileCss() {
+    return this.css
   }
   compileEmbeddedVersion() {
    return ""
@@ -2178,7 +2210,7 @@ htmlParser
   compile() {
    return `${this.content ?? ""}${this.childrenToString()}`
   }
-  compileTextVersion() {
+  compileTxt() {
     return ""
   }
 quickHtmlParser
@@ -2255,8 +2287,8 @@ imageParser
    const target = this.has("target") ? this.get("target") : (this.has("link") ? "" : "_blank")
    return `<a href="${clickLink}" target="${target}" ${className} ${id}><img src="${linkRelativeToCompileTarget}" ${dimensionAttributes}loading="lazy"></a>`
   }
-  compileTextVersion() {
-    const children = this.filter(node => node.compileTextVersion).map(node => node.compileTextVersion()).filter(i => i).join("\n")
+  compileTxt() {
+    const children = this.filter(node => node.compileTxt).map(node => node.compileTxt()).filter(i => i).join("\n")
     return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
 youTubeParser
@@ -2341,6 +2373,7 @@ abstractIdParser
  extends abstractStringMeasureParser
  float sortIndex 1
  boolean isMeasureRequired true
+ boolean isConceptDelimiter true
  javascript
   getErrors() {
     const errors = super.getErrors()
@@ -2565,7 +2598,7 @@ quoteParser
   compile() {
    return `<blockquote class="scrollQuote">${this.childrenToString()}</blockquote>`
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.childrenToString()
   }
 readingListParser
@@ -2611,7 +2644,7 @@ relatedListParser
     return html
    }).join("\n")
   }
-  compileTextVersion() {
+  compileTxt() {
    // Todo: reuse code between these 2 methods.
    const file = this.root.file
    const ids = this.root.get("related")?.split(" ") || []
@@ -2653,6 +2686,22 @@ replaceNodejsParser
   replaceNodejs
    module.exports = {SCORE : 1 + 2}
   * The score is SCORE
+scriptParser
+ extends abstractScrollParser
+ description Prints Javascript content wrapped in script tags.
+ cruxFromId
+ catchAllParser scriptLineParser
+ catchAllCellType scriptAnyCell
+ javascript
+  compile() {
+   return `<script>${this.scriptContent}</script>`
+  }
+  get scriptContent() {
+    return this.content ?? this.childrenToString()
+  }
+  compileJs() {
+    return this.scriptContent
+  }
 endSnippetParser
  description Insert one of these where you want to cut the file for a snippet.
  extends abstractScrollParser
@@ -2718,7 +2767,7 @@ abstractTableParser
   compile() {
    return `<table class="scrollTable"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
   }
-  compileTextVersion() {
+  compileTxt() {
     return this.childrenToString()
   }
 tableParser
@@ -2808,7 +2857,7 @@ printTableParser
     }
      return tsv
    }
-   compileTextVersion() {
+   compileTxt() {
      return this.tsv
    }
 plainTextParser
@@ -2819,9 +2868,9 @@ plainTextParser
  catchAllCellType stringCell
  javascript
   compile() {
-   return this.compileTextVersion()
+   return this.compileTxt()
   }
-  compileTextVersion() {
+  compileTxt() {
     return `${this.content ?? ""}${this.childrenToString()}`
   }
 plainTextOnlyParser
@@ -3028,7 +3077,7 @@ linkParser
  cruxFromId
  javascript
   tag = "a"
-  compileTextVersion() {
+  compileTxt() {
     return this.root.file.ensureAbsoluteLink(this.link)
   }
   get link() {
@@ -3152,7 +3201,7 @@ datelineParser
   }
   matchWholeLine = true
   get day() {
-   let day = this.content || this.root.get("date")
+   let day = this.content || this.root.get("date") || this.root.file?.date
    if (!day) return ""
    try {
     const dayjs = require("dayjs")
@@ -3360,6 +3409,9 @@ scrollParser
   code
    // You can add code as well.
    print("Hello world")
+scriptLineParser
+ catchAllCellType scriptAnyCell
+ catchAllParser scriptLineParser
 stampFileParser
  catchAllCellType stringCell
  description Create a file.
@@ -3414,10 +3466,6 @@ rowParser
 plainTextLineParser
  catchAllCellType stringCell
  catchAllParser plainTextLineParser
-themeTagsParser
- // Todo: there may be a bug with having scoped parsers in abstract classes not being available to child classes.
- cells keywordCell booleanCell
- crux tags
 treeRowContentParser
  description Any blob content in a cell.
  cells stringCell
