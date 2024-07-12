@@ -203,6 +203,8 @@
 
 
 
+
+
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -325,7 +327,7 @@ abstractAftertextParser
    link home.com new
    bold brave new
    underline new world
-   strikethrough wor
+   strike wor
  javascript
   get markupInserts() {
    const { originalTextPostLinkify } = this
@@ -816,7 +818,8 @@ printFullSnippetsParser
   makeSnippet(file, compileSettings) {
    return file.scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
   }
-viewSourceParser
+printViewSourceParser
+ description Print a "View source" link.
  extends abstractAftertextParser
  cruxFromId
  javascript
@@ -829,6 +832,22 @@ viewSourceParser
    return file.compileStumpCode(`p
    class scrollViewSource doNotPrint
    a View source
+    href ${viewSourceUrl}`)
+  }
+printViewSourceBadgeParser
+ description Print a "View source" badge in top right.
+ extends abstractAftertextParser
+ cruxFromId
+ javascript
+  compileEmbeddedVersion() {
+   return ""
+  }
+  compile() {
+   const file = this.parent.file
+   const { viewSourceUrl, SVGS } = file
+   return file.compileStumpCode(`div
+   class scrollViewSourceBadge doNotPrint
+   a ${SVGS.git}
     href ${viewSourceUrl}`)
   }
 printAuthorParser
@@ -898,9 +917,6 @@ abstractUrlSettingParser
  extends abstractFileSettingParser
  cells keywordCell urlCell
  cruxFromId
-viewSourceBaseUrlParser
- description The base link to be used to generate the "View source" link.
- extends abstractUrlSettingParser
 gitParser
  description A link to the web Git UI for this site.
  extends abstractUrlSettingParser
@@ -921,6 +937,9 @@ homeUrlParser
  extends abstractUrlSettingParser
 rssFeedUrlParser
  description URL for RSS feed, if any.
+ extends abstractUrlSettingParser
+viewSourceBaseUrlParser
+ description The base link to be used to generate all of the git "View source" links. If not provided, the scroll filename will be used.
  extends abstractUrlSettingParser
 abstractSiteStringSettingParser
  extends abstractFileSettingParser
@@ -1219,6 +1238,7 @@ scatterplotParser
     const dataset = this.getNode("data")
     const datasetContent = dataset?.content
     const isUrl = !!datasetContent?.match(/^https?:/)
+    const fileExtension = datasetContent ? datasetContent.split(".").pop() : "csv"
     if (dataset?.length)
       data = dataset.childrenToString()
     else if (datasetContent && !isUrl) {
@@ -1227,9 +1247,9 @@ scatterplotParser
       const {file} = this.parent
       data = Disk.read(path.join(file.folderPath, datasetContent))
     }
-    let dataString = `d3.csvParse(\`${data}\`, d3.autoType)`
+    let dataString = `d3.${fileExtension}Parse(\`${data}\`, d3.autoType)`
     if (isUrl)
-      dataString = `await d3.${datasetContent.endsWith("tsv") ? "tsv" : "csv"}("${datasetContent}")`
+      dataString = `await d3.${fileExtension}("${datasetContent}")`
     return dataString
   }
   get marks() {
@@ -1381,8 +1401,7 @@ loadConceptsParser
  cruxFromId
  cells keywordCell filePathCell
  javascript
-  compile() {
-   // A little hacky
+  build() {
    const { Disk } = require("scrollsdk/products/Disk.node.js")
    const path = require("path")
    const {file} = this.parent
@@ -1390,7 +1409,9 @@ loadConceptsParser
    const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(Disk.read).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
     this.parent.concat(ONE_BIG_FILE)
    //console.log(ONE_BIG_FILE)
-   return ""
+  }
+  compile() {
+    return ""
   }
 cssParser
  extends abstractScrollParser
@@ -1833,17 +1854,25 @@ gazetteCssParser
     padding .1875rem
     overflow hidden
     white-space nowrap
-   td:hover
-    text-overflow unset
-    overflow unset
-    white-space unset
    th
     text-transform capitalize
-   th
     border-bottom 2px solid rgba(0,0,0,.6)
     text-align left
+   td
+    cursor zoom-in
    tr:nth-child(even)
     background rgba(224,224,224,.6)
+  .scrollTable.expandedTable
+   table-layout unset
+   background white
+   position relative
+   z-index 10
+   overflow unset
+   td,th
+    overflow unset
+    white-space unset
+   td
+    cursor zoom-out
   
   .scrollByLine
    font-size .875rem
@@ -1851,6 +1880,19 @@ gazetteCssParser
    margin .25rem 0
    text-align center
   
+  comment View source badge
+  .scrollViewSourceBadge
+   text-align right
+   position absolute
+   display block
+   right 20px
+   top 8px
+   svg
+    width 24px
+    height 24px
+    fill rgba(204,204,204,0.8)
+   svg:hover
+    fill #333
   comment Subtle "Article Source" link
   .scrollViewSource
    text-align center
@@ -2476,14 +2518,14 @@ pageFooterParser
     &:hover
      fill #333
   .pageFooterScrollLink
-   display block
    font-family Verdana
    font-weight 100
    margin .5em
-   color rgba(204,204,204,.5)
-   &:hover
-    color #333
-    text-decoration none
+   a
+    color rgba(204,204,204,.5)
+    &:hover
+     color #333
+     text-decoration none
  javascript
   compileEmbeddedVersion() {
    return ""
@@ -2496,24 +2538,26 @@ pageFooterParser
    const file = this.parent.file
    const { SVGS, SCROLL_VERSION, viewSourceUrl } = file
    const closeContainerTag = "</div>"
+   const emailLink = file.email ? `a ${SVGS.email}
+    href mailto:${file.email}` : ""
+   const downloadLink = file.downloadUrl ? `a ${SVGS.download}
+    href ${file.downloadUrl}` : ""
+   const gitLink = file.viewSourceUrl ? `a ${SVGS.git}
+    title View Source
+    href ${file.viewSourceUrl}` : ""
    return (
     closeContainerTag + `<style>${this.css}</style>` +
     file.compileStumpCode(`p
    class scrollViewSource doNotPrint
-   a View source
-    href ${viewSourceUrl}
   div
    class pageFooter doNotPrint
-   a ${SVGS.email}
-    href mailto:${file.email}
-   a ${SVGS.download}
-    href ${file.downloadUrl}
-   a ${SVGS.git}
-    href ${file.git}
-   a Built with Scroll v${SCROLL_VERSION}
-    href https://scroll.pub
+   ${emailLink}
+   ${downloadLink}
+   ${gitLink}
+   div
     class pageFooterScrollLink
-    style display:block; margin: .5em;`)
+    a Built with Scroll v${SCROLL_VERSION}
+     href https://scroll.pub`)
    )
   }
 gazetteFooterParser
@@ -2554,7 +2598,7 @@ pageHeaderParser
   }
   compile() {
    const file = this.parent.file
-   const { SVGS, linkToPrevious, linkToNext } = file
+   const { SVGS, linkToPrevious, linkToNext, viewSourceUrl } = file
    let previousButton = ""
    if (linkToPrevious)
     previousButton = `a &lt;
@@ -2565,15 +2609,17 @@ pageHeaderParser
     nextButton = `a &gt;
     style right:.1875rem;
     href ${linkToNext}`
+   const gitLink = file.viewSourceUrl ? `a ${SVGS.git}
+    style text-align:right;right: 1.5625rem;
+    title View Source
+    href ${file.viewSourceUrl}` : ""
    return `<style>\n${this.css}\n</style>` + file.compileStumpCode(`div
    class pageHeader doNotPrint
    ${previousButton}
    a ${SVGS.home}
     style text-align:left;left:1.5625rem;
     href ${file.get("homeUrl") || "index.html"}
-   a ${SVGS.git}
-    style text-align:right;right: 1.5625rem;
-    href ${file.git}
+   ${gitLink}
    ${nextButton}`)
   }
 gazetteHeaderParser
@@ -2766,7 +2812,16 @@ abstractTableParser
     .join("\n")
   }
   compile() {
-   return `<table class="scrollTable"><thead><tr>${this.tableHeader.join("\n")}</tr></thead>\n<tbody>${this.tableBody}</tbody></table>`
+   return `<table id="table${this._getUid()}" class="scrollTable">
+   <thead><tr>${this.tableHeader.join("\n")}</tr></thead>
+   <tbody>${this.tableBody}</tbody>
+   </table>
+   <script>
+   document.querySelector('#table${this._getUid()}').addEventListener('click', e => {
+    if (window.getSelection().toString() || e.target.closest('a') || !e.target.closest('tbody')) return;
+    e.currentTarget.classList.toggle('expandedTable');
+   });
+   </script>`
   }
   compileTxt() {
     return this.childrenToString()
@@ -3056,8 +3111,8 @@ hoverNoteParser
   get hoverNoteText() {
    return this.childrenToString().replace(/\n/g, " ")
   }
-strikethroughParser
- cruxFromId
+aftertextStrikeParser
+ crux strike
  extends abstractMarkupParser
  javascript
   tag = "s"

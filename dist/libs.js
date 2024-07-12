@@ -13514,7 +13514,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "80.1.1"
+TreeNode.getVersion = () => "80.2.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -19186,7 +19186,7 @@ class AbstractGithubTriangleComponent extends AbstractTreeComponentParser {
  class AbstractGithubTriangleComponent
  href ${this.githubLink}
  img
-  src /images/github-fork.svg`
+  src ../images/github-fork.svg`
   }
 }
 window.AbstractGithubTriangleComponent = AbstractGithubTriangleComponent
