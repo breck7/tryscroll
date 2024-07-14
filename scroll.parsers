@@ -202,9 +202,6 @@
 
 
 
-
-
-
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
@@ -518,6 +515,7 @@ orderedListAftertextParser
 quickQuoteParser
  crux >
  extends indentableParagraphParser
+ description A quote.
  javascript
   defaultClassName = "scrollQuote"
   tag = "blockquote"
@@ -651,6 +649,7 @@ captionAftertextParser
 quickParagraphParser
  crux *
  extends paragraphParser
+ description A shorter alias for "paragraph".
  example
   * I had a _new_ idea.
 thinColumnsParser
@@ -671,10 +670,6 @@ thinColumnsParser
    // Starting the columns always first clears the section stack.
    return this.parent.clearSectionStack() + `<div class="scrollColumns" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
-startColumnsParser
- description Deprecated. Use "thinColumns" instead.
- boolean isDeprecated true
- extends thinColumnsParser
 wideColumnsParser
  extends thinColumnsParser
  description Start a double wide column.
@@ -720,6 +715,7 @@ dinkusParser
  extends abstractDinkusParser
 endOfPostDinkusParser
  extends abstractDinkusParser
+ description Prints a centered ⁂.
  crux ****
  string dinkus ⁂
 loopParser
@@ -876,10 +872,6 @@ printAuthorParser
   compileTxt() {
     return `by ${this.name}`
   }
-byLineParser
- extends printAuthorParser
- boolean isDeprecated true
- description DEPRECATED! Use "printAuthor" instead.
 abstractTopLevelSingleMetaParser
  description Use these keywords once per file.
  extends abstractScrollParser
@@ -1554,6 +1546,7 @@ dashboardParser
   }
 printDateParser
  extends abstractScrollParser
+ description Prints the date set in the file. If not present computes the date from the file's ctime.
  cruxFromId
  cells keywordCell
  javascript
@@ -2560,10 +2553,6 @@ pageFooterParser
      href https://scroll.pub`)
    )
   }
-gazetteFooterParser
- extends pageFooterParser
- boolean isDeprecated true
- description DEPRECATED! Use "pageFooter" instead.
 pageHeaderParser
  cruxFromId
  description A header for your page.
@@ -2622,10 +2611,6 @@ pageHeaderParser
    ${gitLink}
    ${nextButton}`)
   }
-gazetteHeaderParser
- extends pageHeaderParser
- boolean isDeprecated true
- description DEPRECATED! Use "pageHeader" instead.
 scrollParserDefinitionParser
  extends abstractScrollParser
  // todo Figure out best pattern for merging Scroll and Parsers?
@@ -2638,7 +2623,7 @@ scrollParserDefinitionParser
   }
 quoteParser
  cruxFromId
- description A blockquote.
+ description A quote.
  catchAllParser quoteLineParser
  extends abstractScrollParser
  javascript
