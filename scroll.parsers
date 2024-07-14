@@ -205,6 +205,10 @@
 wrapNameCell
  description What wraps are available to turn on?
  enum bold italics code katex
+buildCommandWordCell
+ extends commandWordCell
+ description Give build command words their own color.
+ highlightScope constant
 blankCell
 anyCell
 enumCell
@@ -239,8 +243,13 @@ countCell
  extends integerCell
 yearCell
  extends integerCell
-keywordCell
+commandWordCell
+ description A word that indicates a certain parser to use.
  highlightScope keyword
+preBuildCommandWordCell
+ extends commandWordCell
+ description Give build command words their own color.
+ highlightScope constant.character.escape
 commentCell
  highlightScope comment
 delimiterCell
@@ -287,15 +296,22 @@ groupNameWithOptionalFolderCell
 htmlAnyCell
  extends stringCell
 measureNameCell
- extends keywordCell
+ extends commandWordCell
  // A regex for column names for max compatibility with a broad range of data science tools:
  regex [a-zA-Z][a-zA-Z0-9]*
 javascriptCell
  extends stringCell
+metaCommandWordCell
+ extends commandWordCell
+ description Give meta command words their own color.
+ highlightScope constant.numeric
+ // Obviously this is not numeric. But I like the green color for now.
+   We need a better design to replace this "highlightScope" concept
+   https://github.com/breck7/scrollsdk/issues/186
 scriptAnyCell
  extends anyCell
 abstractScrollParser
- cells keywordCell
+ cells commandWordCell
  javascript
   compileEmbeddedVersion(compileSettings) {
    return this.compile(compileSettings)
@@ -397,6 +413,7 @@ paragraphParser
  extends abstractAftertextParser
  catchAllCellType stringCell
  description A paragraph.
+ boolean suggestInAutocomplete false
  cruxFromId
  javascript
   compile(compileSettings) {
@@ -420,25 +437,20 @@ blinkParser
  javascript
   compile() {
    return `<span class="scrollBlink">${super.compile()}</span>
-    <script>
-    setInterval(()=>{
-        Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => 
-        el.style.color = el.style.color === "white" ? "black" : "white"
-        )
-    }, 2000)
-    </script>`
+    <script>setInterval(()=>{ Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => el.style.visibility = el.style.visibility === "hidden" ? "visible" : "hidden") }, 2000)</script>`
   }
 catchAllParagraphParser
  description Any top level line that doesn't match a keyword is treated as a paragraph node.
  extends paragraphParser
+ boolean suggestInAutocomplete false
  cells stringCell
  javascript
   get originalText() {
    return this.getLine() || ""
   }
-indentableParagraphParser
+abstractIndentableParagraphParser
  extends paragraphParser
- inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser indentableParagraphParser
+ inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser abstractIndentableParagraphParser
  javascript
   compile() {
    return (
@@ -452,7 +464,7 @@ indentableParagraphParser
     return this.getWord(0) + " " + super.compileTxt()
   }
 checklistTodoParser
- extends indentableParagraphParser
+ extends abstractIndentableParagraphParser
  example
   [] Get milk
  description An incomplete checklist item.
@@ -473,7 +485,7 @@ checklistDoneParser
  example
   [x] get milk
 listAftertextParser
- extends indentableParagraphParser
+ extends abstractIndentableParagraphParser
  example
   - I had a _new_ thought.
  description A list item.
@@ -514,7 +526,7 @@ orderedListAftertextParser
   get attributes() { return ` start="${this.getWord(0)}"`}
 quickQuoteParser
  crux >
- extends indentableParagraphParser
+ extends abstractIndentableParagraphParser
  description A quote.
  javascript
   defaultClassName = "scrollQuote"
@@ -543,7 +555,7 @@ footnoteDefinitionParser
  labelParser
   description If you want to show a custom label for a footnote. Default label is the note definition index.
   cruxFromId
-  cells keywordCell
+  cells commandWordCell
   catchAllCellType stringCell
  javascript
   get divAttributes() {
@@ -649,7 +661,7 @@ captionAftertextParser
 quickParagraphParser
  crux *
  extends paragraphParser
- description A shorter alias for "paragraph".
+ description A short alias for paragraph.
  example
   * I had a _new_ idea.
 thinColumnsParser
@@ -720,7 +732,7 @@ endOfPostDinkusParser
  string dinkus ⁂
 loopParser
  extends abstractAftertextParser
- cells keywordCell
+ cells commandWordCell
  description Iterate over files, lines or words, evaluating code and joining the resulting HTML.
  cruxFromId
  inScope abstractItemsProviderParser
@@ -768,7 +780,7 @@ printSnippetsParser
  // todo: why are we extending AT here and not loops? Is it for class/id etc?
  extends abstractAftertextParser
  cruxFromId
- cells keywordCell
+ cells commandWordCell
  catchAllCellType groupNameWithOptionalFolderCell
  description Prints the snippets of all files in the named group(s).
  example
@@ -851,7 +863,7 @@ printAuthorParser
  extends abstractScrollParser
  cruxFromId
  // todo: we need pattern matching added to sdk to support having no params or a url and personNameCell
- cells keywordCell
+ cells commandWordCell
  catchAllCellType anyCell
  example
   // With Link:
@@ -877,7 +889,7 @@ abstractTopLevelSingleMetaParser
  extends abstractScrollParser
  inScope slashCommentParser
  cruxFromId
- cells keywordCell
+ cells metaCommandWordCell
  javascript
   isTopMatter = true
   isSetterParser = true
@@ -885,33 +897,38 @@ abstractTopLevelSingleMetaParser
    return ""
   }
 authorParser
- cells keywordCell urlCell
+ cells metaCommandWordCell urlCell
  catchAllCellType personNameCell
- description Set the author(s) for a post. Prints nothing by itself, but is printed with the title in text mode and in various metadata outputs.
+ description Set the author name of a document along with a URL to link to them. URL comes first. Prints nothing by itself, but is printed with the title in text mode and in various metadata outputs.
  extends abstractTopLevelSingleMetaParser
 dateParser
  catchAllCellType dateCell
  description Date this file was first published.
  extends abstractTopLevelSingleMetaParser
-abstractFileSettingParser
+siteOwnerEmailParser
+ description Email address for the site owner.
  extends abstractTopLevelSingleMetaParser
- cells keywordCell
+ crux email
+ cells metaCommandWordCell emailAddressCell
+groupsParser
+ description Add this file to zero or more groups.
+ example
+  groups All
+ extends abstractTopLevelSingleMetaParser
+ catchAllCellType groupNameCell
+importOnlyParser
+ description Mark a file as not one to build. This line will be not be imported into the importing file.
+ cruxFromId
+ cells preBuildCommandWordCell
+ extends abstractTopLevelSingleMetaParser
  javascript
   compile() {
    return ""
   }
-emailParser
- description Email address for the site owner.
- extends abstractFileSettingParser
- cruxFromId
- cells keywordCell emailAddressCell
 abstractUrlSettingParser
- extends abstractFileSettingParser
- cells keywordCell urlCell
+ extends abstractTopLevelSingleMetaParser
+ cells metaCommandWordCell urlCell
  cruxFromId
-gitParser
- description A link to the web Git UI for this site.
- extends abstractUrlSettingParser
 canonicalUrlParser
  description Canonical URL for SEO. If undefined Scroll generates this from the baseUrl and permalink.
  extends abstractUrlSettingParser
@@ -933,28 +950,8 @@ rssFeedUrlParser
 viewSourceBaseUrlParser
  description The base link to be used to generate all of the git "View source" links. If not provided, the scroll filename will be used.
  extends abstractUrlSettingParser
-abstractSiteStringSettingParser
- extends abstractFileSettingParser
- catchAllCellType stringCell
- cruxFromId
-groupsParser
- description Add this file to zero or more groups.
- cruxFromId
- example
-  groups index.html
- extends abstractTopLevelSingleMetaParser
- cells keywordCell
- catchAllCellType groupNameCell
-importOnlyParser
- description Mark a file as not one to build. This line will be not be imported into the importing file.
- cruxFromId
- extends abstractTopLevelSingleMetaParser
- javascript
-  compile() {
-   return ""
-  }
 htmlLangParser
- cells keywordCell stringCell
+ cells metaCommandWordCell stringCell
  description The lang attribute for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
  extends abstractTopLevelSingleMetaParser
 openGraphDescriptionParser
@@ -965,7 +962,7 @@ openGraphDescriptionParser
 permalinkParser
  description When compiling, Scroll will save this file to {permalink}
  extends abstractTopLevelSingleMetaParser
- cells keywordCell permalinkCell
+ cells metaCommandWordCell permalinkCell
 relatedScrollFilesParser
  extends abstractTopLevelSingleMetaParser
  catchAllCellType permalinkCell
@@ -989,7 +986,7 @@ viewSourceUrlParser
 abstractBuildCommandParser
  extends abstractScrollParser
  cruxFromId
- cells keywordCell
+ cells buildCommandWordCell
  catchAllCellType filePathCell
  inScope slashCommentParser
  javascript
@@ -997,13 +994,32 @@ abstractBuildCommandParser
   compile() {
    return ""
   }
+loadConceptsParser
+ // todo: clean this up. just add smarter imports with globs?
+ description Load all concepts in all scroll files in a folder and remove any "import" statements.
+ extends abstractBuildCommandParser
+ cruxFromId
+ cells preBuildCommandWordCell filePathCell
+ javascript
+  build() {
+   const { Disk } = require("scrollsdk/products/Disk.node.js")
+   const path = require("path")
+   const {file} = this.parent
+   const folder = path.join(file.folderPath, this.getWord(1))
+   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(Disk.read).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
+    this.parent.concat(ONE_BIG_FILE)
+   //console.log(ONE_BIG_FILE)
+  }
+  compile() {
+    return ""
+  }
 buildConceptsParser
  cruxFromId
  description Compiles concepts to a data format(s) and save to disk.
  extends abstractBuildCommandParser
  sortByParser
   cruxFromId
-  cells keywordCell anyCell
+  cells commandWordCell anyCell
 buildCssParser
  description Compile document to CSS and save to disk.
  extends abstractBuildCommandParser
@@ -1016,7 +1032,7 @@ buildMeasuresParser
  extends abstractBuildCommandParser
  sortByParser
   cruxFromId
-  cells keywordCell anyCell
+  cells commandWordCell anyCell
 buildRssParser
  description Compile metadata on a group(s) of documents to RSS and save to disk.
  extends abstractBuildCommandParser
@@ -1113,15 +1129,15 @@ katexParser
 mapParser
  inScope latParser longParser
  zoomParser
-  cells keywordCell integerCell
+  cells commandWordCell integerCell
   cruxFromId
   single
  heightParser
-  cells keywordCell floatCell
+  cells commandWordCell floatCell
   cruxFromId
   single
  pointParser
-  cells keywordCell
+  cells commandWordCell
   inScope latParser longParser
   cruxFromId
   titleParser
@@ -1325,34 +1341,10 @@ counterpointParser
  description A counterpoint. Will not show up in the compiled HTML.
  extends commentParser
  crux !
-printConceptsParser
- description Print the concepts in a page into an HTML table.
- cruxFromId
- extends abstractCommentParser
- javascript
-   compile() {
-   // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table \t", this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
-   const html = node.compile()
-   node.destroy()
-   return html
-   }
 thanksToParser
  description A place to store data on reviewers who helped improve a post (and a reminder to seek feedback!). Does not appear in compiled HTML.
  extends abstractCommentParser
  cruxFromId
-printMeasuresParser
- description Print measures statistics in a page into an HTML table.
- cruxFromId
- extends abstractCommentParser
- javascript
-   compile() {
-   // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table \t", this.parent.file.compileMeasures("tsv"))
-   const html = node.compile()
-   node.destroy()
-   return html
-   }
 tabularDataParser
  description Root lines with tabs are parsed as tsv data and printed as tables.
  pattern \t
@@ -1387,24 +1379,18 @@ tabularDataParser
   printTable
   Index Name
   1 Thermos
-loadConceptsParser
- description Load all concepts in all scroll files in a folder and remove any "import" statements.
- extends abstractScrollParser
+printConceptsParser
+ description Print the concepts in a page into an HTML table.
  cruxFromId
- cells keywordCell filePathCell
+ extends abstractScrollParser
  javascript
-  build() {
-   const { Disk } = require("scrollsdk/products/Disk.node.js")
-   const path = require("path")
-   const {file} = this.parent
-   const folder = path.join(file.folderPath, this.getWord(1))
-   const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(Disk.read).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
-    this.parent.concat(ONE_BIG_FILE)
-   //console.log(ONE_BIG_FILE)
-  }
-  compile() {
-    return ""
-  }
+   compile() {
+   // A hacky but simple way to do this for now.
+   const node = this.appendSibling("table \t", this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
+   const html = node.compile()
+   node.destroy()
+   return html
+   }
 cssParser
  extends abstractScrollParser
  description Prints CSS content wrapped in a style tag.
@@ -1425,7 +1411,7 @@ abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
  cruxFromId
- cells keywordCell
+ cells commandWordCell
  catchAllCellType groupNameWithOptionalFolderCell
  javascript
   get files() {
@@ -1548,7 +1534,7 @@ printDateParser
  extends abstractScrollParser
  description Prints the date set in the file. If not present computes the date from the file's ctime.
  cruxFromId
- cells keywordCell
+ cells commandWordCell
  javascript
   compile() {
    return `<div style="text-align: center;" class="scrollDateline">${this.day}</div>`
@@ -2278,7 +2264,7 @@ stumpNoSnippetParser
   }
 abstractCaptionedParser
  extends abstractScrollParser
- cells keywordCell urlCell
+ cells commandWordCell urlCell
  inScope captionAftertextParser slashCommentParser
  cruxFromId
  javascript
@@ -2294,7 +2280,7 @@ imageParser
  openGraphParser
   description Add this line to make this the open graph image.
   cruxFromId
-  cells keywordCell
+  cells commandWordCell
  javascript
   getFigureContent(compileSettings) {
    const file = this.root.file
@@ -2338,6 +2324,7 @@ youTubeParser
 importParser
  description Import one file into another.
  cruxFromId
+ cells preBuildCommandWordCell
  extends abstractScrollParser
  catchAllCellType filePathCell
  javascript
@@ -2369,6 +2356,18 @@ keyboardNavParser
    });</script>`
    return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
+printMeasuresParser
+ description Print measures statistics in a page into an HTML table.
+ cruxFromId
+ extends abstractScrollParser
+ javascript
+   compile() {
+   // A hacky but simple way to do this for now.
+   const node = this.appendSibling("table \t", this.parent.file.compileMeasures("tsv"))
+   const html = node.compile()
+   node.destroy()
+   return html
+   }
 abstractMeasureParser
  cells measureNameCell
  cruxFromId
@@ -2636,7 +2635,7 @@ quoteParser
 readingListParser
  extends abstractScrollParser
  description Easily create a reading list with links, titles, and author names.
- cells keywordCell
+ cells commandWordCell
  cruxFromId
  catchAllParser readingListItemParser
  example
@@ -2649,7 +2648,7 @@ readingListParser
 redirectToParser
  description Prints an HTML redirect tag. In the future might also emit nginx config.
  extends abstractScrollParser
- cells keywordCell urlCell
+ cells commandWordCell urlCell
  cruxFromId
  example
   redirectTo https://scroll.pub/releaseNotes.html
@@ -2661,7 +2660,7 @@ printRelatedListParser
  description Prints a list of related posts with years.
  extends abstractScrollParser
  cruxFromId
- cells keywordCell
+ cells commandWordCell
  javascript
   compile() {
    const file = this.root.file
@@ -2690,6 +2689,7 @@ printRelatedListParser
 abstractVariableParser
  extends abstractScrollParser
  catchAllCellType stringCell
+ cells preBuildCommandWordCell
  cruxFromId
  javascript
   isTopMatter = true
@@ -2759,7 +2759,7 @@ stampParser
      hello.js
       console.log("Hello world")
  cruxFromId
- cells keywordCell
+ cells preBuildCommandWordCell
  javascript
   build() {
     const dir = this.root.file.folderPath
@@ -2922,7 +2922,7 @@ plainTextOnlyParser
    return ""
   }
 abstractAftertextAttributeParser
- cells keywordCell
+ cells commandWordCell
  boolean isAttribute true
  javascript
   get divAttributes() {
@@ -2935,22 +2935,22 @@ aftertextIdParser
  crux id
  description Provide an ID to be output in the generated HTML tag.
  extends abstractAftertextAttributeParser
- cells keywordCell htmlIdCell
+ cells commandWordCell htmlIdCell
  single
 aftertextStyleParser
  crux style
  description Provide code for the generated HTML tag's "style" attribute.
  extends abstractAftertextAttributeParser
- cells keywordCell
+ cells commandWordCell
  catchAllCellType cssAnyCell
 aftertextHiddenParser
  crux hidden
- cells keywordCell
+ cells commandWordCell
  description Do not compile this node to HTML.
  extends abstractAftertextAttributeParser
  single
 aftertextTagParser
- cells keywordCell htmlTagCell
+ cells commandWordCell htmlTagCell
  description Override the HTML tag that the compiled node will use.
  crux tag
  javascript
@@ -2958,7 +2958,7 @@ aftertextTagParser
    return ""
   }
 abstractAftertextDirectiveParser
- cells keywordCell
+ cells commandWordCell
  catchAllCellType stringCell
  javascript
   isMarkup = true
@@ -3048,7 +3048,7 @@ aftertextCodeParser
 classMarkupParser
  description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
  extends abstractMarkupParser
- cells keywordCell classNameCell
+ cells commandWordCell classNameCell
  crux class
  javascript
   tag = "span"
@@ -3085,7 +3085,7 @@ hoverNoteParser
  cruxFromId
  extends classMarkupParser
  catchAllParser lineOfTextParser
- cells keywordCell
+ cells commandWordCell
  javascript
   get pattern() {
    return this.getWordsFrom(1).join(" ")
@@ -3104,12 +3104,12 @@ aftertextStrikeParser
 linkParser
  extends abstractMarkupParser
  description Put the matching text in an <a> tag.
- cells keywordCell urlCell
+ cells commandWordCell urlCell
  inScope linkTitleParser linkTargetParser commentParser
  programParser
   description Anything here will be URI encoded and then appended to the link.
   cruxFromId
-  cells keywordCell
+  cells commandWordCell
   catchAllParser programLinkParser
   javascript
    get encoded() {
@@ -3212,7 +3212,7 @@ wrapsOnParser
   }
 wrapParser
  cruxFromId
- cells keywordCell delimiterCell tagOrUrlCell
+ cells commandWordCell delimiterCell tagOrUrlCell
  catchAllCellType htmlAttributesCell
  extends wrapsOnParser
  description Define a custom wrap, for example "wrap _ em" would support: _italics_.
@@ -3267,9 +3267,9 @@ linkifyParser
  description Use this to disable linkify on the text.
  extends abstractAftertextDirectiveParser
  cruxFromId
- cells keywordCell booleanCell
+ cells commandWordCell booleanCell
 abstractMarkupParameterParser
- cells keywordCell
+ cells commandWordCell
  cruxFromId
 matchAllParser
  description Use this to match all occurrences of the text.
@@ -3296,7 +3296,7 @@ linkTargetParser
  extends abstractHtmlAttributeParser
  description If you want to set the target of the link. To "_blank", for example.
  crux target
- cells keywordCell anyCell
+ cells commandWordCell anyCell
 blankLineParser
  description Blank lines compile to nothing in the HTML.
  cells blankCell
@@ -3330,7 +3330,7 @@ stumpContentParser
 linkTitleParser
  description If you want to set the title of the link.
  crux title
- cells keywordCell
+ cells commandWordCell
  catchAllCellType anyCell
  example
   * This report showed the treatment had a big impact.
@@ -3339,11 +3339,11 @@ linkTitleParser
 programLinkParser
  catchAllCellType codeCell
 abstractLoopConfigParser
- cells keywordCell
+ cells commandWordCell
  cruxFromId
  catchAllCellType stringCell
 abstractItemsProviderParser
- cells keywordCell
+ cells commandWordCell
 loopLinesParser
  crux lines
  extends abstractItemsProviderParser
@@ -3376,15 +3376,15 @@ loopGroupsParser
 abstractPointConfigParser
  // todo: scoped parsers should support abstract types
  cruxFromId
- cells keywordCell
+ cells commandWordCell
  catchAllCellType stringCell
  single
 latParser
- cells keywordCell floatCell
+ cells commandWordCell floatCell
  cruxFromId
  single
 longParser
- cells keywordCell floatCell
+ cells commandWordCell floatCell
  cruxFromId
  single
 quoteLineParser
