@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { Disk } = require("scrollsdk/products/Disk.node.js")
+const { TreeNode } = require("scrollsdk/products/TreeNode.js")
 const path = require("path")
 const { TypeScriptRewriter } = require("/Users/breck/sdk/products/TypeScriptRewriter.js") // todo: fix
 const { DefaultScrollParser } = require("scroll-cli")
@@ -40,7 +41,13 @@ const appCode = ourPaths
 Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 
 // Scroll code
-const parsers = new DefaultScrollParser().definition.asString
+let parsers = new DefaultScrollParser().definition.asString
+const tree = new TreeNode(parsers)
+// Remove comments
+tree.filter((line) => line.getLine().startsWith("//")).forEach((node) => node.destroy())
+// Remove blank lines
+parsers = tree.toString().replace(/^\n/gm, "")
+
 const AppConstants = {
 	parsers,
 }
