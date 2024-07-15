@@ -249,13 +249,13 @@ abstractIndentableParagraphParser
  extends paragraphParser
  inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser abstractIndentableParagraphParser
  javascript
-  compile() {
-   return (
-    super.compile() +
-    this.map(node => node.compile())
+  compileChildren() {
+    return this.map(node => node.compile())
      .join("\n")
      .trim()
-   )
+  }
+  compile() {
+   return super.compile() + this.compileChildren()
   }
   compileTxt() {
     return this.getWord(0) + " " + super.compileTxt()
@@ -466,6 +466,16 @@ quickParagraphParser
  description A paragraph.
  example
   * I had a _new_ idea.
+scrollCenteredParagraphParser
+ crux center
+ extends paragraphParser
+ description A centered paragraph.
+ example
+  center Hello world
+ javascript
+  compile(compileSettings) {
+   return `<div style="text-align:center;">${super.compile(compileSettings)}</div>`
+  }
 thinColumnsParser
  extends abstractAftertextParser
  cruxFromId
@@ -923,55 +933,6 @@ chatParser
   }
   compileTxt() {
     return this.childrenToString()
-  }
-printUsageStatsParser
- // todo: if we include the word "Parser" in a crux, bad things seem to happen.
- description Print parser usage stats in folder.
- extends abstractScrollParser
- cruxFromId
- javascript
-  get stats() {
-   const input = this.root.file.allScrollFiles.map(file => file.parserIds.join("\n")).join("\n")
-   const result = input.split('\n').reduce((acc, word) => (acc[word] = (acc[word] || 0) + 1, acc), {})
-   return "parserId uses\n" + Object.entries(result).map(([word, count]) => `${word} ${count}`).join('\n')
-  }
-  compile() {
-    // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table  ", this.stats)
-   const html = node.compile()
-   node.destroy()
-   return html
-  }
-  compileTxt() {
-    return this.stats
-  }
-printCheatSheetParser
- description Print Scroll parser cheat sheet.
- extends abstractScrollParser
- cruxFromId
- javascript
-  get parserDocs() {
-    const clone = this.root.clone()
-    clone.setChildren("")
-    const words = clone.getAutocompleteResultsAt(0,0).matches.map(a => a.text)
-    words.push("blankline") // manually add blank line
-    words.push("Catch All Paragraph.") // manually add catch all paragraph
-    words.push("<h></h>") // manually add html
-    words.sort()
-    clone.setChildren(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
-    const docs = clone.map(node => {
-      const {definition} = node
-      const {id, description, isPopular} = definition
-      return {id: definition.cruxIfAny || id, description, isPopular}
-     }).sort((a, b) => a.id.localeCompare(b.id))
-    return docs
-  }
-  compile() {
-   const css = `#scrollCheatSheet {color: grey;} #scrollCheatSheet a {color: #3498db; }`
-   return `<style>${css}</style><div id="scrollCheatSheet">` + this.parserDocs.map(obj => `<div><a>${obj.isPopular ? "<b>" : ""}${obj.id}</a> ${obj.description}${obj.isPopular ? "</b>" : ""}</div>`).join("\n") + "</div>"
-  }
-  compileTxt() {
-   return this.parserDocs.map(obj => `${obj.id} - ${obj.description}`).join("\n")
   }
 codeParser
  description A code block.
@@ -1746,7 +1707,15 @@ gazetteCssParser
     cursor zoom-in
    tr:nth-child(even)
     background rgba(224,224,224,.6)
+  .scrollTable
+   pre
+    white-space nowrap
+    overflow hidden
+    margin 0
   .scrollTable.expandedTable
+   pre
+    white-space unset
+    overflow unset
    table-layout unset
    background white
    position relative
@@ -2268,6 +2237,55 @@ keyboardNavParser
       getLinks()[1].click()
    });</script>`
    return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
+  }
+printUsageStatsParser
+ // todo: if we include the word "Parser" in a crux, bad things seem to happen.
+ description Print parser usage stats in folder.
+ extends abstractScrollParser
+ cruxFromId
+ javascript
+  get stats() {
+   const input = this.root.file.allScrollFiles.map(file => file.parserIds.join("\n")).join("\n")
+   const result = input.split('\n').reduce((acc, word) => (acc[word] = (acc[word] || 0) + 1, acc), {})
+   return "parserId uses\n" + Object.entries(result).map(([word, count]) => `${word} ${count}`).join('\n')
+  }
+  compile() {
+    // A hacky but simple way to do this for now.
+   const node = this.appendSibling("table  ", this.stats)
+   const html = node.compile()
+   node.destroy()
+   return html
+  }
+  compileTxt() {
+    return this.stats
+  }
+printLeetSheetParser
+ description Print Scroll parser leet sheet.
+ extends abstractScrollParser
+ cruxFromId
+ javascript
+  get parserDocs() {
+    const clone = this.root.clone()
+    clone.setChildren("")
+    const words = clone.getAutocompleteResultsAt(0,0).matches.map(a => a.text)
+    words.push("blankline") // manually add blank line
+    words.push("Catch All Paragraph.") // manually add catch all paragraph
+    words.push("<h></h>") // manually add html
+    words.sort()
+    clone.setChildren(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
+    const docs = clone.map(node => {
+      const {definition} = node
+      const {id, description, isPopular} = definition
+      return {id: definition.cruxIfAny || id, description, isPopular}
+     }).sort((a, b) => a.id.localeCompare(b.id))
+    return docs
+  }
+  compile() {
+   const css = `#scrollLeetSheet {color: grey;} #scrollLeetSheet a {color: #3498db; }`
+   return `<style>${css}</style><div id="scrollLeetSheet">` + this.parserDocs.map(obj => `<div><a>${obj.isPopular ? "<b>" : ""}${obj.id}</a> ${obj.description}${obj.isPopular ? "</b>" : ""}</div>`).join("\n") + "</div>"
+  }
+  compileTxt() {
+   return this.parserDocs.map(obj => `${obj.id} - ${obj.description}`).join("\n")
   }
 printMeasuresParser
  description Print measure stats to HTML table.
