@@ -226,6 +226,37 @@ paragraphParser
     const dateline = this.getNode("dateline")
     return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
+authorsParser
+ // multiple authors delimited by " and "
+ boolean isPopular true
+ extends paragraphParser
+ description Set author(s) name(s).
+ example
+  authors Breck Yunits
+   https://breckyunits.com Breck Yunits
+ // note: once we have mixins in Parsers, lets mixin the below from abstractTopLevelSingleMetaParser
+ cells metaCommandWordCell
+ javascript
+  isTopMatter = true
+  isSetterParser = true
+  compileHtmlForPrint() {
+    // hacky. todo: cleanup
+    const originalContent = this.content
+    this.setContent(`by ${originalContent}`)
+    const html = super.compile()
+    this.setContent(originalContent)
+    return html
+  }
+  compileTxtForPrint() {
+    return 'by ' + super.compileTxt()
+  }
+  compile() {
+   return ""
+  }
+  compileTxt() {
+    return ""
+  }
+  defaultClassName = "scrollByLine"
 blinkParser
  description Just for fun.
  extends paragraphParser
@@ -467,6 +498,7 @@ quickParagraphParser
  example
   * I had a _new_ idea.
 scrollCenteredParagraphParser
+ // todo: does not work with gazette.
  crux center
  extends paragraphParser
  description A centered paragraph.
@@ -676,30 +708,22 @@ printViewSourceBadgeParser
 abstractPrintMetaParser
  extends abstractScrollParser
  cruxFromId
-printAuthorParser
- description Prints author byline.
+printAuthorsParser
+ description Prints author(s) byline.
  boolean isPopular true
  extends abstractPrintMetaParser
  // todo: we need pattern matching added to sdk to support having no params or a url and personNameCell
  catchAllCellType anyCell
  example
   // With Link:
-  printAuthor https://breckyunits.com Breck Yunits
-  // No link:
-  printAuthor  Breck Yunits
+  printAuthors Breck Yunits
+   https://breckyunits.com
  javascript
   compile() {
-   const {link, name} = this
-   return `<div class="scrollByLine">by <a ${link ? `href="${link}"` : ""}>${name}</a></div>`
-  }
-  get link() {
-    return this.getWord(1) || this.parent.getNode("author")?.getWord(1)
-  }
-  get name() {
-    return this.getWordsFrom(2).join(" ") || this.parent.getNode("author")?.getWordsFrom(2).join(" ")
+   return this.parent.getNode("authors")?.compileHtmlForPrint()
   }
   compileTxt() {
-    return `by ${this.name}`
+    return this.parent.getNode("authors")?.compileTxtForPrint()
   }
 printDateParser
  extends abstractPrintMetaParser
@@ -752,114 +776,6 @@ printRelatedListParser
     return `- ${title}${year ? " (" + year + ")" : ""}\n ${link}`
   }).join("\n")
   }
-abstractTopLevelSingleMetaParser
- description Use these keywords once per file.
- extends abstractScrollParser
- inScope slashCommentParser
- cruxFromId
- cells metaCommandWordCell
- javascript
-  isTopMatter = true
-  isSetterParser = true
-  compile() {
-   return ""
-  }
-authorParser
- cells metaCommandWordCell urlCell
- catchAllCellType personNameCell
- boolean isPopular true
- description Set author URL and author name.
- extends abstractTopLevelSingleMetaParser
-dateParser
- catchAllCellType dateCell
- description Set published date.
- extends abstractTopLevelSingleMetaParser
- boolean isPopular true
-siteOwnerEmailParser
- description Set email address for site contact.
- extends abstractTopLevelSingleMetaParser
- crux email
- cells metaCommandWordCell emailAddressCell
-groupsParser
- description Set groups.
- example
-  groups All
- extends abstractTopLevelSingleMetaParser
- catchAllCellType groupNameCell
-importOnlyParser
- // This line will be not be imported into the importing file.
- description Don't build this file.
- cruxFromId
- cells preBuildCommandWordCell
- extends abstractTopLevelSingleMetaParser
- javascript
-  compile() {
-   return ""
-  }
-abstractUrlSettingParser
- extends abstractTopLevelSingleMetaParser
- cells metaCommandWordCell urlCell
- cruxFromId
-canonicalUrlParser
- description Override canonical URL.
- extends abstractUrlSettingParser
-openGraphImageParser
- // https://ogp.me/
- // If not defined, Scroll will try to generate it's own using the first image tag on your page.
- description Override Open Graph Image.
- extends abstractUrlSettingParser
-baseUrlParser
- description Required for RSS and OpenGraph.
- extends abstractUrlSettingParser
-downloadUrlParser
- description Set link to Download Page.
- extends abstractUrlSettingParser
-homeUrlParser
- // default homelink is "index.html"
- description Override home link.
- extends abstractUrlSettingParser
-rssFeedUrlParser
- description Set RSS feed URL.
- extends abstractUrlSettingParser
-viewSourceBaseUrlParser
- description Override source link baseUrl.
- extends abstractUrlSettingParser
-htmlLangParser
- cells metaCommandWordCell stringCell
- // for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
- description Override HTML lang attribute.
- extends abstractTopLevelSingleMetaParser
-openGraphDescriptionParser
- catchAllCellType stringCell
- crux description
- description Override Open Graph Description.
- extends abstractTopLevelSingleMetaParser
-permalinkParser
- description Override output filename.
- extends abstractTopLevelSingleMetaParser
- cells metaCommandWordCell permalinkCell
-relatedScrollFilesParser
- extends abstractTopLevelSingleMetaParser
- catchAllCellType permalinkCell
- boolean isPopular true
- crux related
- description Set related files.
- example
-  ...
-  That's all I have to say about hiking.
-  related fishing camping
-  # Related Posts
-  printRelatedList
-pageTitleParser
- catchAllCellType personNameCell
- crux title
- description Set title.
- extends abstractTopLevelSingleMetaParser
- boolean isPopular true
-viewSourceUrlParser
- catchAllCellType urlCell
- description Override source link.
- extends abstractTopLevelSingleMetaParser
 abstractBuildCommandParser
  extends abstractScrollParser
  cruxFromId
@@ -1416,6 +1332,108 @@ dashboardParser
   compileTxt() {
     return this.childrenToString()
   }
+abstractTopLevelSingleMetaParser
+ description Use these keywords once per file.
+ extends abstractScrollParser
+ inScope slashCommentParser
+ cruxFromId
+ cells metaCommandWordCell
+ javascript
+  isTopMatter = true
+  isSetterParser = true
+  compile() {
+   return ""
+  }
+dateParser
+ catchAllCellType dateCell
+ description Set published date.
+ extends abstractTopLevelSingleMetaParser
+ boolean isPopular true
+siteOwnerEmailParser
+ description Set email address for site contact.
+ extends abstractTopLevelSingleMetaParser
+ crux email
+ cells metaCommandWordCell emailAddressCell
+groupsParser
+ description Set groups.
+ example
+  groups All
+ extends abstractTopLevelSingleMetaParser
+ catchAllCellType groupNameCell
+importOnlyParser
+ // This line will be not be imported into the importing file.
+ description Don't build this file.
+ cruxFromId
+ cells preBuildCommandWordCell
+ extends abstractTopLevelSingleMetaParser
+ javascript
+  compile() {
+   return ""
+  }
+abstractUrlSettingParser
+ extends abstractTopLevelSingleMetaParser
+ cells metaCommandWordCell urlCell
+ cruxFromId
+canonicalUrlParser
+ description Override canonical URL.
+ extends abstractUrlSettingParser
+openGraphImageParser
+ // https://ogp.me/
+ // If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ description Override Open Graph Image.
+ extends abstractUrlSettingParser
+baseUrlParser
+ description Required for RSS and OpenGraph.
+ extends abstractUrlSettingParser
+downloadUrlParser
+ description Set link to Download Page.
+ extends abstractUrlSettingParser
+homeUrlParser
+ // default homelink is "index.html"
+ description Override home link.
+ extends abstractUrlSettingParser
+rssFeedUrlParser
+ description Set RSS feed URL.
+ extends abstractUrlSettingParser
+viewSourceBaseUrlParser
+ description Override source link baseUrl.
+ extends abstractUrlSettingParser
+htmlLangParser
+ cells metaCommandWordCell stringCell
+ // for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
+ description Override HTML lang attribute.
+ extends abstractTopLevelSingleMetaParser
+openGraphDescriptionParser
+ catchAllCellType stringCell
+ crux description
+ description Override Open Graph Description.
+ extends abstractTopLevelSingleMetaParser
+permalinkParser
+ description Override output filename.
+ extends abstractTopLevelSingleMetaParser
+ cells metaCommandWordCell permalinkCell
+relatedScrollFilesParser
+ extends abstractTopLevelSingleMetaParser
+ catchAllCellType permalinkCell
+ boolean isPopular true
+ crux related
+ description Set related files.
+ example
+  ...
+  That's all I have to say about hiking.
+  related fishing camping
+  # Related Posts
+  printRelatedList
+pageTitleParser
+ catchAllCellType personNameCell
+ crux title
+ description Set title.
+ extends abstractTopLevelSingleMetaParser
+ boolean isPopular true
+viewSourceUrlParser
+ catchAllCellType urlCell
+ description Override source link.
+ extends abstractTopLevelSingleMetaParser
 belowAsCodeParser
  description Print code below.
  extends abstractScrollParser
@@ -1581,6 +1599,7 @@ gazetteCssParser
    line-height 1.4
   a
    text-decoration-color transparent
+   color #36c
   a:hover
    text-decoration-color initial
   sup,sub
