@@ -1,6 +1,6 @@
 wrapNameCell
- description What wraps are available to turn on?
- enum bold italics code katex
+ description Options to turn on some wraps.
+ enum bold italics code katex none
 buildCommandWordCell
  extends commandWordCell
  description Give build command words their own color.
@@ -2169,7 +2169,9 @@ abstractCaptionedParser
   compile(compileSettings) {
    const caption = this.getNode("caption")
    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
-   return `<figure class="scrollCaptionedFigure">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
+   const width = this.has("width") ? `width:${this.get("width")}px; margin: auto;` : ""
+   const float = this.has("float") ? `margin: 20px; float: ${this.get("float")};` : ""
+   return `<figure class="scrollCaptionedFigure" style="${width + float}">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
   }
 imageParser
  description An img tag.
@@ -2181,26 +2183,33 @@ imageParser
   cruxFromId
   cells commandWordCell
  javascript
-  getFigureContent(compileSettings) {
+  get dimensions() {
+    const width = this.get("width")
+    const height = this.get("height")
+    if (width || height)
+      return {width, height}
+    if (!this.isNodeJs())
+      return {}
+    const src = this.getWord(1)
+    // If its a local image, get the dimensions and put them in the HTML
+    // to avoid flicker
+   if (src.startsWith("http:") || src.startsWith("https:")) return {}
    const file = this.root.file
-   const src = this.getWord(1)
-   const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + src
-   let dimensionAttributes = ""
-   // If its a local image, get the dimensions and put them in the HTML
-   // to avoid flicker
-   if (!src.startsWith("http:") && !src.startsWith("https:")) {
     try {
      const sizeOf = require("image-size")
      const path = require("path")
      const fullImagePath = path.join(file.folderPath, src)
-     const dimensions = sizeOf(fullImagePath)
-     const width = dimensions.width
-     const height = dimensions.height
-     dimensionAttributes = `width="${width}" height="${height}" `
+     return sizeOf(fullImagePath)
     } catch (err) {
      console.error(err)
     }
-   }
+    return {}
+  }
+  getFigureContent(compileSettings) {
+   const file = this.root.file
+   const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + this.getWord(1)
+   const {width, height} = this.dimensions
+   let dimensionAttributes = width || height  ? `width="${width}" height="${height}" ` : ""
    // Todo: can we reuse more code from aftertext?
    const className = this.has("class") ? ` class="${this.get("class")}" ` : ""
    const id = this.has("id") ? ` id="${this.get("id")}" ` : ""
@@ -2283,7 +2292,7 @@ printLeetSheetParser
  extends abstractScrollParser
  cruxFromId
  javascript
-  get parserDocs() {
+  get parsersToDocument() {
     const clone = this.root.clone()
     clone.setChildren("")
     const words = clone.getAutocompleteResultsAt(0,0).matches.map(a => a.text)
@@ -2292,12 +2301,14 @@ printLeetSheetParser
     words.push("<h></h>") // manually add html
     words.sort()
     clone.setChildren(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
-    const docs = clone.map(node => {
+    return clone
+  }
+  get parserDocs() {
+    return this.parsersToDocument.map(node => {
       const {definition} = node
       const {id, description, isPopular} = definition
       return {id: definition.cruxIfAny || id, description, isPopular}
      }).sort((a, b) => a.id.localeCompare(b.id))
-    return docs
   }
   compile() {
    const css = `#scrollLeetSheet {color: grey;} #scrollLeetSheet a {color: #3498db; }`
@@ -2305,6 +2316,19 @@ printLeetSheetParser
   }
   compileTxt() {
    return this.parserDocs.map(obj => `${obj.id} - ${obj.description}`).join("\n")
+  }
+printAdvancedLeetSheetParser
+ extends printLeetSheetParser
+ description Print Parsers leet sheet.
+ javascript
+  get parsersToDocument() {
+    const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
+    const clone = new parsersParser("latinParser\n ").clone()
+    const parserNode = clone.getNode("latinParser")
+    const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
+    words.sort()
+    parserNode.setChildren(words.join("\n"))
+    return parserNode
   }
 printMeasuresParser
  description Print measure stats to HTML table.
@@ -2942,30 +2966,44 @@ abstractAftertextDirectiveParser
 abstractMarkupParser
  extends abstractAftertextDirectiveParser
  inScope abstractMarkupParameterParser
+ javascript
+  get matchWholeLine() {
+    return this.getWordsFrom(this.patternStartsAtWord).length === 0
+  }
+  get pattern() {
+   return this.matchWholeLine ? this.parent.originalText : this.getWordsFrom(this.patternStartsAtWord).join(" ")
+  }
+  patternStartsAtWord = 1
 boldParser
  cruxFromId
- description Bold the matching text.
+ description Bold matching text.
  extends abstractMarkupParser
  javascript
   tag = "b"
 italicsParser
  cruxFromId
- description Italicize the matching text.
+ description Italicize matching text.
  extends abstractMarkupParser
  javascript
   tag = "i"
 underlineParser
- description Underline the matching text.
+ description Underline matching text.
  cruxFromId
  extends abstractMarkupParser
  javascript
   tag = "u"
 aftertextCodeParser
- description Wrap the matching text in a <code> span.
+ description Wrap matching text in code span.
  crux code
  extends abstractMarkupParser
  javascript
   tag = "code"
+aftertextStrikeParser
+ description Wrap matching text in s span.
+ crux strike
+ extends abstractMarkupParser
+ javascript
+  tag = "s"
 classMarkupParser
  description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
  extends abstractMarkupParser
@@ -3017,11 +3055,6 @@ hoverNoteParser
   get hoverNoteText() {
    return this.childrenToString().replace(/\n/g, " ")
   }
-aftertextStrikeParser
- crux strike
- extends abstractMarkupParser
- javascript
-  tag = "s"
 linkParser
  extends abstractMarkupParser
  description Put the matching text in an <a> tag.
@@ -3064,13 +3097,7 @@ linkParser
    })
    return attrs
   }
-  get matchWholeLine() {
-    return this.getWordsFrom(this.patternStartsAtWord).length === 0
-  }
   patternStartsAtWord = 2
-  get pattern() {
-   return this.matchWholeLine ? this.parent.originalText : this.getWordsFrom(this.patternStartsAtWord).join(" ")
-  }
 emailLinkParser
  description A mailto link
  crux email
@@ -3090,7 +3117,10 @@ quickLinkParser
   patternStartsAtWord = 1
 wrapsOnParser
  cruxFromId
- description Enable `code`, *bold*, and _italics_ rules.
+ description Only turn on named wraps.
+ example
+  Hello *world*!
+   wrapsOn bold
  extends abstractAftertextDirectiveParser
  catchAllCellType wrapNameCell
  javascript
@@ -3099,12 +3129,14 @@ wrapsOnParser
   }
   get wraps() {
     const wraps = [{delimiter: "`", tag: "code", exclusive: true, name: "code"},{delimiter: "*", tag: "strong", name: "bold"}, {delimiter: "_", tag: "em", name: "italics"}]
+    // only add katex wrap if the root doc has katex.
     if (this.root.has("katex"))
       wraps.unshift({delimiter: "$", tag: "span", attributes: ' class="scrollKatex"', exclusive: true, name: "katex"})
     if (this.content)
       return wraps.filter(wrap => this.content.includes(wrap.name))
     return wraps
   }
+  matchWholeLine = true
   getMatches(text) {
    const exclusives = []
    return this.wraps.map(wrap => this.runPattern(text, wrap, exclusives)).filter(i => i).flat()
