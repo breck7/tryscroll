@@ -84,11 +84,6 @@ htmlIdCell
  extends anyCell
 cssAnyCell
  extends anyCell
-groupNameCell
- extends permalinkCell
-groupNameWithOptionalFolderCell
- description A group name optionally combined with a folder path. Only used when referencing groups, not in posts.
- extends stringCell
 htmlAnyCell
  extends stringCell
 measureNameCell
@@ -106,6 +101,11 @@ metaCommandWordCell
    https://github.com/breck7/scrollsdk/issues/186
 scriptAnyCell
  extends anyCell
+tagCell
+ extends permalinkCell
+tagWithOptionalFolderCell
+ description A group name optionally combined with a folder path. Only used when referencing tags, not in posts.
+ extends stringCell
 abstractScrollParser
  cells commandWordCell
  javascript
@@ -628,7 +628,7 @@ printSnippetsParser
  extends abstractAftertextParser
  cruxFromId
  cells commandWordCell
- catchAllCellType groupNameWithOptionalFolderCell
+ catchAllCellType tagWithOptionalFolderCell
  description Prints snippets in group(s).
  example
   printSnippets index
@@ -647,7 +647,8 @@ printSnippetsParser
     return html
   }
   get files() {
-   return this.parent.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1), this.has("limit") ? parseInt(this.get("limit")) : undefined)
+   const thisFile = this.parent.file
+   return this.parent.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1), this.has("limit") ? parseInt(this.get("limit")) : undefined).filter(file => file.file !== thisFile)
   }
   compile() {
    const alreadyRequired = this.root.alreadyRequired
@@ -672,6 +673,20 @@ printFullSnippetsParser
  javascript
   makeSnippet(file, compileSettings) {
    return file.scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
+  }
+printRelatedParser
+ description Print links to related posts.
+ extends printSnippetsParser
+ cruxFromId
+ javascript
+  makeSnippet(file, compileSettings) {
+    // get title, permalink, and year
+    const {title, permalink, year} = file
+    const node = this.appendSibling(`- ${title}${year ? " (" + year + ")" : ""}`, `link ${permalink}`)
+    // A hacky but simple way to do this for now.
+    const html = node.compile()
+    node.destroy()
+    return html
   }
 printViewSourceParser
  description Print "View source" link.
@@ -748,33 +763,23 @@ printDateParser
   compileTxt() {
     return this.day
   }
-printRelatedListParser
- description Print links to related posts.
+printFormatLinksParser
+ description Prints links to other formats.
  extends abstractPrintMetaParser
+ example
+  printFormatLinks
  javascript
   compile() {
-   const file = this.root.file
-   const ids = this.root.get("related")?.split(" ") || []
-   return ids.map(id => {
-    // get title, permalink, and year
-    const {title, permalink, year} = file.getFileFromId(id)
-    const node = this.appendSibling(`- ${title}${year ? " (" + year + ")" : ""}`, `link ${permalink}`)
-    // A hacky but simple way to do this for now.
-    const html = node.compile()
-    node.destroy()
-    return html
-   }).join("\n")
+   const permalink = this.root.file.permalink.replace(".html", "")
+   // hacky
+   const node = this.appendSibling(`HTML | TXT`, `class scrollDateline\nlink ${permalink}.html HTML\nlink ${permalink}.txt TXT\nstyle text-align:center;`)
+   const html = node.compile()
+   node.destroy()
+   return html
   }
   compileTxt() {
-   // Todo: reuse code between these 2 methods.
-   const file = this.root.file
-   const ids = this.root.get("related")?.split(" ") || []
-   return ids.map(id => {
-    // get title, permalink, and year
-    const {title, permalink, year} = file.getFileFromId(id)
-    const link = file.ensureAbsoluteLink(permalink)
-    return `- ${title}${year ? " (" + year + ")" : ""}\n ${link}`
-  }).join("\n")
+    const permalink = this.root.file.permalink.replace(".html", "")
+    return `HTML | TXT\n link ${permalink}.html HTML\n link ${permalink}.txt TXT`
   }
 abstractBuildCommandParser
  extends abstractScrollParser
@@ -863,6 +868,14 @@ codeParser
     return this.childrenToString()
   }
  cruxFromId
+codeWithHeaderParser
+ cruxFromId
+ catchAllCellType stringCell
+ extends codeParser
+ javascript
+  compile() {
+   return `<div class="codeWithHeader"><div class="codeHeader">${this.content}</div>${super.compile()}</div>`
+  }
 codeWithLanguageParser
  description Use this to specify the language of the code block, such as csvCode or rustCode.
  extends codeParser
@@ -1214,10 +1227,10 @@ abstractPostLoopParser
  extends abstractScrollParser
  cruxFromId
  cells commandWordCell
- catchAllCellType groupNameWithOptionalFolderCell
+ catchAllCellType tagWithOptionalFolderCell
  javascript
   get files() {
-   return this.root.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+   return this.root.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1))
   }
 printFeedParser
  description Print group to RSS.
@@ -1256,7 +1269,7 @@ printCsvParser
  javascript
   compile() {
    const file = this.root.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const files = file.getFilesWithTagsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
    const header = file.csvFields
    return `${header.join(",")}\n${files.map(file => file.toCsv()).join("\n")}`
   }
@@ -1269,7 +1282,7 @@ printSourceParser
  javascript
   compile() {
    const file = this.root.file
-   const files = file.getFilesInGroupsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const files = file.getFilesWithTagsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
    return `${files.map(file => file.filePath + "\n " + file.originalScrollCode.replace(/\n/g, "\n ") ).join("\n")}`
   }
 printSearchTableParser
@@ -1354,12 +1367,6 @@ siteOwnerEmailParser
  extends abstractTopLevelSingleMetaParser
  crux email
  cells metaCommandWordCell emailAddressCell
-groupsParser
- description Set groups.
- example
-  groups All
- extends abstractTopLevelSingleMetaParser
- catchAllCellType groupNameCell
 importOnlyParser
  // This line will be not be imported into the importing file.
  description Don't build this file.
@@ -1412,18 +1419,13 @@ permalinkParser
  description Override output filename.
  extends abstractTopLevelSingleMetaParser
  cells metaCommandWordCell permalinkCell
-relatedScrollFilesParser
- extends abstractTopLevelSingleMetaParser
- catchAllCellType permalinkCell
- boolean isPopular true
- crux related
- description Set related files.
+scrollTagsParser
+ crux tags
+ description Set tags.
  example
-  ...
-  That's all I have to say about hiking.
-  related fishing camping
-  # Related Posts
-  printRelatedList
+  tags All
+ extends abstractTopLevelSingleMetaParser
+ catchAllCellType tagCell
 pageTitleParser
  catchAllCellType personNameCell
  crux title
@@ -1517,6 +1519,7 @@ abstractThemeCssParser
   .scrollCaptionedFigure
    display block
    break-inside avoid
+   max-width 100%
    text-align center
    img
     max-width 100%
@@ -1538,6 +1541,19 @@ abstractThemeCssParser
    padding .5rem
    border-radius 0
    position relative
+  .codeWithHeader
+   break-inside avoid-column
+   margin 10px 0
+  .codeHeader
+   font-size 80%
+   text-align center
+   background rgba(224, 224, 224, 0.4)
+   border 1px solid rgba(204, 204, 204, 0.8)
+   border-bottom 0
+   margin-bottom -7px
+   padding 4px 2px
+   border-top-left-radius 3px
+   border-top-right-radius 3px
   .scrollCodeBlock:hover
    .scrollCopyButton
     opacity .5
@@ -2116,6 +2132,167 @@ tufteCssParser
            width: 100%;
       }
   }`
+heatrixParser
+ cruxFromId
+ catchAllParser heatrixCatchAllParser
+ extends abstractScrollParser
+ description A heatmap matrix data visualization.
+ example
+  heatrix
+   table
+     
+    %h10; @2007 @2008 @2009
+     12 4 323
+   scale
+    #ebedf0 0
+    #c7e9c0 100
+    #a1d99b 400
+    #74c476 1600
+ javascript
+  compile() {
+  class Heatrix {
+    static HeatrixId = 0
+    uid = Heatrix.HeatrixId++
+    constructor(program) {
+      const tree = new TreeNode(program)
+      this.program = tree
+      const table = tree.getNode("table").childrenToString()
+      const scale = tree.getNode("scale")?.childrenToString() || "transparent 1"
+      const thresholds = []
+      const colors = []
+      scale.split("\n").map((line) => {
+        const parts = line.split(" ")
+        thresholds.push(parseFloat(parts[1]))
+        colors.push(parts[0])
+      })
+      const colorCount = colors.length
+      const colorFunction = (value) => {
+        if (isNaN(value)) return "" // #ebedf0
+        for (let index = 0; index < colorCount; index++) {
+          const threshold = thresholds[index]
+          if (value <= threshold) return colors[index]
+        }
+        return colors[colorCount - 1]
+      }
+      const {globalStyles} = this
+      const directiveDelimiter = ";"
+      const getSize = (directives, prefix) =>
+        directives
+          .filter((directive) => directive.startsWith(prefix))
+          .map((dir) => dir.replace(prefix, "") + "px")[0] ?? ""
+      this.table = table.split("\n").map((line) =>
+        line
+          .trimEnd()
+          .split(" ")
+          .map((cell) => {
+            const words = cell.split(directiveDelimiter).filter((word) => !word.startsWith("%"))
+            const directives = cell
+              .split(directiveDelimiter)
+              .filter((word) => word.startsWith("%"))
+            const value = parseFloat(words[0])
+            let label = ""
+            if (words[0]) {
+              label = words.join(" ").replace(/^@/, "") // Temporary way to force a string.
+            }
+            const alignment = directives.includes("%right")
+              ? "right"
+              : directives.includes("%left")
+              ? "left"
+              : ""
+            const color = colorFunction(value)
+            const width = getSize(directives, "%w") || globalStyles.width
+            const height = getSize(directives, "%h") || globalStyles.height
+            const fontSize = getSize(directives, "%fs") || globalStyles["font-size"]
+            const lineHeight = getSize(directives, "%lh") || height
+            const style = {
+              "background-color": color,
+              width,
+              height,
+              "font-size": fontSize,
+              "line-height": lineHeight,
+              "text-align": alignment,
+            }
+            Object.keys(style).filter(key => !style[key]).forEach((key) => delete style[key])
+            return {
+              value,
+              label,
+              style,
+            }
+          })
+      )
+    }
+    get globalStyles() {
+     return this.program.getNode("style")?.asObject || {}
+    }
+    get html() {
+      const { program } = this
+      const cssId = `#heatrix${this.uid}`
+      const {globalStyles} = this
+      
+      const defaultWidth = globalStyles.width || "40px"
+      const defaultHeight = globalStyles.height || "40px"
+      const fontSize = globalStyles["font-size"] || "10px"
+      const lineHeight = globalStyles["line-height"] || defaultHeight
+      const style = `<style>
+      .heatrixContainer {
+        margin: auto;
+      }.heatrixRow {white-space: nowrap;}
+  ${cssId} .heatrixCell {
+    font-family: arial;
+    border-radius: 2px;
+    border: 1px solid transparent;
+    display: inline-block;
+    margin: 1px;
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .heatrixCell a {
+    color: black;
+  }
+  ${cssId} .heatrixCell{
+   width: ${defaultWidth};
+   height: ${defaultHeight};
+   font-size: ${fontSize};
+   line-height: ${lineHeight};
+  }
+  </style>`
+      const firstRow = this.table[0]
+      console.log(firstRow)
+      return (
+        `<div class="heatrixContainer" id="heatrix${this.uid}">${style}` +
+        this.table
+          .map((row, rowIndex) => {
+            if (!rowIndex) return ""
+            const rowStyle = row[0].style
+            return `<div class="heatrixRow heatrixRow${rowIndex}">${row
+              .map((cell, columnIndex) => {
+                if (!columnIndex) return ""
+                const columnStyle = firstRow[columnIndex]?.style || {}
+                let { value, label, style } = cell
+                if (label === "0") label = "~"
+                const extendedStyle = Object.assign(
+                  {},
+                  rowStyle,
+                  columnStyle,
+                  style
+                )
+                const inlineStyle = Object.keys(extendedStyle)
+                  .map((key) => `${key}:${extendedStyle[key]};`)
+                  .join("")
+                let valueClass = value ? " valueCell" : ""
+                return `<div class="heatrixCell heatrixColumn${columnIndex}${valueClass}" style="${inlineStyle}"><span title="${label}">${label}</span></div>`
+              })
+              .join("")}</div>`
+          })
+          .join("\n") +
+        "</div>"
+      ).replace(/\n/g, "")
+    }
+  }
+    return new Heatrix(this.childrenToString().trim()).html
+  }
 abstractHtmlParser
  extends abstractScrollParser
  catchAllParser htmlLineParser
@@ -2169,9 +2346,13 @@ abstractCaptionedParser
   compile(compileSettings) {
    const caption = this.getNode("caption")
    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
-   const width = this.has("width") ? `width:${this.get("width")}px; margin: auto;` : ""
+   const {figureWidth} = this
+   const widthStyle = figureWidth ? `width:${figureWidth}px; margin: auto;` : ""
    const float = this.has("float") ? `margin: 20px; float: ${this.get("float")};` : ""
-   return `<figure class="scrollCaptionedFigure" style="${width + float}">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
+   return `<figure class="scrollCaptionedFigure" style="${widthStyle + float}">${this.getFigureContent(compileSettings)}${captionFig}</figure>`
+  }
+  get figureWidth() {
+    return this.get("width")
   }
 imageParser
  description An img tag.
@@ -2195,15 +2376,21 @@ imageParser
     // to avoid flicker
    if (src.startsWith("http:") || src.startsWith("https:")) return {}
    const file = this.root.file
+    if (this._dimensions)
+      return this._dimensions
     try {
      const sizeOf = require("image-size")
      const path = require("path")
      const fullImagePath = path.join(file.folderPath, src)
-     return sizeOf(fullImagePath)
+     this._dimensions = sizeOf(fullImagePath)
+     return this._dimensions
     } catch (err) {
      console.error(err)
     }
     return {}
+  }
+  get figureWidth() {
+    return this.dimensions.width
   }
   getFigureContent(compileSettings) {
    const file = this.root.file
@@ -2303,24 +2490,39 @@ printLeetSheetParser
     clone.setChildren(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
     return clone
   }
-  get parserDocs() {
-    return this.parsersToDocument.map(node => {
+  sortDocs(docs) {
+    return docs.map(node => {
       const {definition} = node
       const {id, description, isPopular} = definition
       return {id: definition.cruxIfAny || id, description, isPopular}
      }).sort((a, b) => a.id.localeCompare(b.id))
   }
-  compile() {
+  docToHtml(doc) {
    const css = `#scrollLeetSheet {color: grey;} #scrollLeetSheet a {color: #3498db; }`
-   return `<style>${css}</style><div id="scrollLeetSheet">` + this.parserDocs.map(obj => `<div><a>${obj.isPopular ? "<b>" : ""}${obj.id}</a> ${obj.description}${obj.isPopular ? "</b>" : ""}</div>`).join("\n") + "</div>"
+   return `<style>${css}</style><div id="scrollLeetSheet">` + doc.map(obj => `<div><a>${obj.isPopular ? "<b>" : ""}${obj.id}</a> ${obj.description}${obj.isPopular ? "</b>" : ""}</div>`).join("\n") + "</div>"
+  }
+  compile() {
+    return this.docToHtml(this.sortDocs(this.parsersToDocument))
   }
   compileTxt() {
-   return this.parserDocs.map(obj => `${obj.id} - ${obj.description}`).join("\n")
+   return this.sortDocs(this.parsersToDocument).map(obj => `${obj.id} - ${obj.description}`).join("\n")
   }
 printAdvancedLeetSheetParser
  extends printLeetSheetParser
  description Print Parsers leet sheet.
  javascript
+  compile() {
+    return "<p><b>Line Parsers</b> match lines and parse them.</p><br>" + this.docToHtml(this.sortDocs(this.parsersToDocument)) + "<p><b>Cell Parsers</b> parse words in a line.</p><br>" + this.docToHtml(this.sortDocs(this.cellParsersToDocument))
+  }
+  get cellParsersToDocument() {
+    const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
+    const clone = new parsersParser("anyCell\n ").clone()
+    const parserNode = clone.getNode("anyCell")
+    const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
+    words.sort()
+    parserNode.setChildren(words.join("\n"))
+    return parserNode
+  }
   get parsersToDocument() {
     const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
     const clone = new parsersParser("latinParser\n ").clone()
@@ -2992,6 +3194,12 @@ underlineParser
  extends abstractMarkupParser
  javascript
   tag = "u"
+afterTextCenterParser
+ description Center paragraph.
+ crux center
+ extends abstractMarkupParser
+ javascript
+  tag = "center"
 aftertextCodeParser
  description Wrap matching text in code span.
  crux code
@@ -3073,7 +3281,7 @@ linkParser
  javascript
   tag = "a"
   compileTxt() {
-    return this.root.file.ensureAbsoluteLink(this.link)
+    return this.root.file.ensureAbsoluteLink(this.link) + " " + this.pattern
   }
   get link() {
    const {baseLink} = this
@@ -3273,6 +3481,9 @@ cssLineParser
  catchAllParser cssLineParser
 errorParser
  baseParser errorParser
+heatrixCatchAllParser
+ // todo Fill this out
+ catchAllCellType anyCell
 lineOfTextParser
  catchAllCellType stringCell
  boolean isTextParser true
@@ -3318,14 +3529,14 @@ loopWordsParser
   get items() {
    return this.getWordsFrom(1)
   }
-loopGroupsParser
- crux groups
+loopTagsParser
+ crux tags
  extends abstractItemsProviderParser
- catchAllCellType groupNameWithOptionalFolderCell
- description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[groupName]
+ catchAllCellType tagWithOptionalFolderCell
+ description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[tag]
  javascript
   get items() {
-   return this.root.file.getFilesInGroupsForEmbedding(this.getWordsFrom(1))
+   return this.root.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1))
   }
 abstractPointConfigParser
  // todo: scoped parsers should support abstract types
