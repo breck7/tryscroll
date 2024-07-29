@@ -273,6 +273,11 @@ catchAllParagraphParser
  boolean isPopular true
  cells stringCell
  javascript
+  getErrors() {
+    const errors = super.getErrors() || []
+    return this.parent.has("testStrict") ? errors.concat({toObject: () => {return { message: `catchAllParagraphParser should not have any matches when testing with testStrict.`}}}
+    ) : errors
+  }
   get originalText() {
    return this.getLine() || ""
   }
@@ -1426,6 +1431,9 @@ scrollTagsParser
   tags All
  extends abstractTopLevelSingleMetaParser
  catchAllCellType tagCell
+testStrictParser
+ description Make catchAllParagraphParser = error.
+ extends abstractTopLevelSingleMetaParser
 pageTitleParser
  catchAllCellType personNameCell
  crux title
