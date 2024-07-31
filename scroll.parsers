@@ -275,8 +275,7 @@ catchAllParagraphParser
  javascript
   getErrors() {
     const errors = super.getErrors() || []
-    return this.parent.has("testStrict") ? errors.concat({toObject: () => {return { message: `catchAllParagraphParser should not have any matches when testing with testStrict.`}}}
-    ) : errors
+    return this.parent.has("testStrict") ? errors.concat(this.makeError(`catchAllParagraphParser should not have any matches when testing with testStrict.`)) : errors
   }
   get originalText() {
    return this.getLine() || ""
@@ -692,6 +691,28 @@ printRelatedParser
     const html = node.compile()
     node.destroy()
     return html
+  }
+printSourceStackParser
+ // useful for debugging
+ description Print source from each step of compilation.
+ extends abstractAftertextParser
+ cruxFromId
+ example
+  printOriginalSource
+ javascript
+  get sources() {
+    const {file} = this.root
+    const passNames = ["codeAtStart", "codeAfterImportPass", "codeAfterMacroPass"]
+    return passNames.map(name => { return {
+      name,
+      code: file[name]
+    }})
+  }
+  compile() {
+   return `<code class="scrollCodeBlock">${this.compileTxt().replace(/\</g, "&lt;")}</code>`
+  }
+  compileTxt() {
+   return this.sources.map((pass, index) => `Pass ${index + 1} - ${pass.name}\n========\n${pass.code}`).join("\n\n\n")
   }
 printViewSourceParser
  description Print "View source" link.
@@ -1288,7 +1309,7 @@ printSourceParser
   compile() {
    const file = this.root.file
    const files = file.getFilesWithTagsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
-   return `${files.map(file => file.filePath + "\n " + file.originalScrollCode.replace(/\n/g, "\n ") ).join("\n")}`
+   return `${files.map(file => file.filePath + "\n " + file.codeAtStart.replace(/\n/g, "\n ") ).join("\n")}`
   }
 printSearchTableParser
  description Prints files to HTML table.
@@ -2640,9 +2661,9 @@ abstractIdParser
       requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.firstWord)
       next = next.next
     }
-    requiredMeasureNames.forEach(name => {
-      errors.push({toObject: () => {return { message: `Concept "${this.content}" is missing required measure "${name}".`}}})
-    })
+    requiredMeasureNames.forEach(name =>
+      errors.push(this.makeError(`Concept "${this.content}" is missing required measure "${name}".`))
+    )
     return errors
   }
 abstractNumericMeasureParser
@@ -2852,19 +2873,6 @@ quoteParser
   }
   compileTxt() {
     return this.childrenToString()
-  }
-readingListParser
- extends abstractScrollParser
- description Link list with titles and authors.
- cells commandWordCell
- cruxFromId
- catchAllParser readingListItemParser
- example
-  readingList
-   https://example.com/similar by Author Name
- javascript
-  compile() {
-   return `<br><ul>${this.map(child => child.compile()).join("\n")}</ul>`
   }
 redirectToParser
  description HTML redirect tag.
@@ -3164,7 +3172,7 @@ abstractAftertextDirectiveParser
     // todo: make AbstractTreeError class exported by sdk to allow Parsers to define their own error types.
     // todo: also need to be able to map lines back to their line in source (pre-imports)
     if (!inserts.length)
-      errors.push({toObject: () => {return { message: `No match found for "${this.getLine()}".`}}})
+     errors.push(this.makeError(`No match found for "${this.getLine()}".`))
     return errors
   }
   get pattern() {
@@ -3600,15 +3608,6 @@ longParser
 quoteLineParser
  catchAllCellType anyCell
  catchAllParser quoteLineParser
-readingListItemParser
- cells urlCell
- catchAllCellType stringCell
- javascript
-  compile() {
-   const url = this.firstWord
-   const [title, author] = this.content.split(" by ")
-   return `<li><a href="${url}">${title ?? url}</a>${author ? ` by ${author}` : ""}</li>`
-  }
 scrollParser
  extensions scroll
  description Scroll is a language for scientists of all ages. Refine, share and collaborate on ideas.

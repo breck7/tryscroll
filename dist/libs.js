@@ -13514,7 +13514,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "80.2.0"
+TreeNode.getVersion = () => "80.3.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13737,6 +13737,9 @@ class ParserBackedNode extends TreeNode {
   }
   getAutocompleteResults(partialWord, cellIndex) {
     return cellIndex === 0 ? this._getAutocompleteResultsForFirstWord(partialWord) : this._getAutocompleteResultsForCell(partialWord, cellIndex)
+  }
+  makeError(message) {
+    return new ParserDefinedError(this, message)
   }
   get nodeIndex() {
     // StringMap<int> {firstWord: index}
@@ -14632,6 +14635,16 @@ class UnknownParserError extends AbstractTreeError {
     const suggestion = this.wordSuggestion
     if (suggestion) this.getNode().setWord(this.cellIndex, suggestion)
     return this
+  }
+}
+class ParserDefinedError extends AbstractTreeError {
+  constructor(node, message) {
+    super()
+    this._node = node
+    this._message = message
+  }
+  get message() {
+    return this._message
   }
 }
 class BlankLineError extends UnknownParserError {
