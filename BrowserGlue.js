@@ -31,11 +31,14 @@ aboveAsCode
 - Designed to last.
 
 # Scroll supports tables
-printTable
-Language	NodeTypes
-HTML	~142
-Markdown	~192
-Scroll	~174 + yours
+table
+ printTable
+ delimiter ,
+ data
+  Language,NodeTypes
+  HTML,~142
+  Markdown,~192
+  Scroll,~174 + yours
 
 # Images in Scroll
 image https://scroll.pub/blog/screenshot.png
@@ -54,47 +57,47 @@ gazetteCss
 `
 
 class BrowserGlue extends AbstractTreeComponentParser {
-	async fetchAndLoadScrollCodeFromUrlCommand(url) {
-		const code = await this.fetchText(url)
-		return code
-	}
+  async fetchAndLoadScrollCodeFromUrlCommand(url) {
+    const code = await this.fetchText(url)
+    return code
+  }
 
-	async fetchText(url) {
-		const result = await fetch(url)
-		const text = await result.text()
-		return text
-	}
+  async fetchText(url) {
+    const result = await fetch(url)
+    const text = await result.text()
+    return text
+  }
 
-	getFromLocalStorage() {
-		return localStorage.getItem(LocalStorageKeys.scroll)
-	}
+  getFromLocalStorage() {
+    return localStorage.getItem(LocalStorageKeys.scroll)
+  }
 
-	async fetchCode() {
-		const hash = this.willowBrowser.getHash().substr(1)
-		const deepLink = new TreeNode(decodeURIComponent(hash))
-		const fromUrl = deepLink.get(UrlKeys.url)
-		const code = deepLink.getNode(UrlKeys.scroll)
+  async fetchCode() {
+    const hash = this.willowBrowser.getHash().substr(1)
+    const deepLink = new TreeNode(decodeURIComponent(hash))
+    const fromUrl = deepLink.get(UrlKeys.url)
+    const code = deepLink.getNode(UrlKeys.scroll)
 
-		// Clear hash
-		history.pushState("", document.title, window.location.pathname)
+    // Clear hash
+    history.pushState("", document.title, window.location.pathname)
 
-		if (fromUrl) return this.fetchAndLoadScrollCodeFromUrlCommand(fromUrl)
-		if (code) return code.childrenToString()
+    if (fromUrl) return this.fetchAndLoadScrollCodeFromUrlCommand(fromUrl)
+    if (code) return code.childrenToString()
 
-		const localStorageCode = this.getFromLocalStorage()
-		if (localStorageCode) return localStorageCode
+    const localStorageCode = this.getFromLocalStorage()
+    if (localStorageCode) return localStorageCode
 
-		return DEFAULT_PROGRAM
-	}
+    return DEFAULT_PROGRAM
+  }
 
-	async init(parsersCode) {
-		window.scrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
-		const scrollCode = await this.fetchCode()
+  async init(parsersCode) {
+    window.scrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
+    const scrollCode = await this.fetchCode()
 
-		window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)
-		window.app.start()
-		return window.app
-	}
+    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)
+    window.app.start()
+    return window.app
+  }
 }
 
 module.exports = { BrowserGlue }

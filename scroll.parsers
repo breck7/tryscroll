@@ -15,6 +15,8 @@ wordCell
  highlightScope string
  description A non-empty single word string.
  regex .+
+columnNameCell
+ extends stringCell
 semanticVersionCell
  highlightScope string
  description A 3 part sem version string like 1.2.1
@@ -53,6 +55,9 @@ codeCell
 bulletPointCell
  description Any token used as a bullet point such as "-" or "1." or ">"
  highlightScope keyword
+comparisonCell
+ enum < > <= >= = != includes doesNotInclude empty notEmpty
+ highlightScope constant
 personNameCell
  extends stringCell
 urlCell
@@ -436,13 +441,15 @@ abstractHeaderParser
  javascript
   compile(compileSettings) {
    if (this.isHidden) return ""
-   this.parent.sectionStack.push("</div>")
+   if (this.parent.sectionStack)
+    this.parent.sectionStack.push("</div>")
    return `<div class="scrollSection">` + super.compile(compileSettings)
   }
   compileTxt() {
     const line = super.compileTxt()
     return line + "\n" + "=".repeat(line.length)
   }
+  isHeader = true
 h1Parser
  description An html h1 tag.
  extends abstractHeaderParser
@@ -469,7 +476,7 @@ h4Parser
  crux ####
  javascript
   tag = "h4"
-questionAftertextParser
+scrollQuestionParser
  description A question.
  extends h4Parser
  crux ?
@@ -959,93 +966,214 @@ copyButtonsParser
    }
   ))
   </script>
-katexParser
+abstractTableVisualizationParser
  extends abstractScrollWithRequirementsParser
- catchAllCellType codeCell
- catchAllParser lineOfCodeParser
- description KaTex widget for typeset math.
- string copyFromExternal katex.min.css katex.min.js
- string requireOnce
-  <link rel="stylesheet" href="katex.min.css">
-  <script defer src="katex.min.js"></script>
-  <script>
-  document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollKatex").forEach(el =>
-   {
-    katex.render(el.innerText, el, {
-        throwOnError: false
-    });
-   }
-  ))
-  </script>
+ boolean isTableVisualization true
+heatrixParser
+ cruxFromId
+ example
+  heatrix
+   '2007 '2008 '2009 '2010 '2011 '2012 '2013 '2014 '2015 '2016 '2017 '2018 '2019 '2020 '2021 '2022 '2023 '2024
+   4 11 23 37 3 14 12 0 0 0 5 1 2 11 15 10 12 56
+ description A heatmap matrix data visualization.
+ catchAllParser heatrixCatchAllParser
+ extends abstractTableVisualizationParser
  javascript
-  compileInstance() {
-   const id = this._getUid()
-   const content = this.content === undefined ? "" : this.content
-   return `<div class="scrollKatex" id="${id}">${content + this.childrenToString()}</div>`
+  compile() {
+   // A hacky but simple way to do this for now.
+   const advanced = new TreeNode("heatrixAdvanced")
+   advanced.appendLineAndChildren("table", "\n " + this.tableData.replace(/\n/g, "\n "))
+   const node = this.appendSibling("heatrixAdvanced", advanced.childrenToString())
+   const html = node.compile()
+   node.destroy()
+   return html
   }
-  compileTxt() {
-    return ( this.content ? this.content : "" )+ this.childrenToString()
+  get tableData() {
+    const {coreTable} = this.parent
+    return coreTable ? new TreeNode(coreTable).asSsv : this.childrenToString()
   }
-mapParser
- inScope latParser longParser
- zoomParser
-  cells commandWordCell integerCell
-  cruxFromId
-  single
- heightParser
-  cells commandWordCell floatCell
-  cruxFromId
-  single
- pointParser
-  cells commandWordCell
-  inScope latParser longParser
-  cruxFromId
-  titleParser
-   extends abstractPointConfigParser
-  descriptionParser
-   extends abstractPointConfigParser
- extends abstractScrollWithRequirementsParser
- description Map widget.
- string copyFromExternal leaflet.css leaflet.js
- string requireOnce
-  <link rel="stylesheet" href="leaflet.css">
-  <script src="leaflet.js"></script>
+heatrixAdvancedParser
+ cruxFromId
+ catchAllParser heatrixCatchAllParser
+ extends abstractTableVisualizationParser
+ description Advanced heatrix.
+ example
+  heatrix
+   table
+     
+    %h10; '2007 '2008 '2009
+     12 4 323
+   scale
+    #ebedf0 0
+    #c7e9c0 100
+    #a1d99b 400
+    #74c476 1600
  javascript
-  compileInstance() {
-   const height = 500
-   const id = this._getUid()
-   return `<div id="map${id}" style="height: ${height}px;"></div>
-  <script>
-   {
-    const lat = ${this.get("lat") ?? 37.8}
-    const long = ${this.get("long") ?? 4}
-    const zoomLevel = ${this.get("zoom") ?? 4}
-    const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
-    const map = L.map("map${id}").setView([lat, long], zoomLevel)
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-     attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-     maxZoom: 18
-    }).addTo(map)
-    points.forEach(point => {
-     L.marker([point.lat, point.long])
-      .addTo(map)
-      .bindPopup("<b>" +point.title + "</b><br />" + point.description)
-    })
-   }
-  </script>`
+  compile() {
+  class Heatrix {
+    static HeatrixId = 0
+    uid = Heatrix.HeatrixId++
+    constructor(program) {
+      const isDirective = word => /^(f|l|w|h)\d+$/.test(word) || word === "right" || word === "left" || word.startsWith("http://") || word.startsWith("https://") || word.endsWith(".html")
+      const tree = new TreeNode(program)
+      this.program = tree
+      const generateColorBinningString = (data, colors) => {
+       const sortedData = [...data].sort((a, b) => a - b);
+       const n = sortedData.length;
+       const numBins = colors.length;
+       // Calculate the indices for each quantile
+       const indices = [];
+       for (let i = 1; i < numBins; i++) {
+         indices.push(Math.floor((i / numBins) * n));
+       }
+       // Get the quantile values and round them
+       const thresholds = indices.map(index => Math.round(sortedData[index]));
+       // Generate the string
+       let result = '';
+       colors.forEach((color, index) => {
+         const threshold = index === colors.length - 1 ? thresholds[index - 1] * 2 : thresholds[index];
+         result += `${color} ${threshold}\n`;
+       });
+       return result.trim();
+      }
+      const buildScale = (table) => {
+        const numbers = table.split("\n").map(line => line.split(" ")).flat().filter(word => !isDirective(word)).map(word => parseFloat(word)).filter(number => !isNaN(number))
+        const colors = ['#ebedf0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
+        numbers.unshift(0)
+        return generateColorBinningString(numbers, colors);
+      }
+      const table = tree.getNode("table").childrenToString()
+      const scale = tree.getNode("scale")?.childrenToString() || buildScale(table)
+      const thresholds = []
+      const colors = []
+      scale.split("\n").map((line) => {
+        const parts = line.split(" ")
+        thresholds.push(parseFloat(parts[1]))
+        colors.push(parts[0])
+      })
+      const colorCount = colors.length
+      const colorFunction = (value) => {
+        if (isNaN(value)) return "" // #ebedf0
+        for (let index = 0; index < colorCount; index++) {
+          const threshold = thresholds[index]
+          if (value <= threshold) return colors[index]
+        }
+        return colors[colorCount - 1]
+      }
+      const directiveDelimiter = ";"
+      const getSize = (directives, letter) =>
+        directives
+          .filter((directive) => directive.startsWith(letter))
+          .map((dir) => dir.replace(letter, "") + "px")[0] ?? ""
+      this.table = table.split("\n").map((line) =>
+        line
+          .trimEnd()
+          .split(" ")
+          .map((cell) => {
+            const words = cell.split(directiveDelimiter).filter((word) => !isDirective(word)).join("")
+            const directivesInThisCell = cell
+              .split(directiveDelimiter)
+              .filter(isDirective)
+            const value = parseFloat(words)
+            const label = words.includes("'") ? words.split("'")[1] : words
+            const alignment = directivesInThisCell.includes("right")
+              ? "right"
+              : directivesInThisCell.includes("left")
+              ? "left"
+              : ""
+            const color = colorFunction(value)
+            const width = getSize(directivesInThisCell, "w")
+            const height = getSize(directivesInThisCell, "h")
+            const fontSize = getSize(directivesInThisCell, "f")
+            const lineHeight = getSize(directivesInThisCell, "l") || height
+            const link = directivesInThisCell.filter(i => i.startsWith("http") || i.endsWith(".html"))[0]
+            const style = {
+              "background-color": color,
+              width,
+              height,
+              "font-size": fontSize,
+              "line-height": lineHeight,
+              "text-align": alignment,
+            }
+            Object.keys(style).filter(key => !style[key]).forEach((key) => delete style[key])
+            return {
+              value,
+              label,
+              style,
+              link,
+            }
+          })
+      )
+    }
+    get html() {
+      const { program } = this
+      const cssId = `#heatrix${this.uid}`
+      const defaultWidth = "40px"
+      const defaultHeight = "40px"
+      const fontSize = "10px"
+      const lineHeight = defaultHeight
+      const style = `<style>
+      .heatrixContainer {
+        margin: auto;
+      }.heatrixRow {white-space: nowrap;}
+  ${cssId} .heatrixCell {
+    font-family: arial;
+    border-radius: 2px;
+    border: 1px solid transparent;
+    display: inline-block;
+    margin: 1px;
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-helpfulNotFoundParser
- extends abstractScrollWithRequirementsParser
- catchAllCellType filePathCell
- string copyFromExternal helpfulNotFound.js
- description Helpful not found widget.
- javascript
-  compileInstance() {
-   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1><script defer src="/helpfulNotFound.js"></script><script>document.addEventListener("DOMContentLoaded", () => new NotFoundApp('${this.content}'))</script>`
+  .heatrixCell a {
+    color: black;
+  }
+  ${cssId} .heatrixCell{
+   width: ${defaultWidth};
+   height: ${defaultHeight};
+   font-size: ${fontSize};
+   line-height: ${lineHeight};
+  }
+  </style>`
+      const firstRow = this.table[0]
+      return (
+        `<div class="heatrixContainer" id="heatrix${this.uid}">${style}` +
+        this.table
+          .map((row, rowIndex) => {
+            if (!rowIndex) return ""
+            const rowStyle = row[0].style
+            return `<div class="heatrixRow heatrixRow${rowIndex}">${row
+              .map((cell, columnIndex) => {
+                if (!columnIndex) return ""
+                const columnStyle = firstRow[columnIndex]?.style || {}
+                let { value, label, style, link } = cell
+                const extendedStyle = Object.assign(
+                  {},
+                  rowStyle,
+                  columnStyle,
+                  style
+                )
+                const inlineStyle = Object.keys(extendedStyle)
+                  .map((key) => `${key}:${extendedStyle[key]};`)
+                  .join("")
+                let valueClass = value ? " valueCell" : ""
+                const href = link ? ` href="${link}"` : ""
+                return `<div class="heatrixCell heatrixColumn${columnIndex}${valueClass}" style="${inlineStyle}"><a title="${label}" ${href}>${label}</a></div>`
+              })
+              .join("")}</div>`
+          })
+          .join("\n") +
+        "</div>"
+      ).replace(/\n/g, "")
+    }
+  }
+    return new Heatrix(this.childrenToString().trim()).html
   }
 abstractPlotParser
  // Observablehq
- extends abstractScrollWithRequirementsParser
+ extends abstractTableVisualizationParser
  string iris
   sepal_length,sepal_width,petal_length,petal_width,species
   6.1,3,4.9,1.8,virginica
@@ -1133,6 +1261,178 @@ scatterplotParser
       tip: true,
       symbol: get("${this.get("symbol")}")} ), Plot.text(data, {x: get("${x}",0), y: get("${y}", 1), text: "${text}", dy: -6, lineAnchor: "bottom"})`
   }
+sparklineParser
+ description Sparkline widget.
+ extends abstractTableVisualizationParser
+ example
+  sparkline 1 2 3 4 5
+ string copyFromExternal sparkline.js
+ string requireOnce <script src="sparkline.js"></script>
+ catchAllCellType stringCell
+ // todo: need pattern matching here in Parsers
+ javascript
+  compileInstance() {
+   const id = "spark" + this._getUid()
+   const {columnValues} = this
+   const start = this.has("start") ? parseInt(this.get("start")) : 0
+   const width = this.get("width") || 100
+   const height = this.get("height") || 30
+   const lineColor = this.get("color") || "black"
+   return `<span id="${id}"></span><script>new Sparkline(document.getElementById("${id}"), {dotRadius: 0, width: ${width}, height: ${height}, lineColor: "${lineColor}", tooltip: (value,index) => ${start} + index + ": " + value}).draw(${JSON.stringify(columnValues)})</script>`
+  }
+  get columnValues() {
+    const {coreTable} = this.parent
+    if (coreTable) {
+      const columnName = this.content || Object.keys(coreTable[0]).find(key => typeof coreTable[0][key] === 'number')
+      return coreTable.map(row => row[columnName])
+    }
+    return this.content.split(" ").map(str => parseFloat(str))
+  }
+printTableParser
+ cruxFromId
+ extends abstractTableVisualizationParser
+ javascript
+  get tableHeader() {
+   return this.columns.filter(col => !col.isLink).map(column => `<th>${column.name}</th>\n`)
+  }
+  get columnNames() {
+   return this.parent.columns
+  }
+  get columns() {
+   const cols = this.columnNames
+   return cols.map((name, index) => {
+    const isLink = name.endsWith("Link")
+    const linkIndex = cols.indexOf(name + "Link")
+    return {
+     name,
+     isLink,
+     linkIndex
+    }
+   })
+  }
+  toRow(row) {
+    const {columns} = this
+    const words = Object.values(row)
+   let str = ""
+   let column = 0
+   const columnCount = columns.length
+   while (column < columnCount) {
+    const col = columns[column]
+    column++
+    const content = ((columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]) ?? "").toString()
+    if (col.isLink) continue
+    let tagged = content
+    const link = words[col.linkIndex]
+    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
+    else if (content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
+    str += `<td>${tagged}</td>\n`
+   }
+   return str
+  }
+  get tableBody() {
+   return this.parent.coreTable
+    .map(row => `<tr>${this.toRow(row)}</tr>`)
+    .join("\n")
+  }
+  compile() {
+   return `<table id="table${this._getUid()}" class="scrollTable">
+   <thead><tr>${this.tableHeader.join("\n")}</tr></thead>
+   <tbody>${this.tableBody}</tbody>
+   </table>
+   <script>
+   document.querySelector('#table${this._getUid()}').addEventListener('click', e => {
+    if (window.getSelection().toString() || e.target.closest('a') || !e.target.closest('tbody')) return;
+    e.currentTarget.classList.toggle('expandedTable');
+   });
+   </script>`
+  }
+  compileTxt() {
+    return this.parent.delimitedData || new TreeNode(this.parent.coreTable).asCsv
+  }
+katexParser
+ extends abstractScrollWithRequirementsParser
+ catchAllCellType codeCell
+ catchAllParser lineOfCodeParser
+ description KaTex widget for typeset math.
+ string copyFromExternal katex.min.css katex.min.js
+ string requireOnce
+  <link rel="stylesheet" href="katex.min.css">
+  <script defer src="katex.min.js"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollKatex").forEach(el =>
+   {
+    katex.render(el.innerText, el, {
+        throwOnError: false
+    });
+   }
+  ))
+  </script>
+ javascript
+  compileInstance() {
+   const id = this._getUid()
+   const content = this.content === undefined ? "" : this.content
+   return `<div class="scrollKatex" id="${id}">${content + this.childrenToString()}</div>`
+  }
+  compileTxt() {
+    return ( this.content ? this.content : "" )+ this.childrenToString()
+  }
+mapParser
+ inScope latParser longParser
+ zoomParser
+  cells commandWordCell integerCell
+  cruxFromId
+  single
+ heightParser
+  cells commandWordCell floatCell
+  cruxFromId
+  single
+ pointParser
+  cells commandWordCell
+  inScope latParser longParser
+  cruxFromId
+  titleParser
+   extends abstractPointConfigParser
+  descriptionParser
+   extends abstractPointConfigParser
+ extends abstractScrollWithRequirementsParser
+ description Map widget.
+ string copyFromExternal leaflet.css leaflet.js
+ string requireOnce
+  <link rel="stylesheet" href="leaflet.css">
+  <script src="leaflet.js"></script>
+ javascript
+  compileInstance() {
+   const height = 500
+   const id = this._getUid()
+   return `<div id="map${id}" style="height: ${height}px;"></div>
+  <script>
+   {
+    const lat = ${this.get("lat") ?? 37.8}
+    const long = ${this.get("long") ?? 4}
+    const zoomLevel = ${this.get("zoom") ?? 4}
+    const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
+    const map = L.map("map${id}").setView([lat, long], zoomLevel)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+     attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+     maxZoom: 18
+    }).addTo(map)
+    points.forEach(point => {
+     L.marker([point.lat, point.long])
+      .addTo(map)
+      .bindPopup("<b>" +point.title + "</b><br />" + point.description)
+    })
+   }
+  </script>`
+  }
+helpfulNotFoundParser
+ extends abstractScrollWithRequirementsParser
+ catchAllCellType filePathCell
+ string copyFromExternal helpfulNotFound.js
+ description Helpful not found widget.
+ javascript
+  compileInstance() {
+   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1><script defer src="/helpfulNotFound.js"></script><script>document.addEventListener("DOMContentLoaded", () => new NotFoundApp('${this.content}'))</script>`
+  }
 slideshowParser
  // Left and right arrows navigate.
  description Slideshow widget. *** delimits slides.
@@ -1149,24 +1449,6 @@ slideshowParser
  javascript
   compile() {
    return `<style>html {font-size: var(--base-font-size, 28px);} body {margin: auto; width: 500px;}.slideshowNav{text-align: center; margin-bottom:20px; font-size: 14px;} a{text-decoration: none;</style><script defer src="jquery-3.7.1.min.js"></script><div class="slideshowNav"></div><script defer src="slideshow.js"></script>`
-  }
-sparklineParser
- description Sparkline widget.
- extends abstractScrollWithRequirementsParser
- example
-  sparkline 1 2 3 4 5
- string copyFromExternal sparkline.js
- string requireOnce <script src="sparkline.js"></script>
- catchAllCellType numberCell
- javascript
-  compileInstance() {
-   const id = "spark" + this._getUid()
-   const data = this.content.split(" ").map(str => parseFloat(str))
-   const start = this.has("start") ? parseInt(this.get("start")) : 0
-   const width = this.get("width") || 100
-   const height = this.get("height") || 30
-   const lineColor = this.get("color") || "black"
-   return `<span id="${id}"></span><script>new Sparkline(document.getElementById("${id}"), {dotRadius: 0, width: ${width}, height: ${height}, lineColor: "${lineColor}", tooltip: (value,index) => ${start} + index + ": " + value}).draw(${JSON.stringify(data)})</script>`
   }
 tableSearchParser
  extends abstractScrollWithRequirementsParser
@@ -1210,40 +1492,6 @@ thanksToParser
  description Acknowledge reviewers. Prints nothing.
  extends abstractCommentParser
  cruxFromId
-tabularDataParser
- description Root lines with tabs are parsed as tsv data and printed as tables.
- pattern \t
- extends abstractCommentParser
- javascript
-  compileTxt() {
-    return ""
-  }
-  get headerNode() {
-    return this.isFirst ? this : this.previous.headerNode
-  }
-  compile() {
-    return ""
-  }
-  get isFirst() {
-    return !this.previous.isTabularData
-  }
-  get lastNode() {
-    if (this.next.isTabularData && this.next.lineNumber)
-      return this.next.lastNode
-    return this
-  }
-  applyAftertext(aftertext) {
-    const node = this.parent.appendLineAndChildren("* " + this.getLine(), aftertext + "\ntag none")
-    const html = node.compile()
-    node.destroy()
-    return html
-  }
-  isTabularData = true
- example
-  // The below lines will print a table
-  printTable
-  Index Name
-  1 Thermos
 printConceptsParser
  description Print concepts to HTML table.
  cruxFromId
@@ -1251,7 +1499,10 @@ printConceptsParser
  javascript
    compile() {
    // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table \t", this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
+   const node = this.appendSibling("table")
+    node.appendLine("delimiter \t")
+    node.appendLine("printTable")
+    node.setChildren(this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
    const html = node.compile()
    node.destroy()
    return html
@@ -1347,7 +1598,10 @@ printSearchTableParser
    const files = this.files
    const data = files.map(file => file.file.toSearchTsvRow(file.relativePath)).join("\n")
    // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table \t", "title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
+     const node = this.appendSibling("table")
+    node.appendLine("delimiter \t")
+    node.appendLine("printTable")
+    node.setChildren("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
    const html = node.compile()
    node.destroy()
    return html
@@ -1367,10 +1621,10 @@ printSiteMapParser
   compileTxt() {
     return this.compile()
   }
-dashboardParser
+scrollDashboardParser
  description Key stats in large font.
- catchAllParser rowParser
- cruxFromId
+ catchAllParser lineOfCodeParser
+ crux dashboard
  extends abstractScrollParser
  example
   dashboard
@@ -2195,204 +2449,6 @@ tufteCssParser
            width: 100%;
       }
   }`
-heatrixParser
- cruxFromId
- example
-  heatrix
-   '2007 '2008 '2009 '2010 '2011 '2012 '2013 '2014 '2015 '2016 '2017 '2018 '2019 '2020 '2021 '2022 '2023 '2024
-   4 11 23 37 3 14 12 0 0 0 5 1 2 11 15 10 12 56
- description A heatmap matrix data visualization.
- catchAllParser heatrixCatchAllParser
- extends abstractScrollParser
- javascript
-  compile() {
-   // A hacky but simple way to do this for now.
-   const advanced = new TreeNode("heatrixAdvanced")
-   advanced.appendLineAndChildren("table", "\n " + this.childrenToString().replace(/\n/g, "\n "))
-   const node = this.appendSibling("heatrixAdvanced", advanced.childrenToString())
-   const html = node.compile()
-   node.destroy()
-   return html
-  }
-heatrixAdvancedParser
- cruxFromId
- catchAllParser heatrixCatchAllParser
- extends abstractScrollParser
- description Advanced heatrix.
- example
-  heatrix
-   table
-     
-    %h10; '2007 '2008 '2009
-     12 4 323
-   scale
-    #ebedf0 0
-    #c7e9c0 100
-    #a1d99b 400
-    #74c476 1600
- javascript
-  compile() {
-  class Heatrix {
-    static HeatrixId = 0
-    uid = Heatrix.HeatrixId++
-    constructor(program) {
-      const isDirective = word => /^(f|l|w|h)\d+$/.test(word) || word === "right" || word === "left" || word.startsWith("http://") || word.startsWith("https://") || word.endsWith(".html")
-      const tree = new TreeNode(program)
-      this.program = tree
-      const generateColorBinningString = (data, colors) => {
-       const sortedData = [...data].sort((a, b) => a - b);
-       const n = sortedData.length;
-       const numBins = colors.length;
-       // Calculate the indices for each quantile
-       const indices = [];
-       for (let i = 1; i < numBins; i++) {
-         indices.push(Math.floor((i / numBins) * n));
-       }
-       // Get the quantile values and round them
-       const thresholds = indices.map(index => Math.round(sortedData[index]));
-       // Generate the string
-       let result = '';
-       colors.forEach((color, index) => {
-         const threshold = index === colors.length - 1 ? thresholds[index - 1] * 2 : thresholds[index];
-         result += `${color} ${threshold}\n`;
-       });
-       return result.trim();
-      }
-      const buildScale = (table) => {
-        const numbers = table.split("\n").map(line => line.split(" ")).flat().filter(word => !isDirective(word)).map(word => parseFloat(word)).filter(number => !isNaN(number))
-        const colors = ['#ebedf0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
-        numbers.unshift(0)
-        return generateColorBinningString(numbers, colors);
-      }
-      const table = tree.getNode("table").childrenToString()
-      const scale = tree.getNode("scale")?.childrenToString() || buildScale(table)
-      const thresholds = []
-      const colors = []
-      scale.split("\n").map((line) => {
-        const parts = line.split(" ")
-        thresholds.push(parseFloat(parts[1]))
-        colors.push(parts[0])
-      })
-      const colorCount = colors.length
-      const colorFunction = (value) => {
-        if (isNaN(value)) return "" // #ebedf0
-        for (let index = 0; index < colorCount; index++) {
-          const threshold = thresholds[index]
-          if (value <= threshold) return colors[index]
-        }
-        return colors[colorCount - 1]
-      }
-      const directiveDelimiter = ";"
-      const getSize = (directives, letter) =>
-        directives
-          .filter((directive) => directive.startsWith(letter))
-          .map((dir) => dir.replace(letter, "") + "px")[0] ?? ""
-      this.table = table.split("\n").map((line) =>
-        line
-          .trimEnd()
-          .split(" ")
-          .map((cell) => {
-            const words = cell.split(directiveDelimiter).filter((word) => !isDirective(word)).join("")
-            const directivesInThisCell = cell
-              .split(directiveDelimiter)
-              .filter(isDirective)
-            const value = parseFloat(words)
-            const label = words.includes("'") ? words.split("'")[1] : words
-            const alignment = directivesInThisCell.includes("right")
-              ? "right"
-              : directivesInThisCell.includes("left")
-              ? "left"
-              : ""
-            const color = colorFunction(value)
-            const width = getSize(directivesInThisCell, "w")
-            const height = getSize(directivesInThisCell, "h")
-            const fontSize = getSize(directivesInThisCell, "f")
-            const lineHeight = getSize(directivesInThisCell, "l") || height
-            const link = directivesInThisCell.filter(i => i.startsWith("http") || i.endsWith(".html"))[0]
-            const style = {
-              "background-color": color,
-              width,
-              height,
-              "font-size": fontSize,
-              "line-height": lineHeight,
-              "text-align": alignment,
-            }
-            Object.keys(style).filter(key => !style[key]).forEach((key) => delete style[key])
-            return {
-              value,
-              label,
-              style,
-              link,
-            }
-          })
-      )
-    }
-    get html() {
-      const { program } = this
-      const cssId = `#heatrix${this.uid}`
-      const defaultWidth = "40px"
-      const defaultHeight = "40px"
-      const fontSize = "10px"
-      const lineHeight = defaultHeight
-      const style = `<style>
-      .heatrixContainer {
-        margin: auto;
-      }.heatrixRow {white-space: nowrap;}
-  ${cssId} .heatrixCell {
-    font-family: arial;
-    border-radius: 2px;
-    border: 1px solid transparent;
-    display: inline-block;
-    margin: 1px;
-    text-align: center;
-    vertical-align: middle;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .heatrixCell a {
-    color: black;
-  }
-  ${cssId} .heatrixCell{
-   width: ${defaultWidth};
-   height: ${defaultHeight};
-   font-size: ${fontSize};
-   line-height: ${lineHeight};
-  }
-  </style>`
-      const firstRow = this.table[0]
-      return (
-        `<div class="heatrixContainer" id="heatrix${this.uid}">${style}` +
-        this.table
-          .map((row, rowIndex) => {
-            if (!rowIndex) return ""
-            const rowStyle = row[0].style
-            return `<div class="heatrixRow heatrixRow${rowIndex}">${row
-              .map((cell, columnIndex) => {
-                if (!columnIndex) return ""
-                const columnStyle = firstRow[columnIndex]?.style || {}
-                let { value, label, style, link } = cell
-                const extendedStyle = Object.assign(
-                  {},
-                  rowStyle,
-                  columnStyle,
-                  style
-                )
-                const inlineStyle = Object.keys(extendedStyle)
-                  .map((key) => `${key}:${extendedStyle[key]};`)
-                  .join("")
-                let valueClass = value ? " valueCell" : ""
-                const href = link ? ` href="${link}"` : ""
-                return `<div class="heatrixCell heatrixColumn${columnIndex}${valueClass}" style="${inlineStyle}"><a title="${label}" ${href}>${label}</a></div>`
-              })
-              .join("")}</div>`
-          })
-          .join("\n") +
-        "</div>"
-      ).replace(/\n/g, "")
-    }
-  }
-    return new Heatrix(this.childrenToString().trim()).html
-  }
 abstractHtmlParser
  extends abstractScrollParser
  catchAllParser htmlLineParser
@@ -2566,7 +2622,10 @@ printUsageStatsParser
   }
   compile() {
     // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table  ", this.stats)
+   const node = this.appendSibling("table")
+   node.appendLine("delimiter  ")
+   node.appendLine("printTable")
+   node.setChildren(this.stats)
    const html = node.compile()
    node.destroy()
    return html
@@ -2639,7 +2698,10 @@ printMeasuresParser
  javascript
    compile() {
    // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table \t", this.parent.file.compileMeasures("tsv"))
+      const node = this.appendSibling("table")
+    node.appendLine("delimiter \t")
+    node.appendLine("printTable")
+    node.setChildren(this.parent.file.compileMeasures("tsv"))
    const html = node.compile()
    node.destroy()
    return html
@@ -2998,143 +3060,79 @@ stampParser
     const dir = this.root.file.folderPath
     this.forEach(node => node.build(dir))
   }
-abstractTableParser
- cruxFromId
- catchAllParser rowParser
+scrollTableParser
+ description A table.
+ crux table
  extends abstractScrollParser
+ catchAllCellType filePathCell
+ inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
  javascript
-  get tableHeader() {
-   return this.columns.filter(col => !col.isLink).map(column => `<th>${column.name}</th>\n`)
-  }
-  get columnNames() {
-   const header = this.nodeAt(0)
-   return header ? header.getLine().split(this.delimiter) : []
-  }
-  get columns() {
-   const cols = this.columnNames
-   return cols.map((name, index) => {
-    const isLink = name.endsWith("Link")
-    const linkIndex = cols.indexOf(name + "Link")
-    return {
-     name,
-     isLink,
-     linkIndex
-    }
-   })
-  }
-  get tableBody() {
-   const { delimiter } = this
-   return this.topDownArray
-    .slice(1)
-    .map(node => `<tr>${node.toRow(this.columns, delimiter)}</tr>`)
-    .join("\n")
+  get visualizations() {
+    return this.topDownArray.filter(node => node.isTableVisualization || node.isHeader)
   }
   compile() {
-   return `<table id="table${this._getUid()}" class="scrollTable">
-   <thead><tr>${this.tableHeader.join("\n")}</tr></thead>
-   <tbody>${this.tableBody}</tbody>
-   </table>
-   <script>
-   document.querySelector('#table${this._getUid()}').addEventListener('click', e => {
-    if (window.getSelection().toString() || e.target.closest('a') || !e.target.closest('tbody')) return;
-    e.currentTarget.classList.toggle('expandedTable');
-   });
-   </script>`
+   return this.visualizations.map(node => node.compile())
+     .join("\n")
+     .trim()
   }
   compileTxt() {
-    return this.childrenToString()
+    return this.visualizations.map(node => node.compileTxt())
+     .join("\n")
+     .trim()
   }
-tableParser
- description A table from a custom delimiter.
- extends abstractTableParser
- catchAllCellType anyCell
- javascript
   get delimiter() {
-   return this.content ?? ""
-  }
-commaTableParser
- description A table from CSV data.
- extends abstractTableParser
- string delimiter ,
-pipeTableParser
- description A table from |SV data.
- extends abstractTableParser
- string delimiter |
-spaceTableParser
- description A table. Last column is catchall.
- extends abstractTableParser
- string delimiter  
-tabTableParser
- description A table from TSV data.
- extends abstractTableParser
- string delimiter \t
-treeTableParser
- // Useful when a column contains a text blob.
- description Table from Scroll Notation data.
- extends abstractTableParser
- catchAllParser treeRowParser
- javascript
-  get columnNames() {
-   return this._getUnionNames()
-  }
-  get tableBody() {
-   return this.map(node => `<tr>${node.toRow(this.columns)}</tr>`).join("\n")
-  }
- example
-  treeTable
-   row
-    name Javascript
-    example
-     console.log("Hello world")
-   row
-    name Python
-    example
-     print "Hello world"
-printTableParser
- description Print table from tabular data.
- cruxFromId
- catchAllCellType integerCell
- extends abstractScrollParser
- javascript
-   compile() {
-    const node = this.appendSibling("table \t", this.tsv)
-    const html = node.compile()
-    node.destroy()
-    return html
-   }
-   getTableByIndex(index) {
-      const hit = this.root.file.tables[parseInt(index)]
-      if (!hit)
-        console.error(`Table "${index}" not found`)
-      return hit
-   }
-   get table() {
-     const index = this.getWord(1)
-     if (index !== undefined)
-        return this.getTableByIndex(index)
-     if (this.next.isTabularData)
-       return this.next
-     if (this.previous.isTabularData)
-       return this.previous.headerNode
-    return this.getTableByIndex(0)
-   }
-   get tsv() {
-    const firstNode = this.table
-    const lastNode = firstNode.lastNode
-    const aftertext = lastNode.childrenToString() // todo: we could be more specific and ignore comments
-    let tableNode = firstNode
-    let tsv = tableNode.getLine()
-    while (tableNode.next.isTabularData) {
-      tsv += "\n" + (aftertext ? tableNode.next.applyAftertext(aftertext) : tableNode.next.getLine())
-      tableNode = tableNode.next
-      if (tableNode === firstNode)
-        break
+    const {filename} = this
+    let delimiter = " "
+    if (filename) {
+      const extension = filename.split(".").pop()
+      if (extension === "json") delimiter = "json"
+      if (extension === "tree") delimiter = "tree"
+      if (extension === "csv") delimiter = ","
+      if (extension === "tsv") delimiter = "\t"
     }
-     return tsv
-   }
-   compileTxt() {
-     return this.tsv
-   }
+    if (this.get("delimiter"))
+      delimiter = this.get("delimiter")
+    return delimiter
+  }
+  get filename() {
+    return this.content
+  }
+  get fileContent() {
+    const {filename} = this
+    const { Disk } = require("scrollsdk/products/Disk.node.js")
+    const path = require("path")
+    const {file} = this.parent
+    return Disk.read(path.join(file.folderPath, filename))
+  }
+  get delimitedData() {
+    // json csv tsv
+    if (this.filename)
+      return this.fileContent
+    
+    return this.getNode("data")?.childrenToString() || ""
+  }
+  _coreTable
+  get coreTable() {
+    if (this._coreTable) return this._coreTable
+    const {delimiter, delimitedData} = this
+    if (delimiter === "json")
+       this._coreTable = JSON.parse(delimitedData)
+    else if (delimiter === "tree") {
+       const d3lib = typeof d3 === "undefined" ? require('d3') : d3
+       this._coreTable = d3lib.dsvFormat(",").parse(new TreeNode(delimitedData).asCsv, d3lib.autoType)
+    } else {
+      const d3lib = typeof d3 === "undefined" ? require('d3') : d3
+      this._coreTable = d3lib.dsvFormat(delimiter).parse(delimitedData, d3lib.autoType)
+    }
+    this._columns = this._coreTable.columns
+    delete this._coreTable.columns
+    return this._coreTable
+  }
+  get columns() {
+    // init coreTable to set columns
+    const coreTable = this.coreTable
+    return this._columns
+  }
 plainTextParser
  description Plain text oneliner or block.
  cruxFromId
@@ -3741,60 +3739,61 @@ stampFolderParser
    fs.mkdirSync(newPath, {recursive: true})
    this.forEach(node => node.build(newPath))
   }
-rowParser
- catchAllCellType stringCell
+abstractTableTransformParser
+ inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
  javascript
-  toRow(columns, delimiter) {
-   const words = this.getLine().split(delimiter)
-   let str = ""
-   let column = 0
-   const columnCount = columns.length
-   while (column < columnCount) {
-    const col = columns[column]
-    column++
-    const content = (columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]) ?? ""
-    if (col.isLink) continue
-    let tagged = content
-    const link = words[col.linkIndex]
-    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
-    else if (content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
-    str += `<td>${tagged}</td>\n`
-   }
-   return str
+  get coreTable() {
+    return this.parent.coreTable
+  }
+  get columns() {
+    return this.parent.columns
+  }
+scrollWhereParser
+ extends abstractTableTransformParser
+ description Each row must meet a certain condition
+ crux where
+ cells commandWordCell columnNameCell comparisonCell numberCell
+ example
+  table iris.csv
+   where Species = setosa
+ javascript
+  get coreTable() {
+   // todo: use cells here.
+   const columnName = this.getWord(1)
+   const operator = this.getWord(2)
+   let untypedScalarValue = this.getWord(3)
+   const typedValue = isNaN(parseFloat(untypedScalarValue)) ? untypedScalarValue : parseFloat(untypedScalarValue)
+   const coreTable = this.parent.coreTable
+   if (!columnName || !operator || untypedScalarValue === undefined) return coreTable
+    const filterFn = row => {
+      const cell = row[columnName]
+      const typedCell = cell
+      if (operator === "=") return typedValue === typedCell
+      else if (operator === "!=") return typedValue !== typedCell
+      else if (operator === "includes") return typedCell !== undefined && typedCell.includes(typedValue)
+      else if (operator === "doesNotInclude") return typedCell === undefined || !typedCell.includes(typedValue)
+      else if (operator === ">") return typedCell > typedValue
+      else if (operator === "<") return typedCell < typedValue
+      else if (operator === ">=") return typedCell >= typedValue
+      else if (operator === "<=") return typedCell <= typedValue
+      else if (operator === "empty") return cell === "" || cell === undefined
+      else if (operator === "notEmpty") return !(cell === "" || cell === undefined)
+    }
+   return coreTable.filter(filterFn)
+  }
+scrollTableDataParser
+ crux data
+ description Table from inline delimited data.
+ catchAllCellType anyCell
+ baseParser blobParser
+scrollTableDelimiterParser
+ description Set the delimiter.
+ crux delimiter
+ cells commandWordCell stringCell
+ javascript
+  compile() {
+    return ""
   }
 plainTextLineParser
  catchAllCellType stringCell
  catchAllParser plainTextLineParser
-treeRowContentParser
- description Any blob content in a cell.
- cells stringCell
- catchAllCellType stringCell
-treeRowColumnParser
- catchAllParser treeRowContentParser
- description A columnName value pair, or just a columnName if the value is a text blob.
- cells anyCell
- catchAllCellType stringCell
-treeRowParser
- cells anyCell
- description The root node of a row.
- catchAllParser treeRowColumnParser
- javascript
-  toRow(columns) {
-   let str = ""
-   columns.forEach(col => {
-    const node = this.getNode(col.name)
-    if (col.isLink) return
-    if (!node) {
-     str += "<td></td>\n"
-     return
-    }
-    const content = (node.length ? node.childrenToString() : node.content) ?? ""
-    let tagged = ""
-    const link = this.get(col.name + "Link")
-    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
-    else if (node.length) tagged = `<pre>${content}</pre>`
-    else tagged = content
-    str += `<td>${tagged}</td>\n`
-   })
-   return str
-  }
