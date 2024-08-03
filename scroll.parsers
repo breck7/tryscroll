@@ -1500,9 +1500,10 @@ printConceptsParser
    compile() {
    // A hacky but simple way to do this for now.
    const node = this.appendSibling("table")
-    node.appendLine("delimiter \t")
+    node.appendLine("delimiter 	")
     node.appendLine("printTable")
-    node.setChildren(this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
+    const dataNode = node.appendLine("data")
+    dataNode.setChildren(this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
    const html = node.compile()
    node.destroy()
    return html
@@ -1599,9 +1600,10 @@ printSearchTableParser
    const data = files.map(file => file.file.toSearchTsvRow(file.relativePath)).join("\n")
    // A hacky but simple way to do this for now.
      const node = this.appendSibling("table")
-    node.appendLine("delimiter \t")
+    node.appendLine("delimiter 	")
     node.appendLine("printTable")
-    node.setChildren("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
+    const dataNode = node.appendLine("data")
+    dataNode.setChildren("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
    const html = node.compile()
    node.destroy()
    return html
@@ -2625,7 +2627,8 @@ printUsageStatsParser
    const node = this.appendSibling("table")
    node.appendLine("delimiter  ")
    node.appendLine("printTable")
-   node.setChildren(this.stats)
+   const dataNode = node.appendLine("data")
+    dataNode.setChildren(this.stats)
    const html = node.compile()
    node.destroy()
    return html
@@ -2699,9 +2702,10 @@ printMeasuresParser
    compile() {
    // A hacky but simple way to do this for now.
       const node = this.appendSibling("table")
-    node.appendLine("delimiter \t")
+    node.appendLine("delimiter 	")
     node.appendLine("printTable")
-    node.setChildren(this.parent.file.compileMeasures("tsv"))
+    const dataNode = node.appendLine("data")
+    dataNode.setChildren(this.parent.file.compileMeasures("tsv"))
    const html = node.compile()
    node.destroy()
    return html
