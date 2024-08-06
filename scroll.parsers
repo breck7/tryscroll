@@ -3591,6 +3591,245 @@ cssLineParser
  catchAllParser cssLineParser
 errorParser
  baseParser errorParser
+abstractTableTransformParser
+ cells commandWordCell
+ inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
+ javascript
+  get coreTable() {
+    return this.parent.coreTable
+  }
+  get columnNames() {
+    return this.parent.columnNames
+  }
+scrollGroupByParser
+ catchAllCellType columnNameCell
+ extends abstractTableTransformParser
+ description Combine rows with matching values into groups.
+ example
+  tables posts.csv
+   groupBy year
+    printTable
+ crux groupBy
+ javascript
+  get coreTable() {
+    if (this._coreTable) return this._coreTable
+   const groupByColNames = this.getWordsFrom(1)
+   const {coreTable} = this.parent
+   if (!groupByColNames.length) return coreTable
+   const newCols = [].map(reduceNode => {
+    return {
+     source: reduceNode.getWord(1),
+     reduction: reduceNode.getWord(2),
+     name: reduceNode.getWord(3) || reduceNode.getWordsFrom(1).join("_")
+    }
+   })
+   // Pivot is shorthand for group and reduce?
+   const makePivotTable = (rows, groupByColumnNames, inputColumnNames, newCols) => {
+     const colMap = {}
+     inputColumnNames.forEach((col) => (colMap[col] = true))
+     const groupByCols = groupByColumnNames.filter((col) => colMap[col])
+     return new PivotTable(rows, inputColumnNames.map(c => {return {name: c}}), newCols).getNewRows(groupByCols)
+   }
+   class PivotTable {
+     constructor(rows, inputColumns, outputColumns) {
+       this._columns = {}
+       this._rows = rows
+       inputColumns.forEach((col) => (this._columns[col.name] = col))
+       outputColumns.forEach((col) => (this._columns[col.name] = col))
+     }
+     _getGroups(allRows, groupByColNames) {
+       const rowsInGroups = new Map()
+       allRows.forEach((row) => {
+         const groupKey = groupByColNames.map((col) => row[col].toString().replace(/ /g, "")).join(" ")
+         if (!rowsInGroups.has(groupKey)) rowsInGroups.set(groupKey, [])
+         rowsInGroups.get(groupKey).push(row)
+       })
+       return rowsInGroups
+     }
+     getNewRows(groupByCols) {
+       // make new trees
+       const rowsInGroups = this._getGroups(this._rows, groupByCols)
+       // Any column in the group should be reused by the children
+       const columns = [
+         {
+           name: "count",
+           type: "number",
+           min: 0,
+         },
+       ]
+       groupByCols.forEach((colName) => columns.push(this._columns[colName]))
+       const colsToReduce = Object.values(this._columns).filter((col) => !!col.reduction)
+       colsToReduce.forEach((col) => columns.push(col))
+       // for each group
+       const rows = []
+       const totalGroups = rowsInGroups.size
+       for (let [groupId, group] of rowsInGroups) {
+         const firstRow = group[0]
+         const newRow = {}
+         groupByCols.forEach((col) =>
+           newRow[col] = firstRow ? firstRow[col] : 0
+         )
+         newRow.count = group.length
+         // todo: add more reductions? count, stddev, median, variance.
+         colsToReduce.forEach((col) => {
+           const sourceColName = col.source
+           const values = group.map((row) => row[sourceColName]).filter((val) => typeof val === "number" && !isNaN(val))
+           const reduction = col.reduction
+           let reducedValue = firstRow[sourceColName]
+           if (reduction === "sum") reducedValue = values.reduce((prev, current) => prev + current, 0)
+           if (reduction === "max") reducedValue = Math.max(...values)
+           if (reduction === "min") reducedValue = Math.min(...values)
+           if (reduction === "mean") reducedValue = values.reduce((prev, current) => prev + current, 0) / values.length
+           newRow[col.name] = reducedValue
+         })
+         rows.push(newRow)
+       }
+       // todo: add tests. figure out this api better.
+       Object.values(columns).forEach((col) => {
+         // For pivot columns, remove the source and reduction info for now. Treat things as immutable.
+         delete col.source
+         delete col.reduction
+       })
+       return {
+         rows,
+         columns,
+       }
+     }
+   }
+   const pivotTable = makePivotTable(coreTable, groupByColNames, this.parent.columnNames, newCols)
+   this._coreTable = pivotTable.rows
+   this._columnNames = pivotTable.columns.map(col => col.name)
+   return pivotTable.rows
+  }
+  get columnNames() {
+    const {coreTable} = this
+    return this._columnNames || this.parent.columnNames
+  }
+scrollWhereParser
+ extends abstractTableTransformParser
+ description Filter rows by condition.
+ crux where
+ cells commandWordCell columnNameCell comparisonCell wordCell
+ example
+  table iris.csv
+   where Species = setosa
+ javascript
+  get coreTable() {
+   // todo: use cells here.
+   const columnName = this.getWord(1)
+   const operator = this.getWord(2)
+   let untypedScalarValue = this.getWord(3)
+   const typedValue = isNaN(parseFloat(untypedScalarValue)) ? untypedScalarValue : parseFloat(untypedScalarValue)
+   const coreTable = this.parent.coreTable
+   if (!columnName || !operator || untypedScalarValue === undefined) return coreTable
+    const filterFn = row => {
+      const cell = row[columnName]
+      const typedCell = cell
+      if (operator === "=") return typedValue === typedCell
+      else if (operator === "!=") return typedValue !== typedCell
+      else if (operator === "includes") return typedCell !== undefined && typedCell.includes(typedValue)
+      else if (operator === "doesNotInclude") return typedCell === undefined || !typedCell.includes(typedValue)
+      else if (operator === ">") return typedCell > typedValue
+      else if (operator === "<") return typedCell < typedValue
+      else if (operator === ">=") return typedCell >= typedValue
+      else if (operator === "<=") return typedCell <= typedValue
+      else if (operator === "empty") return cell === "" || cell === undefined
+      else if (operator === "notEmpty") return !(cell === "" || cell === undefined)
+    }
+   return coreTable.filter(filterFn)
+  }
+scrollSelectParser
+ catchAllCellType columnNameCell
+ extends abstractTableTransformParser
+ description Drop all columns except these.
+ example
+  tables
+   data
+    name,year,count
+    index,2022,2
+    about,2023,4
+   select name year
+    printTable
+ crux select
+ javascript
+  get coreTable() {
+   const {coreTable} = this.parent
+   const {columnNames} = this
+   if (!columnNames.length) return coreTable
+   return coreTable.map(row => Object.fromEntries(columnNames.map(colName => [colName, row[colName]])))
+  }
+  get columnNames() {
+    return this.getWordsFrom(1)
+  }
+scrollReverseParser
+ extends abstractTableTransformParser
+ description Reverse rows.
+ crux reverse
+ javascript
+  get coreTable() {
+   return this.parent.coreTable.slice().reverse()
+  }
+orderByParser
+ extends abstractTableTransformParser
+ description Sort rows by column(s).
+ catchAllCellType columnNameCell
+ crux orderBy
+ javascript
+  get coreTable() {
+    const makeLodashOrderByParams = str => {
+    const part1 = str.split(" ")
+    const part2 = part1.map(col => (col.startsWith("-") ? "desc" : "asc"))
+    return [part1.map(col => col.replace(/^\-/, "")), part2]
+   }
+   const orderBy = makeLodashOrderByParams(this.content)
+   return this.lodash.orderBy(this.parent.coreTable.slice(), orderBy[0], orderBy[1])
+  }
+  get lodash() {
+    return this.isNodeJs() ? require("lodash") : lodash
+  }
+scrollRenameParser
+ catchAllCellType columnNameCell
+ extends abstractTableTransformParser
+ description Rename columns.
+ example
+  tables
+   data
+    name,year,count
+    index,2022,2
+   rename name Name year Year
+    printTable
+ crux rename
+ javascript
+  get coreTable() {
+   const {coreTable} = this.parent
+   const {renameMap} = this
+   if (!Object.keys(renameMap).length) return coreTable
+   return coreTable.map(row => {
+      const newRow = {}
+      Object.keys(row).forEach(key => {
+        const name = renameMap[key] || key
+        newRow[name] = row[key]
+      })
+      return newRow
+   })
+  }
+  get renameMap() {
+    const map = {}
+    const pairs = this.getWordsFrom(1)
+    let oldName
+    while (oldName = pairs.shift()) {
+      map[oldName] = pairs.shift()
+    }
+    return map
+  }
+  _renamed
+  get columnNames() {
+   if (this._renamed)
+     return this._renamed
+    const {renameMap} = this
+    this._renamed = this.parent.columnNames.map(name => renameMap[name] || name )
+    return this._renamed
+  }
 heatrixCatchAllParser
  // todo Fill this out
  catchAllCellType stringCell
@@ -3748,141 +3987,6 @@ stampFolderParser
    this.root.file.log(`Creating folder ${newPath}`)
    fs.mkdirSync(newPath, {recursive: true})
    this.forEach(node => node.build(newPath))
-  }
-abstractTableTransformParser
- cells commandWordCell
- inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
- javascript
-  get coreTable() {
-    return this.parent.coreTable
-  }
-  get columnNames() {
-    return this.parent.columnNames
-  }
-scrollWhereParser
- extends abstractTableTransformParser
- description Filter rows by condition.
- crux where
- cells commandWordCell columnNameCell comparisonCell wordCell
- example
-  table iris.csv
-   where Species = setosa
- javascript
-  get coreTable() {
-   // todo: use cells here.
-   const columnName = this.getWord(1)
-   const operator = this.getWord(2)
-   let untypedScalarValue = this.getWord(3)
-   const typedValue = isNaN(parseFloat(untypedScalarValue)) ? untypedScalarValue : parseFloat(untypedScalarValue)
-   const coreTable = this.parent.coreTable
-   if (!columnName || !operator || untypedScalarValue === undefined) return coreTable
-    const filterFn = row => {
-      const cell = row[columnName]
-      const typedCell = cell
-      if (operator === "=") return typedValue === typedCell
-      else if (operator === "!=") return typedValue !== typedCell
-      else if (operator === "includes") return typedCell !== undefined && typedCell.includes(typedValue)
-      else if (operator === "doesNotInclude") return typedCell === undefined || !typedCell.includes(typedValue)
-      else if (operator === ">") return typedCell > typedValue
-      else if (operator === "<") return typedCell < typedValue
-      else if (operator === ">=") return typedCell >= typedValue
-      else if (operator === "<=") return typedCell <= typedValue
-      else if (operator === "empty") return cell === "" || cell === undefined
-      else if (operator === "notEmpty") return !(cell === "" || cell === undefined)
-    }
-   return coreTable.filter(filterFn)
-  }
-scrollSelectParser
- catchAllCellType columnNameCell
- extends abstractTableTransformParser
- description Drop all columns except these.
- example
-  tables
-   data
-    name,year,count
-    index,2022,2
-    about,2023,4
-   select name year
-    printTable
- crux select
- javascript
-  get coreTable() {
-   const {coreTable} = this.parent
-   const {columnNames} = this
-   if (!columnNames.length) return coreTable
-   return coreTable.map(row => Object.fromEntries(columnNames.map(colName => [colName, row[colName]])))
-  }
-  get columnNames() {
-    return this.getWordsFrom(1)
-  }
-scrollReverseParser
- extends abstractTableTransformParser
- description Reverse rows.
- crux reverse
- javascript
-  get coreTable() {
-   return this.parent.coreTable.slice().reverse()
-  }
-orderByParser
- extends abstractTableTransformParser
- description Sort rows by column(s).
- catchAllCellType columnNameCell
- crux orderBy
- javascript
-  get coreTable() {
-    const makeLodashOrderByParams = str => {
-    const part1 = str.split(" ")
-    const part2 = part1.map(col => (col.startsWith("-") ? "desc" : "asc"))
-    return [part1.map(col => col.replace(/^\-/, "")), part2]
-   }
-   const orderBy = makeLodashOrderByParams(this.content)
-   return this.lodash.orderBy(this.parent.coreTable.slice(), orderBy[0], orderBy[1])
-  }
-  get lodash() {
-    return this.isNodeJs() ? require("lodash") : lodash
-  }
-scrollRenameParser
- catchAllCellType columnNameCell
- extends abstractTableTransformParser
- description Rename columns.
- example
-  tables
-   data
-    name,year,count
-    index,2022,2
-   rename name Name year Year
-    printTable
- crux rename
- javascript
-  get coreTable() {
-   const {coreTable} = this.parent
-   const {renameMap} = this
-   if (!Object.keys(renameMap).length) return coreTable
-   return coreTable.map(row => {
-      const newRow = {}
-      Object.keys(row).forEach(key => {
-        const name = renameMap[key] || key
-        newRow[name] = row[key]
-      })
-      return newRow
-   })
-  }
-  get renameMap() {
-    const map = {}
-    const pairs = this.getWordsFrom(1)
-    let oldName
-    while (oldName = pairs.shift()) {
-      map[oldName] = pairs.shift()
-    }
-    return map
-  }
-  _renamed
-  get columnNames() {
-   if (this._renamed)
-     return this._renamed
-    const {renameMap} = this
-    this._renamed = this.parent.columnNames.map(name => renameMap[name] || name )
-    return this._renamed
   }
 scrollTableDataParser
  crux data
