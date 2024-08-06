@@ -10,6 +10,9 @@ class ExportComponent extends AbstractTreeComponentParser {
  a Download HTML
   clickCommand downloadHtmlCommand
  span  | 
+ a Run Build
+  clickCommand runBuildCommand
+ span  | 
  a Tutorial
   target _blank
   href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
@@ -17,6 +20,13 @@ class ExportComponent extends AbstractTreeComponentParser {
 
   copyHtmlToClipboardCommand() {
     this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
+  }
+
+  async runBuildCommand() {
+    await Promise.all(
+      this.root.mainDocument.topDownArray.filter((node) => node.build).map(async (node) => node.build())
+    )
+    this.root.refreshHtml()
   }
 
   downloadHtmlCommand() {
