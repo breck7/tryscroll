@@ -1,4 +1,5 @@
 // This file ensures all the keywords with external assets have their assets copied here
+// We dont need to check in the html, just the external assets copied
 katex
 map
 tableSearch
@@ -6,3 +7,4 @@ slideshow
 helpfulNotFound
 sparkline 1 2 3
 scatterplot
+buildHtml
