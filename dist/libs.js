@@ -13514,7 +13514,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "80.4.0"
+TreeNode.getVersion = () => "80.5.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13810,6 +13810,9 @@ class ParserBackedNode extends TreeNode {
   }
   getRunTimeEnumOptions(cell) {
     return undefined
+  }
+  getRunTimeEnumOptionsForValidation(cell) {
+    return this.getRunTimeEnumOptions(cell)
   }
   _sortNodesByInScopeOrder() {
     const parserOrder = this.definition._getMyInScopeParserIds()
@@ -14331,7 +14334,7 @@ ${options.toString(1)}`
     return this.getNode().getLine().split(" ")[0] // todo: WordBreakSymbol
   }
   isValid() {
-    const runTimeOptions = this.getNode().getRunTimeEnumOptions(this)
+    const runTimeOptions = this.getNode().getRunTimeEnumOptionsForValidation(this)
     const word = this.getWord()
     if (runTimeOptions) return runTimeOptions.includes(word)
     return this.cellTypeDefinition.isValid(word, this.getNode().root) && this._isValid()
