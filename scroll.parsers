@@ -271,6 +271,13 @@ blinkParser
    return `<span class="scrollBlink">${super.compile()}</span>
     <script>setInterval(()=>{ Array.from(document.getElementsByClassName("scrollBlink")).forEach(el => el.style.visibility = el.style.visibility === "hidden" ? "visible" : "hidden") }, 500)</script>`
   }
+scrollButtonParser
+ extends paragraphParser
+ crux button
+ description A button.
+ javascript
+  defaultClassName = "scrollButton"
+  tag = "button"
 catchAllParagraphParser
  description A paragraph.
  extends paragraphParser
@@ -578,14 +585,16 @@ endColumnsParser
   }
 abstractDinkusParser
  extends abstractAftertextParser
- string dinkus *
  boolean isDinkus true
  javascript
   compile() {
    return `<div class="dinkus"><span>${this.dinkus}</span></div>`
   }
   compileTxt() {
-    return this.getLine()
+    return this.dinkus
+  }
+  get dinkus() {
+    return this.content || this.getLine()
   }
 horizontalRuleParser
  crux ---
@@ -595,17 +604,24 @@ horizontalRuleParser
   compile() {
    return `<hr>`
   }
-dinkusParser
+scrollDinkusParser
  crux ***
  description A dinkus. Breaks section.
  boolean isPopular true
+ extends abstractDinkusParser
+ javascript
+  dinkus = "*"
+customDinkusParser
+ crux dinkus
+ description A custom dinkus.
  extends abstractDinkusParser
 endOfPostDinkusParser
  extends abstractDinkusParser
  description End of post dinkus.
  boolean isPopular true
  crux ****
- string dinkus ⁂
+ javascript
+  dinkus = "⁂"
 loopParser
  extends abstractAftertextParser
  cells commandWordCell
@@ -1961,6 +1977,18 @@ gazetteCssParser
    color #36c
   a:hover
    text-decoration-color initial
+  .scrollButton
+   background-color rgba(10,92,202,0.8)
+   border-radius 6px
+   color white
+   padding 10px 20px
+   display inline-block
+   border 0
+   cursor pointer
+   &:hover
+    background-color rgb(10,92,202,0.9)
+   &:active
+    background-color rgb(10,92,202,1)
   sup,sub
    vertical-align baseline
    position relative
@@ -2553,7 +2581,7 @@ imageParser
       return {width, height}
     if (!this.isNodeJs())
       return {}
-    const src = this.getWord(1)
+    const src = this.filename
     // If its a local image, get the dimensions and put them in the HTML
     // to avoid flicker
    if (src.startsWith("http:") || src.startsWith("https:")) return {}
@@ -2574,9 +2602,12 @@ imageParser
   get figureWidth() {
     return this.dimensions.width
   }
+  get filename() {
+    return this.getWord(1)
+  }
   getFigureContent(compileSettings) {
    const file = this.root.file
-   const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + this.getWord(1)
+   const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + this.filename
    const {width, height} = this.dimensions
    let dimensionAttributes = width || height  ? `width="${width}" height="${height}" ` : ""
    // Todo: can we reuse more code from aftertext?
