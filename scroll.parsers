@@ -1985,6 +1985,8 @@ gazetteCssParser
    display inline-block
    border 0
    cursor pointer
+   a
+    color white
    &:hover
     background-color rgb(10,92,202,0.9)
    &:active
@@ -2658,6 +2660,7 @@ keyboardNavParser
    const linkToNext = this.getWord(2) ?? file.linkToNext
    const script = `<script>document.addEventListener('keydown', function(event) {
     if (document.activeElement !== document.body) return
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return // dont interfere with keyboard back button shortcut
     const getLinks = () => document.getElementsByClassName("scrollKeyboardNav")[0].getElementsByTagName("a")
     if (event.key === "ArrowLeft")
       getLinks()[0].click()
