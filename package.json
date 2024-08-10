@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "scroll-cli": "^118.6.2",
-    "scrollsdk": "^80.0.0"
+    "scroll-cli": "^118.6.3",
+    "scrollsdk": "^80.5.0"
   },
   "devDependencies": {
     "tap": "^18.7.2"
