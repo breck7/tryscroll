@@ -527,6 +527,47 @@ captionAftertextParser
  crux caption
  extends paragraphParser
  boolean isPopular true
+abstractMediaParser
+ extends paragraphParser
+ inScope scrollMediaLoopParser scrollAutoplayParser
+ javascript
+  compileTxt() {
+    return ""
+  }
+  get filename() {
+    return this.getWord(1)
+  }
+  getAsHtmlAttribute(attr) {
+    if (!this.has(attr)) return ""
+    const value = this.get(attr)
+    return value ? `${attr}="${value}"` : attr
+  }
+  getAsHtmlAttributes(list) {
+    return list.map(word => this.getAsHtmlAttribute(word)).filter(i => i).join(" ")
+  }
+  compile() {
+    return `<${this.tag} src="${this.filename}" controls ${this.getAsHtmlAttributes("width height loop autoplay".split(" "))}></${this.tag}>`
+  }
+scrollSoundParser
+ extends abstractMediaParser
+ crux music
+ description Play sound files.
+ javascript
+  compile() {
+    return `<audio controls ${this.getAsHtmlAttributes("loop autoplay".split(" "))}><source src="${this.filename}" type="audio/mpeg"></audio>`
+  }
+scrollVideoParser
+ extends abstractMediaParser
+ crux video
+ description Play video files.
+ widthParser
+  cruxFromId
+  cells commandWordCell
+ heightParser
+  cruxFromId
+  cells commandWordCell
+ javascript
+  tag = "video"
 quickParagraphParser
  crux *
  extends paragraphParser
@@ -4028,6 +4069,12 @@ longParser
  cells commandWordCell floatCell
  cruxFromId
  single
+scrollMediaLoopParser
+ crux loop
+ cells commandWordCell
+scrollAutoplayParser
+ crux autoplay
+ cells commandWordCell
 abstractColumnNameParser
  cells commandWordCell columnNameCell
  javascript
