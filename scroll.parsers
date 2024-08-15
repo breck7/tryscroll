@@ -800,7 +800,7 @@ abstractTextLinkParser
 scrollVersionLinkParser
  extends abstractTextLinkParser
  string link https://scroll.pub
- description Prints "Built with Scroll [version]".
+ description Print Scroll version.
  javascript
   get text() {
     return `Built with Scroll v${this.parent.file?.SCROLL_VERSION || ""}`
@@ -888,7 +888,7 @@ printRelatedParser
   }
 printSourceStackParser
  // useful for debugging
- description Print source from each step of compilation.
+ description Print compilation steps.
  extends abstractAftertextParser
  cruxFromId
  example
@@ -1015,6 +1015,9 @@ buildConceptsParser
   cells commandWordCell anyCell
 buildCssParser
  description Compile to CSS file.
+ extends abstractBuildCommandParser
+buildCsvParser
+ description Compile to CSV file.
  extends abstractBuildCommandParser
 fetchParser
  description Download URL to disk.
@@ -1453,6 +1456,7 @@ sparklineParser
   }
 printTableParser
  cruxFromId
+ description Print table.
  extends abstractTableVisualizationParser
  javascript
   get tableHeader() {
@@ -1659,7 +1663,7 @@ thanksToParser
  extends abstractCommentParser
  cruxFromId
 printConceptsParser
- description Print concepts to HTML table.
+ description Print concepts.
  cruxFromId
  extends abstractScrollParser
  javascript
@@ -2654,6 +2658,15 @@ htmlInlineParser
   compile() {
    return `${this.getLine() ?? ""}${this.childrenToString()}`
   }
+scrollBrParser
+ crux br
+ description A break.
+ extends abstractScrollParser
+ catchAllCellType integerCell
+ javascript
+  compile() {
+   return `<br>`.repeat(parseInt(this.getWord(1) || 1))
+  }
 stumpParser
  cruxFromId
  extends abstractScrollParser
@@ -2815,7 +2828,7 @@ keyboardNavParser
   }
 printUsageStatsParser
  // todo: if we include the word "Parser" in a crux, bad things seem to happen.
- description Print parser usage stats in folder.
+ description Parser usage stats for folder.
  extends abstractScrollParser
  cruxFromId
  javascript
@@ -2879,9 +2892,23 @@ printLeetSheetParser
   compileTxt() {
    return this.sortDocs(this.parsersToDocument).map(obj => `${obj.id} - ${obj.description}`).join("\n")
   }
+  get lodash() {
+    return require("lodash")
+  }
+  compileCsv() {
+    const rows = this.sortDocs(this.parsersToDocument).map(obj => {
+      const {id, isPopular, description} = obj
+      return {
+        id,
+        isPopular,
+        description
+      }
+    })
+    return new TreeNode(this.lodash.sortBy(rows, "isPopular")).asCsv
+  }
 printAdvancedLeetSheetParser
  extends printLeetSheetParser
- description Print Parsers leet sheet.
+ description Parsers leetsheet.
  javascript
   compile() {
     return "<p><b>Line Parsers</b> match lines and parse them.</p><br>" + this.docToHtml(this.sortDocs(this.parsersToDocument)) + "<p><b>Cell Parsers</b> parse words in a line.</p><br>" + this.docToHtml(this.sortDocs(this.cellParsersToDocument))
@@ -2908,7 +2935,7 @@ printAdvancedLeetSheetParser
     return parserNode
   }
 printMeasuresParser
- description Print measure stats to HTML table.
+ description Print measure stats.
  cruxFromId
  extends abstractScrollParser
  javascript
@@ -3105,7 +3132,7 @@ replaceJsParser
   replaceJs SUM 1+1
   * 1+1 = SUM
 replaceNodejsParser
- description Replace this with evaled Node.JS.
+ description Replace with evaled Node.JS.
  extends abstractVariableParser
  catchAllCellType javascriptCell
  baseParser blobParser
