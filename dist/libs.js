@@ -13514,7 +13514,7 @@ TreeNode.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-TreeNode.getVersion = () => "81.0.0"
+TreeNode.getVersion = () => "82.0.0"
 class AbstractExtendibleTreeNode extends TreeNode {
   _getFromExtended(firstWordPath) {
     const hit = this._getNodeFromExtended(firstWordPath)
@@ -13657,7 +13657,6 @@ var ParsersConstants
   // node types
   ParsersConstants["extensions"] = "extensions"
   ParsersConstants["comment"] = "//"
-  ParsersConstants["version"] = "version"
   ParsersConstants["parser"] = "parser"
   ParsersConstants["cellType"] = "cellType"
   ParsersConstants["parsersFileExtension"] = "parsers"
@@ -13696,7 +13695,6 @@ var ParsersConstants
   ParsersConstants["single"] = "single"
   ParsersConstants["uniqueLine"] = "uniqueLine"
   ParsersConstants["tags"] = "tags"
-  ParsersConstants["_extendsJsClass"] = "_extendsJsClass"
   ParsersConstants["_rootNodeJsHeader"] = "_rootNodeJsHeader"
   // default catchAll parser
   ParsersConstants["BlobParser"] = "BlobParser"
@@ -15001,7 +14999,6 @@ class AbstractParserDefinitionParser extends AbstractExtendibleTreeNode {
       ParsersConstants.catchAllCellType,
       ParsersConstants.cellParser,
       ParsersConstants.extensions,
-      ParsersConstants.version,
       ParsersConstants.tags,
       ParsersConstants.crux,
       ParsersConstants.cruxFromId,
@@ -15014,7 +15011,6 @@ class AbstractParserDefinitionParser extends AbstractExtendibleTreeNode {
       ParsersConstants.baseParser,
       ParsersConstants.required,
       ParsersConstants.root,
-      ParsersConstants._extendsJsClass,
       ParsersConstants._rootNodeJsHeader,
       ParsersConstants.javascript,
       ParsersConstants.compilesTo,
@@ -15282,9 +15278,6 @@ ${properties.join("\n")}
     }`
   }
   _getExtendsClassName() {
-    // todo: this is hopefully a temporary line in place for now for the case where you want your base class to extend something other than another treeclass
-    const hardCodedExtend = this.get(ParsersConstants._extendsJsClass)
-    if (hardCodedExtend) return hardCodedExtend
     const extendedDef = this._getExtendedParent()
     return extendedDef ? extendedDef.generatedClassName : "ParserBackedNode"
   }
