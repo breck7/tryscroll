@@ -225,6 +225,7 @@ paragraphParser
     return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
 authorsParser
+ popularity 0.007379
  // multiple authors delimited by " and "
  boolean isPopular true
  extends paragraphParser
@@ -276,6 +277,7 @@ scrollButtonParser
   defaultClassName = "scrollButton"
   tag = "button"
 catchAllParagraphParser
+ popularity 0.115562
  description A paragraph.
  extends paragraphParser
  boolean suggestInAutocomplete false
@@ -290,6 +292,7 @@ catchAllParagraphParser
    return this.getLine() || ""
   }
 scrollCenterParser
+ popularity 0.006415
  crux center
  description A centered section.
  extends paragraphParser
@@ -320,6 +323,7 @@ abstractIndentableParagraphParser
     return this.getWord(0) + " " + super.compileTxt()
   }
 checklistTodoParser
+ popularity 0.000193
  extends abstractIndentableParagraphParser
  example
   [] Get milk
@@ -334,6 +338,7 @@ checklistTodoParser
    return this.get("id") || "item" + this._getUid()
   }
 checklistDoneParser
+ popularity 0.000072
  extends checklistTodoParser
  description A completed task.
  string checked checked
@@ -341,6 +346,7 @@ checklistDoneParser
  example
   [x] get milk
 listAftertextParser
+ popularity 0.014325
  extends abstractIndentableParagraphParser
  example
   - I had a _new_ thought.
@@ -372,6 +378,7 @@ abstractCustomListItemParser
     return `class="${this.constructor.name}"`
   }
 orderedListAftertextParser
+ popularity 0.004485
  extends listAftertextParser
  description A list item.
  example
@@ -381,6 +388,7 @@ orderedListAftertextParser
   listType = "ol"
   get attributes() { return ` start="${this.getWord(0)}"`}
 quickQuoteParser
+ popularity 0.000482
  crux >
  example
   > The only thing we have to fear is fear itself. - FDR
@@ -411,6 +419,7 @@ scrollCounterParser
    return html
   }
 expanderParser
+ popularity 0.000072
  cruxFromId
  description An collapsible HTML details tag.
  extends paragraphParser
@@ -428,6 +437,7 @@ expanderParser
   tag = "summary"
   defaultClassName = ""
 footnoteDefinitionParser
+ popularity 0.001953
  description A footnote. Can also be used as section notes.
  extends paragraphParser
  boolean isFootnote true
@@ -479,6 +489,7 @@ abstractHeaderParser
   }
   isHeader = true
 h1Parser
+ popularity 0.017918
  description An html h1 tag.
  extends abstractHeaderParser
  crux #
@@ -486,6 +497,7 @@ h1Parser
  javascript
   tag = "h1"
 h2Parser
+ popularity 0.005257
  description An html h2 tag.
  extends abstractHeaderParser
  crux ##
@@ -493,18 +505,21 @@ h2Parser
  javascript
   tag = "h2"
 h3Parser
+ popularity 0.001085
  description An html h3 tag.
  extends abstractHeaderParser
  crux ###
  javascript
   tag = "h3"
 h4Parser
+ popularity 0.000289
  description An html h4 tag.
  extends abstractHeaderParser
  crux ####
  javascript
   tag = "h4"
 scrollQuestionParser
+ popularity 0.004244
  description A question.
  extends h4Parser
  crux ?
@@ -519,6 +534,7 @@ h5Parser
  javascript
   tag = "h5"
 printTitleParser
+ popularity 0.007572
  description Print title.
  extends abstractHeaderParser
  boolean isPopular true
@@ -549,6 +565,7 @@ printTitleParser
   defaultClassName = "scrollTitle"
   tag = "h1"
 captionAftertextParser
+ popularity 0.003207
  description An image caption.
  crux caption
  extends paragraphParser
@@ -575,6 +592,7 @@ abstractMediaParser
     return `<${this.tag} src="${this.filename}" controls ${this.getAsHtmlAttributes("width height loop autoplay".split(" "))}></${this.tag}>`
   }
 scrollSoundParser
+ popularity 0.000024
  extends abstractMediaParser
  crux music
  description Play sound files.
@@ -585,6 +603,7 @@ scrollSoundParser
     return `<audio controls ${this.getAsHtmlAttributes("loop autoplay".split(" "))}><source src="${this.filename}" type="audio/mpeg"></audio>`
   }
 scrollVideoParser
+ popularity 0.000024
  extends abstractMediaParser
  crux video
  example
@@ -599,12 +618,14 @@ scrollVideoParser
  javascript
   tag = "video"
 quickParagraphParser
+ popularity 0.001881
  crux *
  extends paragraphParser
  description A paragraph.
  example
   * I had a _new_ idea.
 thinColumnsParser
+ popularity 0.003690
  extends abstractAftertextParser
  cruxFromId
  catchAllCellType integerCell
@@ -623,16 +644,19 @@ thinColumnsParser
    return this.parent.clearSectionStack() + `<div class="scrollColumns" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
 wideColumnsParser
+ popularity 0.000386
  extends thinColumnsParser
  description Wide columns.
  javascript
   columnWidth = 90
 mediumColumnsParser
+ popularity 0.003376
  extends thinColumnsParser
  description Medium width columns.
  javascript
   columnWidth = 65
 endColumnsParser
+ popularity 0.007789
  extends abstractAftertextParser
  cruxFromId
  description End columns.
@@ -648,8 +672,9 @@ abstractDinkusParser
  boolean isDinkus true
  javascript
   compile() {
-   return `<div class="dinkus"><span>${this.dinkus}</span></div>`
+   return `<div class="${this.defaultClass}"><span>${this.dinkus}</span></div>`
   }
+  defaultClass = "dinkus"
   compileTxt() {
     return this.dinkus
   }
@@ -657,6 +682,7 @@ abstractDinkusParser
     return this.content || this.getLine()
   }
 horizontalRuleParser
+ popularity 0.000362
  crux ---
  description A horizontal rule.
  extends abstractDinkusParser
@@ -665,6 +691,7 @@ horizontalRuleParser
    return `<hr>`
   }
 scrollDinkusParser
+ popularity 0.010828
  crux ***
  description A dinkus. Breaks section.
  boolean isPopular true
@@ -676,6 +703,7 @@ customDinkusParser
  description A custom dinkus.
  extends abstractDinkusParser
 endOfPostDinkusParser
+ popularity 0.005740
  extends abstractDinkusParser
  description End of post dinkus.
  boolean isPopular true
@@ -693,6 +721,7 @@ abstractIconButtonParser
     return `<style>.abstractIconButtonParser {position:absolute;top:0.25rem; }.abstractIconButtonParser svg {fill: rgba(204,204,204,.8);width:1.875rem;height:1.875rem; padding: 0 7px;} .abstractIconButtonParser:hover svg{fill: #333;}</style><a href="${this.link}" class="doNotPrint abstractIconButtonParser" style="${this.style}">${this.svg}</a>`
   }
 downloadButtonParser
+ popularity 0.006294
  description Link to download/WWS page.
  extends abstractIconButtonParser
  catchAllCellType urlCell
@@ -703,6 +732,7 @@ downloadButtonParser
     return this.content
   }
 emailButtonParser
+ popularity 0.006294
  description Email button.
  extends abstractIconButtonParser
  catchAllCellType emailAddressCell
@@ -715,6 +745,7 @@ emailButtonParser
     return email ? `mailto:${email}` : ""
   }
 homeButtonParser
+ popularity 0.006391
  description Home button.
  extends abstractIconButtonParser
  catchAllCellType urlCell
@@ -725,6 +756,7 @@ homeButtonParser
     return this.content || this.get("link") || "index.html"
   }
 viewSourceButtonParser
+ popularity 0.013963
  description Print badge top right.
  extends abstractIconButtonParser
  string svg <svg xmlns="http://www.w3.org/2000/svg" width="92pt" height="92pt" viewBox="0 0 92 92"><path d="M90.156 41.965 50.036 1.848a5.913 5.913 0 0 0-8.368 0l-8.332 8.332 10.566 10.566a7.03 7.03 0 0 1 7.23 1.684 7.043 7.043 0 0 1 1.673 7.277l10.183 10.184a7.026 7.026 0 0 1 7.278 1.672 7.04 7.04 0 0 1 0 9.957 7.045 7.045 0 0 1-9.961 0 7.038 7.038 0 0 1-1.532-7.66l-9.5-9.497V59.36a7.04 7.04 0 0 1 1.86 11.29 7.04 7.04 0 0 1-9.957 0 7.04 7.04 0 0 1 0-9.958 7.034 7.034 0 0 1 2.308-1.539V33.926a7.001 7.001 0 0 1-2.308-1.535 7.049 7.049 0 0 1-1.516-7.7L29.242 14.273 1.734 41.777a5.918 5.918 0 0 0 0 8.371L41.855 90.27a5.92 5.92 0 0 0 8.368 0l39.933-39.934a5.925 5.925 0 0 0 0-8.371"/></svg>
@@ -736,6 +768,7 @@ viewSourceButtonParser
     return this.parent.findNodes("viewSourceButton")[0] === this ? "right:2rem;": "position:relative;"
   }
 loopParser
+ popularity 0.000024
  extends abstractAftertextParser
  cells commandWordCell
  description Iterate over files+ to make HTML.
@@ -802,6 +835,7 @@ abstractTextLinkParser
    return `<a class="abstractTextLinkParser" href="${this.link}">${this.text}</a>`
   }
 scrollVersionLinkParser
+ popularity 0.006294
  extends abstractTextLinkParser
  string link https://scroll.pub
  description Print Scroll version.
@@ -810,6 +844,7 @@ scrollVersionLinkParser
     return `Built with Scroll v${this.parent.file?.SCROLL_VERSION || ""}`
   }
 viewSourceLinkParser
+ popularity 0.001206
  extends abstractTextLinkParser
  description Print "View source" link.
  string text View source
@@ -818,6 +853,7 @@ viewSourceLinkParser
     return this.parent.file?.viewSourceUrl || ""
   }
 printSnippetsParser
+ popularity 0.000338
  // todo: why are we extending AT here and not loops? Is it for class/id etc?
  extends abstractAftertextParser
  cruxFromId
@@ -866,6 +902,7 @@ printSnippetsParser
    }).join("\n\n")
   }
 printFullSnippetsParser
+ popularity 0.000048
  extends printSnippetsParser
  cruxFromId
  description Print full pages in group(s).
@@ -874,6 +911,7 @@ printFullSnippetsParser
    return file.scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
   }
 printRelatedParser
+ popularity 0.001182
  description Print links to related posts.
  extends printSnippetsParser
  cruxFromId
@@ -922,6 +960,7 @@ abstractPrintMetaParser
  extends abstractScrollParser
  cruxFromId
 printAuthorsParser
+ popularity 0.001664
  description Prints author(s) byline.
  boolean isPopular true
  extends abstractPrintMetaParser
@@ -939,6 +978,7 @@ printAuthorsParser
     return this.parent.getNode("authors")?.compileTxtForPrint()
   }
 printDateParser
+ popularity 0.000434
  extends abstractPrintMetaParser
  // If not present computes the date from the file's ctime.
  description Print published date.
@@ -1011,6 +1051,7 @@ loadConceptsParser
     return ""
   }
 buildConceptsParser
+ popularity 0.000024
  cruxFromId
  description Write concepts to csv+ files.
  extends abstractBuildCommandParser
@@ -1018,9 +1059,11 @@ buildConceptsParser
   cruxFromId
   cells commandWordCell anyCell
 buildCssParser
+ popularity 0.000048
  description Compile to CSS file.
  extends abstractBuildCommandParser
 buildCsvParser
+ popularity 0.000096
  description Compile to CSV file.
  extends abstractBuildCommandParser
 fetchParser
@@ -1063,27 +1106,36 @@ fetchParser
     return ""
   }
 buildHtmlParser
+ popularity 0.007645
  description Compile to HTML file.
  extends abstractBuildCommandParser
  boolean isPopular true
 buildMeasuresParser
+ popularity 0.000024
  cruxFromId
  description Write measures to csv+ files.
  extends abstractBuildCommandParser
  sortByParser
   cruxFromId
   cells commandWordCell anyCell
+buildPdfParser
+ popularity 0.000096
+ description Compile to PDF file.
+ extends abstractBuildCommandParser
 buildRssParser
+ popularity 0.000048
  description Write RSS file.
  extends abstractBuildCommandParser
 buildJsParser
  description Compile to JS file.
  extends abstractBuildCommandParser
 buildTxtParser
+ popularity 0.007596
  description Compile to TXT file.
  extends abstractBuildCommandParser
  boolean isPopular true
 chatParser
+ popularity 0.000362
  description A faux text chat conversation.
  catchAllParser chatLineParser
  cruxFromId
@@ -1100,6 +1152,7 @@ chatParser
     return this.childrenToString()
   }
 codeParser
+ popularity 0.001929
  description A code block.
  catchAllParser lineOfCodeParser
  extends abstractScrollParser
@@ -1116,6 +1169,7 @@ codeParser
   }
  cruxFromId
 codeWithHeaderParser
+ popularity 0.000169
  cruxFromId
  catchAllCellType stringCell
  extends codeParser
@@ -1127,6 +1181,7 @@ codeWithHeaderParser
    return `<div class="codeWithHeader"><div class="codeHeader">${this.content}</div>${super.compile()}</div>`
   }
 codeWithLanguageParser
+ popularity 0.000458
  description Use this to specify the language of the code block, such as csvCode or rustCode.
  extends codeParser
  pattern ^[a-zA-Z0-9_]+Code$
@@ -1138,6 +1193,7 @@ abstractScrollWithRequirementsParser
     return this.getHtmlRequirements(compileSettings) + this.compileInstance()
   }
 copyButtonsParser
+ popularity 0.001471
  extends abstractScrollWithRequirementsParser
  description Copy code widget.
  javascript
@@ -1190,6 +1246,7 @@ heatrixParser
     return coreTable ? new TreeNode(coreTable).asSsv : this.childrenToString()
   }
 heatrixAdvancedParser
+ popularity 0.000048
  cruxFromId
  catchAllParser heatrixCatchAllParser
  extends abstractTableVisualizationParser
@@ -1430,6 +1487,7 @@ scatterplotParser
       symbol: get("${this.get("symbol")}")} ), Plot.text(data, {x: get("${x}",0), y: get("${y}", 1), text: "${text}", dy: -6, lineAnchor: "bottom"})`
   }
 sparklineParser
+ popularity 0.000024
  description Sparkline widget.
  extends abstractTableVisualizationParser
  example
@@ -1459,6 +1517,7 @@ sparklineParser
     }
   }
 printTableParser
+ popularity 0.001085
  cruxFromId
  description Print table.
  extends abstractTableVisualizationParser
@@ -1494,8 +1553,10 @@ printTableParser
     if (col.isLink) continue
     let tagged = content
     const link = words[col.linkIndex]
+    const isUrl = content.match(/^https?\:[^ ]+$/)
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
-    else if (content.match(/^https?\:[^ ]+$/)) tagged = `<a href="${content}">${content}</a>`
+    else if (col.name.endsWith("Url") && isUrl) tagged = `<a href="${content}">${col.name.replace("Url", "")}</a>`
+    else if (isUrl) tagged = `<a href="${content}">${content}</a>`
     str += `<td>${tagged}</td>\n`
    }
    return str
@@ -1521,6 +1582,7 @@ printTableParser
     return this.parent.delimitedData || new TreeNode(this.parent.coreTable).asCsv
   }
 katexParser
+ popularity 0.001592
  extends abstractScrollWithRequirementsParser
  catchAllCellType codeCell
  catchAllParser lineOfCodeParser
@@ -1599,6 +1661,7 @@ mapParser
   </script>`
   }
 helpfulNotFoundParser
+ popularity 0.000048
  extends abstractScrollWithRequirementsParser
  catchAllCellType filePathCell
  string copyFromExternal helpfulNotFound.js
@@ -1625,6 +1688,7 @@ slideshowParser
    return `<style>html {font-size: var(--base-font-size, 28px);} body {margin: auto; width: 500px;}.slideshowNav{text-align: center; margin-bottom:20px; font-size: 24px;color: rgba(204,204,204,.8);} a{text-decoration: none; color: rgba(204,204,204,.8);}</style><script defer src="jquery-3.7.1.min.js"></script><div class="slideshowNav"></div><script defer src="slideshow.js"></script>`
   }
 tableSearchParser
+ popularity 0.000072
  extends abstractScrollWithRequirementsParser
  string copyFromExternal jquery-3.7.1.min.js datatables.css datatables.min.js tableSearch.js
  string requireOnce
@@ -1651,9 +1715,11 @@ abstractCommentParser
   }
  catchAllParser commentLineParser
 commentParser
+ popularity 0.000193
  extends abstractCommentParser
  cruxFromId
 slashCommentParser
+ popularity 0.005643
  extends commentParser
  crux //
  boolean isPopular true
@@ -1666,23 +1732,8 @@ thanksToParser
  description Acknowledge reviewers. Prints nothing.
  extends abstractCommentParser
  cruxFromId
-printConceptsParser
- description Print concepts.
- cruxFromId
- extends abstractScrollParser
- javascript
-   compile() {
-   // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table")
-    node.appendLine("delimiter 	")
-    node.appendLine("printTable")
-    const dataNode = node.appendLine("data")
-    dataNode.setChildren(this.parent.file.compileConcepts("concepts.tsv", this.get("sortBy")))
-   const html = node.compile()
-   node.destroy()
-   return html
-   }
 cssParser
+ popularity 0.007211
  extends abstractScrollParser
  description A style tag.
  cruxFromId
@@ -1709,6 +1760,7 @@ abstractPostLoopParser
    return this.root.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1))
   }
 printFeedParser
+ popularity 0.000048
  description Print group to RSS.
  extends abstractPostLoopParser
  example
@@ -1737,6 +1789,7 @@ printFeedParser
     return this.compile()
   }
 printCsvParser
+ popularity 0.000024
  description Print group metadata to CSV.
  extends printFeedParser
  example
@@ -1750,6 +1803,7 @@ printCsvParser
    return `${header.join(",")}\n${files.map(file => file.toCsv()).join("\n")}`
   }
 printSourceParser
+ popularity 0.000024
  description Print source for files in group(s).
  extends printFeedParser
  example
@@ -1762,6 +1816,7 @@ printSourceParser
    return `${files.map(file => file.filePath + "\n " + file.codeAtStart.replace(/\n/g, "\n ") ).join("\n")}`
   }
 printSearchTableParser
+ popularity 0.000024
  description Prints files to HTML table.
  extends abstractPostLoopParser
  example
@@ -1783,6 +1838,7 @@ printSearchTableParser
    return html
   }
 printSiteMapParser
+ popularity 0.000072
  extends abstractPostLoopParser
  description Print text sitemap.
  example
@@ -1798,6 +1854,7 @@ printSiteMapParser
     return this.compile()
   }
 scrollDashboardParser
+ popularity 0.000145
  description Key stats in large font.
  catchAllParser lineOfCodeParser
  crux dashboard
@@ -1838,6 +1895,7 @@ abstractTopLevelSingleMetaParser
    return ""
   }
 dateParser
+ popularity 0.006680
  catchAllCellType dateCell
  description Set published date.
  extends abstractTopLevelSingleMetaParser
@@ -1848,11 +1906,13 @@ dateParser
   Hello world
    dateline
 siteOwnerEmailParser
+ popularity 0.001302
  description Set email address for site contact.
  extends abstractTopLevelSingleMetaParser
  crux email
  cells metaCommandWordCell emailAddressCell
 importOnlyParser
+ popularity 0.033569
  // This line will be not be imported into the importing file.
  description Don't build this file.
  cruxFromId
@@ -1863,6 +1923,7 @@ importOnlyParser
    return ""
   }
 inlineMarkupsParser
+ popularity 0.000024
  description Set global inline markups.
  extends abstractTopLevelSingleMetaParser
  cruxFromId
@@ -1880,17 +1941,21 @@ canonicalUrlParser
  description Override canonical URL.
  extends abstractUrlSettingParser
 openGraphImageParser
+ popularity 0.000796
  // https://ogp.me/
  // If not defined, Scroll will try to generate it's own using the first image tag on your page.
  description Override Open Graph Image.
  extends abstractUrlSettingParser
 baseUrlParser
+ popularity 0.009188
  description Required for RSS and OpenGraph.
  extends abstractUrlSettingParser
 rssFeedUrlParser
+ popularity 0.008850
  description Set RSS feed URL.
  extends abstractUrlSettingParser
 viewSourceBaseUrlParser
+ popularity 0.007838
  description Override source link baseUrl.
  extends abstractUrlSettingParser
 htmlLangParser
@@ -1899,15 +1964,18 @@ htmlLangParser
  description Override HTML lang attribute.
  extends abstractTopLevelSingleMetaParser
 openGraphDescriptionParser
+ popularity 0.001688
  catchAllCellType stringCell
  crux description
  description Meta tag description.
  extends abstractTopLevelSingleMetaParser
 permalinkParser
+ popularity 0.000265
  description Override output filename.
  extends abstractTopLevelSingleMetaParser
  cells metaCommandWordCell permalinkCell
 scrollTagsParser
+ popularity 0.006801
  crux tags
  description Set tags.
  example
@@ -1918,6 +1986,7 @@ testStrictParser
  description Make catchAllParagraphParser = error.
  extends abstractTopLevelSingleMetaParser
 pageTitleParser
+ popularity 0.007524
  catchAllCellType personNameCell
  crux title
  description Set title.
@@ -1931,6 +2000,7 @@ viewSourceUrlParser
  description Override source link.
  extends abstractTopLevelSingleMetaParser
 belowAsCodeParser
+ popularity 0.000651
  description Print code below.
  extends abstractScrollParser
  catchAllCellType integerCell
@@ -1982,6 +2052,7 @@ belowAsCodeUntilParser
     return howMany
   }
 aboveAsCodeParser
+ popularity 0.000482
  description Print code above.
  example
   counter 1 second
@@ -2090,6 +2161,7 @@ abstractThemeCssParser
     return new hakonParser(this.scrollStyles).compile()
   }
 gazetteCssParser
+ popularity 0.001375
  description Default Scroll theme CSS.
  extends abstractThemeCssParser
  javascript
@@ -2337,6 +2409,7 @@ gazetteCssParser
    width 100%
    height 100%
 tufteCssParser
+ popularity 0.000024
  // https://github.com/edwardtufte/tufte-css
  description Theme from Tufte CSS.
  extends abstractThemeCssParser
@@ -2646,10 +2719,12 @@ abstractHtmlParser
     return ""
   }
 htmlParser
+ popularity 0.000048
  extends abstractHtmlParser
  description HTML one liners or blocks.
  cruxFromId
 htmlInlineParser
+ popularity 0.005788
  extends abstractHtmlParser
  cells htmlAnyCell
  pattern ^<
@@ -2660,6 +2735,7 @@ htmlInlineParser
    return `${this.getLine() ?? ""}${this.childrenToString()}`
   }
 scrollBrParser
+ popularity 0.000096
  crux br
  description A break.
  extends abstractScrollParser
@@ -2679,6 +2755,7 @@ stumpParser
    return file.compileStumpCode(this.childrenToString())
   }
 stumpNoSnippetParser
+ popularity 0.010177
  // todo: make noSnippets an aftertext directive?
  extends stumpParser
  description Compile Stump unless snippet.
@@ -2705,6 +2782,7 @@ abstractCaptionedParser
     return this.get("width")
   }
 imageParser
+ popularity 0.005908
  description An img tag.
  boolean isPopular true
  extends abstractCaptionedParser
@@ -2765,6 +2843,7 @@ imageParser
     return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
 youTubeParser
+ popularity 0.000121
  extends abstractCaptionedParser
  // Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
  description A YouTube video widget.
@@ -2789,6 +2868,7 @@ importParser
  example
   import header.scroll
 scrollLeftRightButtonsParser
+ popularity 0.006342
  crux leftRightButtons
  description Previous and next nav buttons.
  extends abstractScrollParser
@@ -2804,6 +2884,7 @@ scrollLeftRightButtonsParser
     return `<style>${style}</style><a class="keyboardNav doNotPrint" style="left:.5rem;" href="${linkToPrevious}">&lt;</a><a class="keyboardNav doNotPrint" style="right:.5rem;" href="${linkToPrevious}">&gt;</a>`
   }
 keyboardNavParser
+ popularity 0.007476
  description Make left and right navigate files.
  extends abstractScrollParser
  cruxFromId
@@ -2828,6 +2909,7 @@ keyboardNavParser
    return `<div class="scrollKeyboardNav" style="display:none;"><a href="${linkToPrevious}">${linkToPrevious}</a> · ${file.permalink} · <a href="${linkToNext}">${linkToNext}</a>${script}</div>`
   }
 printUsageStatsParser
+ popularity 0.000096
  // todo: if we include the word "Parser" in a crux, bad things seem to happen.
  description Parser usage stats for folder.
  extends abstractScrollParser
@@ -2836,7 +2918,12 @@ printUsageStatsParser
   get stats() {
    const input = this.root.file.allScrollFiles.map(file => file.parserIds.join("\n")).join("\n")
    const result = input.split('\n').reduce((acc, word) => (acc[word] = (acc[word] || 0) + 1, acc), {})
-   return "parserId uses\n" + Object.entries(result).map(([word, count]) => `${word} ${count}`).join('\n')
+   const rows = Object.entries(result).map(([word, count]) => { return {word, count}})
+   const sorted = this.lodash.sortBy(rows, "count").reverse()
+   return "parserId uses\n" + sorted.map(row => `${row.word} ${row.count}`).join('\n')
+  }
+  get lodash() {
+    return this.isNodeJs() ? require("lodash") : lodash
   }
   compile() {
     // A hacky but simple way to do this for now.
@@ -2852,7 +2939,11 @@ printUsageStatsParser
   compileTxt() {
     return this.stats
   }
+  compileCsv() {
+    return this.stats.replace(/ /g, ",")
+  }
 printScrollLeetSheetParser
+ popularity 0.000024
  description Print Scroll parser leet sheet.
  extends abstractScrollParser
  cruxFromId
@@ -2871,9 +2962,14 @@ printScrollLeetSheetParser
   sortDocs(docs) {
     return docs.map(node => {
       const {definition} = node
-      const {id, description, isPopular, examples} = definition
-      return {id: definition.cruxIfAny || id, description, isPopular, examples}
-     }).sort((a, b) => a.id.localeCompare(b.id))
+      const {id, description, isPopular, examples, popularity} = definition
+      const tags = definition.get("tags") || ""
+      if (tags.includes("deprecate") || tags.includes("experimental"))
+        return null
+      const category = this.getCategory(tags)
+      const note = this.getNote(category)
+      return {id: definition.cruxIfAny || id, description, isPopular, examples, note, popularity: Math.ceil(parseFloat(popularity) * 100000)}
+     }).filter(i => i).sort((a, b) => a.id.localeCompare(b.id))
   }
   makeLink(examples, crux) {
     // if (!examples.length) console.log(crux) // find nodes that need docs
@@ -2885,7 +2981,7 @@ printScrollLeetSheetParser
   }
   docToHtml(doc) {
    const css = `#scrollLeetSheet {color: grey;} #scrollLeetSheet a {color: #3498db; }`
-   return `<style>${css}</style><div id="scrollLeetSheet">` + doc.map(obj => `<div><a href="${this.makeLink(obj.examples, obj.id)}">${obj.isPopular ? "<b>" : ""}${obj.id}</a> ${obj.description}${obj.isPopular ? "</b>" : ""}</div>`).join("\n") + "</div>"
+   return `<style>${css}</style><div id="scrollLeetSheet">` + doc.map(obj => `<div class="${obj.category}"><a href="${this.makeLink(obj.examples, obj.id)}">${obj.isPopular ? "<b>" : ""}${obj.id}</a> ${obj.description}${obj.isPopular ? "</b>" : ""}${obj.note}</div>`).join("\n") + "</div>"
   }
   compile() {
     return this.docToHtml(this.sortDocs(this.parsersToDocument))
@@ -2896,27 +2992,43 @@ printScrollLeetSheetParser
   get lodash() {
     return require("lodash")
   }
+  getCategory(input) {
+    return ""
+  }
+  getNote() {
+    return ""
+  }
   compileCsv() {
     const rows = this.sortDocs(this.parsersToDocument).map(obj => {
-      const {id, isPopular, description} = obj
+      const {id, isPopular, description, popularity, category} = obj
       return {
         id,
         isPopular,
-        description
+        description,
+        popularity,
+        category
       }
     })
     return new TreeNode(this.lodash.sortBy(rows, "isPopular")).asCsv
   }
 printparsersLeetSheetParser
+ popularity 0.000024
  // todo: fix parse bug when word Parser appears in parserId
  extends printScrollLeetSheetParser
  description Parsers leetsheet.
  javascript
   compile() {
-    return "<p><b>Line Parsers</b> match lines and parse them.</p><br>" + this.docToHtml(this.sortDocs(this.parsersToDocument)) + "<p><b>Cell Parsers</b> parse words in a line.</p><br>" + this.docToHtml(this.sortDocs(this.cellParsersToDocument))
+    return "<p><b>Parser Definition Parsers</b> define parsers that acquire, analyze and act on code.</p>" + this.docToHtml(this.sortDocs(this.parsersToDocument)) + "<p><b>Cell Definition Parsers</b> analyze the words in a line.</p>" + this.docToHtml(this.sortDocs(this.cellParsersToDocument))
   }
   makeLink() {
     return ""
+  }
+  categories = "assemblePhase acquirePhase analyzePhase actPhase".split(" ")
+  getCategory(tags) {
+    return tags.split(" ").filter(w => w.endsWith("Phase"))[0]
+  }
+  getNote(category) {
+    return ` <span class="note">A${category.replace("Phase", "").substr(1)}Time.</span>`
   }
   get cellParsersToDocument() {
     const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
@@ -2934,24 +3046,10 @@ printparsersLeetSheetParser
     const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
     words.sort()
     parserNode.setChildren(words.join("\n"))
+    clone.appendLine("myParser")
+    clone.appendLine("myCell")
     return parserNode
   }
-printMeasuresParser
- description Print measure stats.
- cruxFromId
- extends abstractScrollParser
- javascript
-   compile() {
-   // A hacky but simple way to do this for now.
-      const node = this.appendSibling("table")
-    node.appendLine("delimiter 	")
-    node.appendLine("printTable")
-    const dataNode = node.appendLine("data")
-    dataNode.setChildren(this.parent.file.compileMeasures("tsv"))
-   const html = node.compile()
-   node.destroy()
-   return html
-   }
 abstractMeasureParser
  cells measureNameCell
  cruxFromId
@@ -3045,6 +3143,7 @@ abstractBooleanMeasureParser
     return content === undefined ? "" : content == "true"
   }
 metaTagsParser
+ popularity 0.007693
  cruxFromId
  extends abstractScrollParser
  description Print meta tags including title.
@@ -3078,6 +3177,7 @@ metaTagsParser
   <body>`
   }
 scrollParserDefinitionParser
+ popularity 0.000096
  extends abstractScrollParser
  // todo Figure out best pattern for merging Scroll and Parsers?
  pattern ^[a-zA-Z0-9_]+Parser$
@@ -3088,6 +3188,7 @@ scrollParserDefinitionParser
    return ""
   }
 quoteParser
+ popularity 0.001471
  cruxFromId
  description A quote.
  catchAllParser quoteLineParser
@@ -3100,6 +3201,7 @@ quoteParser
     return this.childrenToString()
   }
 redirectToParser
+ popularity 0.000072
  description HTML redirect tag.
  extends abstractScrollParser
  cells commandWordCell urlCell
@@ -3159,6 +3261,7 @@ scriptParser
     return this.scriptContent
   }
 endSnippetParser
+ popularity 0.004293
  description Cut for snippet here.
  extends abstractScrollParser
  cruxFromId
@@ -3190,6 +3293,7 @@ stampParser
     this.forEach(node => node.build(dir))
   }
 scrollTableParser
+ popularity 0.001133
  description A table.
  crux table
  example
@@ -3258,8 +3362,19 @@ scrollTableParser
     // json csv tsv
     if (this.filename)
       return this.fileContent
-    
-    return this.getNode("data")?.childrenToString() || ""
+    const dataNode = this.getNode("data")
+    if (dataNode)
+      return dataNode.childrenToString()
+    // if not datanode and no filename, check [permalink].csv
+    if (this.isNodeJs()) {
+      const path = require("path")
+      const fs = require("fs")
+      const filename = this.root.permalink.replace(".html", "") + ".csv"
+      const fullPath = path.join(this.parent.file.folderPath, filename)
+      if (fs.existsSync(fullPath))
+        return fs.readFileSync(fullPath, "utf8")
+    }
+    return  ""
   }
   _coreTable
   get coreTable() {
@@ -3297,6 +3412,7 @@ plainTextParser
     return `${this.content ?? ""}${this.childrenToString()}`
   }
 plainTextOnlyParser
+ popularity 0.000072
  extends plainTextParser
  description Only print for buildTxt.
  javascript
@@ -3314,12 +3430,14 @@ abstractAftertextAttributeParser
    return ""
   }
 aftertextIdParser
+ popularity 0.000145
  crux id
  description Provide an ID to be output in the generated HTML tag.
  extends abstractAftertextAttributeParser
  cells commandWordCell htmlIdCell
  single
 aftertextStyleParser
+ popularity 0.000217
  crux style
  description Provide code for the generated HTML tag's "style" attribute.
  extends abstractAftertextAttributeParser
@@ -3412,42 +3530,49 @@ abstractMarkupParser
   }
   patternStartsAtWord = 1
 boldParser
+ popularity 0.000096
  cruxFromId
  description Bold matching text.
  extends abstractMarkupParser
  javascript
   tag = "b"
 italicsParser
+ popularity 0.000241
  cruxFromId
  description Italicize matching text.
  extends abstractMarkupParser
  javascript
   tag = "i"
 underlineParser
+ popularity 0.000024
  description Underline matching text.
  cruxFromId
  extends abstractMarkupParser
  javascript
   tag = "u"
 afterTextCenterParser
+ popularity 0.000193
  description Center paragraph.
  crux center
  extends abstractMarkupParser
  javascript
   tag = "center"
 aftertextCodeParser
+ popularity 0.000145
  description Wrap matching text in code span.
  crux code
  extends abstractMarkupParser
  javascript
   tag = "code"
 aftertextStrikeParser
+ popularity 0.000048
  description Wrap matching text in s span.
  crux strike
  extends abstractMarkupParser
  javascript
   tag = "s"
 classMarkupParser
+ popularity 0.000772
  description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
  extends abstractMarkupParser
  cells commandWordCell classNameCell
@@ -3483,6 +3608,7 @@ classesMarkupParser
    return this.content
   }
 hoverNoteParser
+ popularity 0.000265
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
  cruxFromId
  extends classMarkupParser
@@ -3499,6 +3625,7 @@ hoverNoteParser
    return this.childrenToString().replace(/\n/g, " ")
   }
 linkParser
+ popularity 0.008706
  extends abstractMarkupParser
  description Put the matching text in an <a> tag.
  cells commandWordCell urlCell
@@ -3542,6 +3669,7 @@ linkParser
   }
   patternStartsAtWord = 2
 emailLinkParser
+ popularity 0.000048
  description A mailto link
  crux email
  extends linkParser
@@ -3550,6 +3678,7 @@ emailLinkParser
    return [`href="mailto:${this.link}"`]
   }
 quickLinkParser
+ popularity 0.029228
  pattern ^https?\:
  extends linkParser
  cells urlCell
@@ -3559,6 +3688,7 @@ quickLinkParser
   }
   patternStartsAtWord = 1
 datelineParser
+ popularity 0.006005
  cruxFromId
  description Gives your paragraph a dateline like "December 15, 2021 — The..."
  extends abstractAftertextDirectiveParser
@@ -3592,6 +3722,7 @@ dayjsParser
    return [{ index, string: `${days} ` }]
   }
 inlineMarkupsOnParser
+ popularity 0.000024
  cruxFromId
  description Enable these inline markups only.
  example
@@ -3653,6 +3784,7 @@ inlineMarkupsOnParser
    }).filter(i => i)
   }
 inlineMarkupParser
+ popularity 0.000169
  cruxFromId
  cells commandWordCell delimiterCell tagOrUrlCell
  catchAllCellType htmlAttributesCell
@@ -3683,9 +3815,11 @@ abstractMarkupParameterParser
  cells commandWordCell
  cruxFromId
 matchAllParser
+ popularity 0.000024
  description Use this to match all occurrences of the text.
  extends abstractMarkupParameterParser
 matchParser
+ popularity 0.000048
  catchAllCellType integerCell
  description Use this to specify which index(es) to match.
  javascript
@@ -3704,11 +3838,13 @@ abstractHtmlAttributeParser
    return ""
   }
 linkTargetParser
+ popularity 0.000024
  extends abstractHtmlAttributeParser
  description If you want to set the target of the link. To "_blank", for example.
  crux target
  cells commandWordCell anyCell
 blankLineParser
+ popularity 0.308149
  description Print nothing. Break section.
  cells blankCell
  boolean isPopular true
@@ -3719,14 +3855,17 @@ blankLineParser
  pattern ^$
  tags doNotSynthesize
 chatLineParser
+ popularity 0.009887
  catchAllCellType anyCell
  catchAllParser chatLineParser
 lineOfCodeParser
+ popularity 0.018665
  catchAllCellType codeCell
  catchAllParser lineOfCodeParser
 commentLineParser
  catchAllCellType commentCell
 cssLineParser
+ popularity 0.002870
  catchAllCellType cssAnyCell
  catchAllParser cssLineParser
 errorParser
@@ -4026,17 +4165,22 @@ scrollRenameParser
     return this._renamed
   }
 heatrixCatchAllParser
+ popularity 0.000193
  // todo Fill this out
  catchAllCellType stringCell
 lineOfTextParser
+ popularity 0.000289
  catchAllCellType stringCell
  boolean isTextParser true
 htmlLineParser
+ popularity 0.005209
  catchAllCellType htmlAnyCell
  catchAllParser htmlLineParser
 stumpContentParser
+ popularity 0.102322
  catchAllCellType anyCell
 linkTitleParser
+ popularity 0.000048
  description If you want to set the title of the link.
  crux title
  cells commandWordCell
@@ -4046,6 +4190,7 @@ linkTitleParser
    https://example.com/report This report.
     title The average growth in the treatment group was 14.2x higher than the control group.
 programLinkParser
+ popularity 0.000531
  catchAllCellType codeCell
 abstractLoopConfigParser
  cells commandWordCell
@@ -4065,6 +4210,7 @@ loopLinesParser
    return this.map(node => node.asString)
   }
 loopWordsParser
+ popularity 0.000024
  crux words
  extends abstractItemsProviderParser
  catchAllCellType stringCell
@@ -4097,6 +4243,7 @@ longParser
  cruxFromId
  single
 scrollMediaLoopParser
+ popularity 0.000048
  crux loop
  cells commandWordCell
 scrollAutoplayParser
@@ -4129,6 +4276,7 @@ scrollYParser
  crux y
  extends abstractColumnNameParser
 quoteLineParser
+ popularity 0.004172
  catchAllCellType anyCell
  catchAllParser quoteLineParser
 scrollParser
@@ -4219,11 +4367,13 @@ stampFolderParser
    this.forEach(node => node.build(newPath))
   }
 scrollTableDataParser
+ popularity 0.001061
  crux data
  description Table from inline delimited data.
  catchAllCellType anyCell
  baseParser blobParser
 scrollTableDelimiterParser
+ popularity 0.001037
  description Set the delimiter.
  crux delimiter
  cells commandWordCell stringCell
@@ -4232,5 +4382,6 @@ scrollTableDelimiterParser
     return ""
   }
 plainTextLineParser
+ popularity 0.000121
  catchAllCellType stringCell
  catchAllParser plainTextLineParser
