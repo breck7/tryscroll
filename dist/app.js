@@ -1,9 +1,9 @@
 
 
 
-class BottomBarComponent extends AbstractTreeComponentParser {
+class BottomBarComponent extends AbstractParticleComponentParser {
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(undefined, {})
+    return new Particle.ParserCombinator(undefined, {})
   }
 }
 
@@ -25,7 +25,7 @@ class CodeMirrorShim {
   }
 }
 
-class CodeEditorComponent extends AbstractTreeComponentParser {
+class CodeEditorComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ${CodeEditorComponent.name}
@@ -38,8 +38,8 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
   }
 
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(undefined, {
-      value: TreeNode,
+    return new Particle.ParserCombinator(undefined, {
+      value: Particle,
     })
   }
 
@@ -99,22 +99,22 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
   }
 
   get scrollCode() {
-    return this.codeMirrorInstance ? this.codeMirrorValue : this.getNode("value").childrenToString()
+    return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").childrenToString()
   }
 
-  async treeComponentDidMount() {
+  async particleComponentDidMount() {
     this._initCodeMirror()
     this._updateCodeMirror()
-    super.treeComponentDidMount()
+    super.particleComponentDidMount()
   }
 
-  async treeComponentDidUpdate() {
+  async particleComponentDidUpdate() {
     this._updateCodeMirror()
-    super.treeComponentDidUpdate()
+    super.particleComponentDidUpdate()
   }
 
-  renderAndGetRenderReport(stumpNode, index) {
-    if (!this.isMounted()) return super.renderAndGetRenderReport(stumpNode, index)
+  renderAndGetRenderReport(stumpParticle, index) {
+    if (!this.isMounted()) return super.renderAndGetRenderReport(stumpParticle, index)
     this.setSize()
     return ""
   }
@@ -150,7 +150,7 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
   }
 
   _updateCodeMirror() {
-    this.setCodeMirrorValue(this.getNode("value").childrenToString())
+    this.setCodeMirrorValue(this.getParticle("value").childrenToString())
   }
 }
 
@@ -171,7 +171,7 @@ window.CodeEditorComponent = CodeEditorComponent
 
 // prettier-ignore
 
-class githubTriangleComponent extends AbstractTreeComponentParser {
+class githubTriangleComponent extends AbstractParticleComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
     return `.AbstractGithubTriangleComponent
@@ -192,12 +192,12 @@ class githubTriangleComponent extends AbstractTreeComponentParser {
   }
 }
 
-class ErrorNode extends AbstractTreeComponentParser {
+class ErrorParticle extends AbstractParticleComponentParser {
   _isErrorParser() {
     return true
   }
   toStumpCode() {
-    console.error(`Warning: EditorApp does not have a node type for "${this.getLine()}"`)
+    console.error(`Warning: EditorApp does not have a Parser for "${this.getLine()}"`)
     return `span
  style display: none;`
   }
@@ -209,13 +209,13 @@ const newSeed = () => {
   return _defaultSeed
 }
 
-class EditorApp extends AbstractTreeComponentParser {
+class EditorApp extends AbstractParticleComponentParser {
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(ErrorNode, {
+    return new Particle.ParserCombinator(ErrorParticle, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,
-      TreeComponentFrameworkDebuggerComponent,
+      ParticleComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
       ShowcaseComponent,
@@ -233,7 +233,7 @@ class EditorApp extends AbstractTreeComponentParser {
   }
 
   get editor() {
-    return this.getNode(CodeEditorComponent.name)
+    return this.getParticle(CodeEditorComponent.name)
   }
 
   get scrollCode() {
@@ -260,7 +260,7 @@ class EditorApp extends AbstractTreeComponentParser {
 
   dumpErrorsCommand() {
     const errs = new scrollParser(this.scrollCode).getAllErrors()
-    console.log(new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200))
+    console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
   get mainDocument() {
@@ -268,13 +268,13 @@ class EditorApp extends AbstractTreeComponentParser {
   }
 
   refreshHtml() {
-    this.getNode(`${ShowcaseComponent.name}`).refresh()
+    this.getParticle(`${ShowcaseComponent.name}`).refresh()
   }
 
   async start() {
     const { willowBrowser } = this
-    this._bindTreeComponentFrameworkCommandListenersOnBody()
-    this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
+    this._bindParticleComponentFrameworkCommandListenersOnBody()
+    this.renderAndGetRenderReport(willowBrowser.getBodyStumpParticle())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
     Object.keys(keyboardShortcuts).forEach((key) => {
@@ -296,14 +296,14 @@ class EditorApp extends AbstractTreeComponentParser {
   }
 
   get urlHash() {
-    const tree = new TreeNode()
-    tree.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
-    return "#" + encodeURIComponent(tree.asString)
+    const particle = new Particle()
+    particle.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
+    return "#" + encodeURIComponent(particle.asString)
   }
 
   _getKeyboardShortcuts() {
     return {
-      d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
+      d: () => this.toggleParticleComponentFrameworkDebuggerCommand(),
       w: () => this.resizeEditorCommand(),
     }
   }
@@ -332,7 +332,7 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
-  const startState = new TreeNode(`${githubTriangleComponent.name}
+  const startState = new Particle(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
  ${ShareComponent.name}
  ${ExportComponent.name}
@@ -354,7 +354,7 @@ window.EditorApp = EditorApp
 
 
 
-class EditorHandleComponent extends AbstractTreeComponentParser {
+class EditorHandleComponent extends AbstractParticleComponentParser {
   get left() {
     return this.root.editor.width
   }
@@ -363,7 +363,7 @@ class EditorHandleComponent extends AbstractTreeComponentParser {
     if (this.isNodeJs()) return
 
     const root = this.root
-    jQuery(this.getStumpNode().getShadow().element).draggable({
+    jQuery(this.getStumpParticle().getShadow().element).draggable({
       axis: "x",
       drag: function (event, ui) {
         if ("ontouchend" in document) return // do not update live on a touch device. otherwise buggy.
@@ -375,11 +375,11 @@ class EditorHandleComponent extends AbstractTreeComponentParser {
     })
   }
 
-  treeComponentDidMount() {
+  particleComponentDidMount() {
     this.makeDraggable()
   }
 
-  treeComponentDidUpdate() {
+  particleComponentDidUpdate() {
     this.makeDraggable()
   }
 
@@ -399,7 +399,7 @@ window.EditorHandleComponent = EditorHandleComponent
 
 
 
-class ExportComponent extends AbstractTreeComponentParser {
+class ExportComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ExportComponent
@@ -423,7 +423,7 @@ class ExportComponent extends AbstractTreeComponentParser {
 
   async runBuildCommand() {
     await Promise.all(
-      this.root.mainDocument.topDownArray.filter((node) => node.build).map(async (node) => node.build())
+      this.root.mainDocument.topDownArray.filter((particle) => particle.build).map(async (particle) => particle.build())
     )
     this.root.refreshHtml()
   }
@@ -446,7 +446,7 @@ window.ExportComponent = ExportComponent
 
 
 
-class ShareComponent extends AbstractTreeComponentParser {
+class ShareComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ShareComponent
@@ -472,7 +472,7 @@ window.ShareComponent = ShareComponent
 
 
 
-class ShowcaseComponent extends AbstractTreeComponentParser {
+class ShowcaseComponent extends AbstractParticleComponentParser {
   get html() {
     return this.root.completeHtml
   }
@@ -488,7 +488,7 @@ class ShowcaseComponent extends AbstractTreeComponentParser {
       })
   }
 
-  treeComponentDidMount() {
+  particleComponentDidMount() {
     this.refresh()
   }
 
@@ -510,9 +510,9 @@ window.ShowcaseComponent = ShowcaseComponent
 
 
 
-class TopBarComponent extends AbstractTreeComponentParser {
+class TopBarComponent extends AbstractParticleComponentParser {
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(undefined, {
+    return new Particle.ParserCombinator(undefined, {
       ShareComponent,
       ExportComponent,
     })
@@ -574,7 +574,7 @@ table
  printTable
  delimiter ,
  data
-  Language,NodeTypes
+  Language,Types
   HTML,~142
   Markdown,~192
   Scroll,~174 + yours
@@ -595,7 +595,7 @@ You can easily add collapsed content.
 gazetteCss
 `
 
-class BrowserGlue extends AbstractTreeComponentParser {
+class BrowserGlue extends AbstractParticleComponentParser {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
     const code = await this.fetchText(url)
     return code
@@ -613,9 +613,9 @@ class BrowserGlue extends AbstractTreeComponentParser {
 
   async fetchCode() {
     const hash = this.willowBrowser.getHash().substr(1)
-    const deepLink = new TreeNode(decodeURIComponent(hash))
+    const deepLink = new Particle(decodeURIComponent(hash))
     const fromUrl = deepLink.get(UrlKeys.url)
-    const code = deepLink.getNode(UrlKeys.scroll)
+    const code = deepLink.getParticle(UrlKeys.scroll)
 
     // Clear hash
     history.pushState("", document.title, window.location.pathname)

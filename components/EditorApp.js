@@ -1,6 +1,6 @@
 // prettier-ignore
-/*NODE_JS_ONLY*/ const { AbstractTreeComponentParser, TreeComponentFrameworkDebuggerComponent } = require("scrollsdk/products/TreeComponentFramework.node.js")
-const { TreeNode } = require("scrollsdk/products/TreeNode.js")
+/*NODE_JS_ONLY*/ const { AbstractParticleComponentParser, ParticleComponentFrameworkDebuggerComponent } = require("scrollsdk/products/ParticleComponentFramework.node.js")
+const { Particle } = require("scrollsdk/products/Particle.js")
 
 const { TopBarComponent } = require("./TopBar.js")
 const { CodeEditorComponent } = require("./CodeEditor.js")
@@ -14,7 +14,7 @@ const { LocalStorageKeys, UrlKeys } = require("./Types.js")
 // prettier-ignore
 /*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollParser)
 
-class githubTriangleComponent extends AbstractTreeComponentParser {
+class githubTriangleComponent extends AbstractParticleComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
     return `.AbstractGithubTriangleComponent
@@ -35,12 +35,12 @@ class githubTriangleComponent extends AbstractTreeComponentParser {
   }
 }
 
-class ErrorNode extends AbstractTreeComponentParser {
+class ErrorParticle extends AbstractParticleComponentParser {
   _isErrorParser() {
     return true
   }
   toStumpCode() {
-    console.error(`Warning: EditorApp does not have a node type for "${this.getLine()}"`)
+    console.error(`Warning: EditorApp does not have a Parser for "${this.getLine()}"`)
     return `span
  style display: none;`
   }
@@ -52,13 +52,13 @@ const newSeed = () => {
   return _defaultSeed
 }
 
-class EditorApp extends AbstractTreeComponentParser {
+class EditorApp extends AbstractParticleComponentParser {
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(ErrorNode, {
+    return new Particle.ParserCombinator(ErrorParticle, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,
-      TreeComponentFrameworkDebuggerComponent,
+      ParticleComponentFrameworkDebuggerComponent,
       BottomBarComponent,
       EditorHandleComponent,
       ShowcaseComponent,
@@ -76,7 +76,7 @@ class EditorApp extends AbstractTreeComponentParser {
   }
 
   get editor() {
-    return this.getNode(CodeEditorComponent.name)
+    return this.getParticle(CodeEditorComponent.name)
   }
 
   get scrollCode() {
@@ -103,7 +103,7 @@ class EditorApp extends AbstractTreeComponentParser {
 
   dumpErrorsCommand() {
     const errs = new scrollParser(this.scrollCode).getAllErrors()
-    console.log(new TreeNode(errs.map((err) => err.toObject())).toFormattedTable(200))
+    console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
   get mainDocument() {
@@ -111,13 +111,13 @@ class EditorApp extends AbstractTreeComponentParser {
   }
 
   refreshHtml() {
-    this.getNode(`${ShowcaseComponent.name}`).refresh()
+    this.getParticle(`${ShowcaseComponent.name}`).refresh()
   }
 
   async start() {
     const { willowBrowser } = this
-    this._bindTreeComponentFrameworkCommandListenersOnBody()
-    this.renderAndGetRenderReport(willowBrowser.getBodyStumpNode())
+    this._bindParticleComponentFrameworkCommandListenersOnBody()
+    this.renderAndGetRenderReport(willowBrowser.getBodyStumpParticle())
 
     const keyboardShortcuts = this._getKeyboardShortcuts()
     Object.keys(keyboardShortcuts).forEach((key) => {
@@ -139,14 +139,14 @@ class EditorApp extends AbstractTreeComponentParser {
   }
 
   get urlHash() {
-    const tree = new TreeNode()
-    tree.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
-    return "#" + encodeURIComponent(tree.asString)
+    const particle = new Particle()
+    particle.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
+    return "#" + encodeURIComponent(particle.asString)
   }
 
   _getKeyboardShortcuts() {
     return {
-      d: () => this.toggleTreeComponentFrameworkDebuggerCommand(),
+      d: () => this.toggleParticleComponentFrameworkDebuggerCommand(),
       w: () => this.resizeEditorCommand(),
     }
   }
@@ -175,7 +175,7 @@ EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
     typeof localStorage !== "undefined"
       ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
       : SIZES.EDITOR_WIDTH
-  const startState = new TreeNode(`${githubTriangleComponent.name}
+  const startState = new Particle(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
  ${ShareComponent.name}
  ${ExportComponent.name}

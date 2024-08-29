@@ -1,6 +1,6 @@
-const { TreeNode } = require("scrollsdk/products/TreeNode.js")
+const { Particle } = require("scrollsdk/products/Particle.js")
 const { HandParsersProgram } = require("scrollsdk/products/Parsers.ts.js")
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
 const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
@@ -35,7 +35,7 @@ table
  printTable
  delimiter ,
  data
-  Language,NodeTypes
+  Language,Types
   HTML,~142
   Markdown,~192
   Scroll,~174 + yours
@@ -56,7 +56,7 @@ You can easily add collapsed content.
 gazetteCss
 `
 
-class BrowserGlue extends AbstractTreeComponentParser {
+class BrowserGlue extends AbstractParticleComponentParser {
   async fetchAndLoadScrollCodeFromUrlCommand(url) {
     const code = await this.fetchText(url)
     return code
@@ -74,9 +74,9 @@ class BrowserGlue extends AbstractTreeComponentParser {
 
   async fetchCode() {
     const hash = this.willowBrowser.getHash().substr(1)
-    const deepLink = new TreeNode(decodeURIComponent(hash))
+    const deepLink = new Particle(decodeURIComponent(hash))
     const fromUrl = deepLink.get(UrlKeys.url)
-    const code = deepLink.getNode(UrlKeys.scroll)
+    const code = deepLink.getParticle(UrlKeys.scroll)
 
     // Clear hash
     history.pushState("", document.title, window.location.pathname)

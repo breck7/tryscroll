@@ -1,6 +1,6 @@
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
-class EditorHandleComponent extends AbstractTreeComponentParser {
+class EditorHandleComponent extends AbstractParticleComponentParser {
   get left() {
     return this.root.editor.width
   }
@@ -9,7 +9,7 @@ class EditorHandleComponent extends AbstractTreeComponentParser {
     if (this.isNodeJs()) return
 
     const root = this.root
-    jQuery(this.getStumpNode().getShadow().element).draggable({
+    jQuery(this.getStumpParticle().getShadow().element).draggable({
       axis: "x",
       drag: function (event, ui) {
         if ("ontouchend" in document) return // do not update live on a touch device. otherwise buggy.
@@ -21,11 +21,11 @@ class EditorHandleComponent extends AbstractTreeComponentParser {
     })
   }
 
-  treeComponentDidMount() {
+  particleComponentDidMount() {
     this.makeDraggable()
   }
 
-  treeComponentDidUpdate() {
+  particleComponentDidUpdate() {
     this.makeDraggable()
   }
 

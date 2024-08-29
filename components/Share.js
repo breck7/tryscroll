@@ -1,6 +1,6 @@
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
-class ShareComponent extends AbstractTreeComponentParser {
+class ShareComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ShareComponent

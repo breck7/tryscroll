@@ -1,6 +1,6 @@
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
-class ShowcaseComponent extends AbstractTreeComponentParser {
+class ShowcaseComponent extends AbstractParticleComponentParser {
   get html() {
     return this.root.completeHtml
   }
@@ -16,7 +16,7 @@ class ShowcaseComponent extends AbstractTreeComponentParser {
       })
   }
 
-  treeComponentDidMount() {
+  particleComponentDidMount() {
     this.refresh()
   }
 

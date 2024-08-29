@@ -1,9 +1,9 @@
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
-const { TreeNode } = require("scrollsdk/products/TreeNode.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
+const { Particle } = require("scrollsdk/products/Particle.js")
 
-class BottomBarComponent extends AbstractTreeComponentParser {
+class BottomBarComponent extends AbstractParticleComponentParser {
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(undefined, {})
+    return new Particle.ParserCombinator(undefined, {})
   }
 }
 

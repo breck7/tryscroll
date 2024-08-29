@@ -1,6 +1,6 @@
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
-class ExportComponent extends AbstractTreeComponentParser {
+class ExportComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ExportComponent
@@ -24,7 +24,7 @@ class ExportComponent extends AbstractTreeComponentParser {
 
   async runBuildCommand() {
     await Promise.all(
-      this.root.mainDocument.topDownArray.filter((node) => node.build).map(async (node) => node.build())
+      this.root.mainDocument.topDownArray.filter((particle) => particle.build).map(async (particle) => particle.build())
     )
     this.root.refreshHtml()
   }

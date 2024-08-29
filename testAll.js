@@ -1,8 +1,8 @@
-const runTree = testTree => {
+const runTests = (testParticles) => {
 	const tap = require("tap")
-	Object.keys(testTree).forEach(key => {
-		testTree[key](tap.equal)
+	Object.keys(testParticles).forEach((key) => {
+		testParticles[key](tap.equal)
 	})
 }
 
-runTree({ ...require("./components/EditorApp.test.node.js").testTree })
+runTests({ ...require("./components/EditorApp.test.node.js").testParticles })

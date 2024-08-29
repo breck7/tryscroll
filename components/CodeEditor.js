@@ -1,5 +1,5 @@
-const { TreeNode } = require("scrollsdk/products/TreeNode.js")
-const { AbstractTreeComponentParser } = require("scrollsdk/products/TreeComponentFramework.node.js")
+const { Particle } = require("scrollsdk/products/Particle.js")
+const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
 // prettier-ignore
 /*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollParser)
@@ -14,7 +14,7 @@ class CodeMirrorShim {
   }
 }
 
-class CodeEditorComponent extends AbstractTreeComponentParser {
+class CodeEditorComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ${CodeEditorComponent.name}
@@ -27,8 +27,8 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
   }
 
   createParserCombinator() {
-    return new TreeNode.ParserCombinator(undefined, {
-      value: TreeNode,
+    return new Particle.ParserCombinator(undefined, {
+      value: Particle,
     })
   }
 
@@ -88,22 +88,22 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
   }
 
   get scrollCode() {
-    return this.codeMirrorInstance ? this.codeMirrorValue : this.getNode("value").childrenToString()
+    return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").childrenToString()
   }
 
-  async treeComponentDidMount() {
+  async particleComponentDidMount() {
     this._initCodeMirror()
     this._updateCodeMirror()
-    super.treeComponentDidMount()
+    super.particleComponentDidMount()
   }
 
-  async treeComponentDidUpdate() {
+  async particleComponentDidUpdate() {
     this._updateCodeMirror()
-    super.treeComponentDidUpdate()
+    super.particleComponentDidUpdate()
   }
 
-  renderAndGetRenderReport(stumpNode, index) {
-    if (!this.isMounted()) return super.renderAndGetRenderReport(stumpNode, index)
+  renderAndGetRenderReport(stumpParticle, index) {
+    if (!this.isMounted()) return super.renderAndGetRenderReport(stumpParticle, index)
     this.setSize()
     return ""
   }
@@ -139,7 +139,7 @@ class CodeEditorComponent extends AbstractTreeComponentParser {
   }
 
   _updateCodeMirror() {
-    this.setCodeMirrorValue(this.getNode("value").childrenToString())
+    this.setCodeMirrorValue(this.getParticle("value").childrenToString())
   }
 }
 

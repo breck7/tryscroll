@@ -138,8 +138,8 @@ abstractAftertextParser
  javascript
   get markupInserts() {
    const { originalTextPostLinkify } = this
-   return this.filter(node => node.isMarkup)
-    .map(node => node.getInserts(originalTextPostLinkify))
+   return this.filter(particle => particle.isMarkup)
+    .map(particle => particle.getInserts(originalTextPostLinkify))
     .filter(i => i)
     .flat()
   }
@@ -180,7 +180,7 @@ abstractAftertextParser
   get className() {
    if (this.get("classes"))
      return this.get("classes")
-   const classLine = this.getNode("class")
+   const classLine = this.getParticle("class")
    if (classLine && classLine.applyToParentElement) return classLine.content
    return this.defaultClassName
   }
@@ -199,8 +199,8 @@ abstractAftertextParser
    return this.getHtmlRequirements(compileSettings) + `<${tag} ${this.divAttributes}${classAttr}>${this.text}</${tag}>`
   }
   get divAttributes() {
-   const attrs = this.filter(node => node.isAttribute)
-   return attrs.length ? attrs.map(node => node.divAttributes).join(" ") + " " : ""
+   const attrs = this.filter(particle => particle.isAttribute)
+   return attrs.length ? attrs.map(particle => particle.divAttributes).join(" ") + " " : ""
   }
 paragraphParser
  // todo Perhaps rewrite this from scratch and move out of aftertext.
@@ -220,8 +220,8 @@ paragraphParser
    return compiled
   }
   compileTxt() {
-    const children = this.filter(node => node.compileTxt).map(node => node.compileTxt()).filter(i => i).join("\n")
-    const dateline = this.getNode("dateline")
+    const children = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
+    const dateline = this.getParticle("dateline")
     return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
 authorsParser
@@ -312,7 +312,7 @@ abstractIndentableParagraphParser
  inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser abstractIndentableParagraphParser
  javascript
   compileChildren() {
-    return this.map(node => node.compile())
+    return this.map(particle => particle.compile())
      .join("\n")
      .trim()
   }
@@ -357,9 +357,9 @@ listAftertextParser
   compile() {
    const index = this.getIndex()
    const parent = this.parent
-   const nodeClass = this.constructor
-   const isStartOfList = index === 0 || !(parent.nodeAt(index - 1) instanceof nodeClass)
-   const isEndOfList = parent.length === index + 1 || !(parent.nodeAt(index + 1) instanceof nodeClass)
+   const particleClass = this.constructor
+   const isStartOfList = index === 0 || !(parent.particleAt(index - 1) instanceof particleClass)
+   const isEndOfList = parent.length === index + 1 || !(parent.particleAt(index + 1) instanceof particleClass)
    const { listType } = this
    return (isStartOfList ? `<${listType} ${this.attributes}>` : "") + `${super.compile()}` + (isEndOfList ? `</${listType}>` : "")
   }
@@ -765,7 +765,7 @@ viewSourceButtonParser
     return this.parent.file?.viewSourceUrl || ""
   }
   get style() {
-    return this.parent.findNodes("viewSourceButton")[0] === this ? "right:2rem;": "position:relative;"
+    return this.parent.findParticles("viewSourceButton")[0] === this ? "right:2rem;": "position:relative;"
   }
 loopParser
  popularity 0.000024
@@ -972,10 +972,10 @@ printAuthorsParser
   printAuthors
  javascript
   compile() {
-   return this.parent.getNode("authors")?.compileHtmlForPrint()
+   return this.parent.getParticle("authors")?.compileHtmlForPrint()
   }
   compileTxt() {
-    return this.parent.getNode("authors")?.compileTxtForPrint()
+    return this.parent.getParticle("authors")?.compileTxtForPrint()
   }
 printDateParser
  popularity 0.000434
@@ -1010,9 +1010,9 @@ printFormatLinksParser
   compile() {
    const permalink = this.root.file.permalink.replace(".html", "")
    // hacky
-   const node = this.appendSibling(`HTML | TXT`, `class scrollDateline\nlink ${permalink}.html HTML\nlink ${permalink}.txt TXT\nstyle text-align:center;`)
-   const html = node.compile()
-   node.destroy()
+   const particle = this.appendSibling(`HTML | TXT`, `class scrollDateline\nlink ${permalink}.html HTML\nlink ${permalink}.txt TXT\nstyle text-align:center;`)
+   const html = particle.compile()
+   particle.destroy()
    return html
   }
   compileTxt() {
@@ -1234,16 +1234,16 @@ heatrixParser
  javascript
   compile() {
    // A hacky but simple way to do this for now.
-   const advanced = new TreeNode("heatrixAdvanced")
+   const advanced = new Particle("heatrixAdvanced")
    advanced.appendLineAndChildren("table", "\n " + this.tableData.replace(/\n/g, "\n "))
-   const node = this.appendSibling("heatrixAdvanced", advanced.childrenToString())
-   const html = node.compile()
-   node.destroy()
+   const particle = this.appendSibling("heatrixAdvanced", advanced.childrenToString())
+   const html = particle.compile()
+   particle.destroy()
    return html
   }
   get tableData() {
     const {coreTable} = this.parent
-    return coreTable ? new TreeNode(coreTable).asSsv : this.childrenToString()
+    return coreTable ? new Particle(coreTable).asSsv : this.childrenToString()
   }
 heatrixAdvancedParser
  popularity 0.000048
@@ -1269,8 +1269,8 @@ heatrixAdvancedParser
     uid = Heatrix.HeatrixId++
     constructor(program) {
       const isDirective = word => /^(f|l|w|h)\d+$/.test(word) || word === "right" || word === "left" || word.startsWith("http://") || word.startsWith("https://") || word.endsWith(".html")
-      const tree = new TreeNode(program)
-      this.program = tree
+      const particle = new Particle(program)
+      this.program = particle
       const generateColorBinningString = (data, colors) => {
        const sortedData = [...data].sort((a, b) => a - b);
        const n = sortedData.length;
@@ -1296,8 +1296,8 @@ heatrixAdvancedParser
         numbers.unshift(0)
         return generateColorBinningString(numbers, colors);
       }
-      const table = tree.getNode("table").childrenToString()
-      const scale = tree.getNode("scale")?.childrenToString() || buildScale(table)
+      const table = particle.getParticle("table").childrenToString()
+      const scale = particle.getParticle("scale")?.childrenToString() || buildScale(table)
       const thresholds = []
       const colors = []
       scale.split("\n").map((line) => {
@@ -1455,7 +1455,7 @@ abstractPlotParser
   }
   get dataCode() {
     const {coreTable} = this.parent
-    return `d3.csvParse(\`${new TreeNode(coreTable).asCsv}\`, d3.autoType)`
+    return `d3.csvParse(\`${new Particle(coreTable).asCsv}\`, d3.autoType)`
   }
   get plotOptions() {
     return `{
@@ -1579,7 +1579,7 @@ printTableParser
    </script>`
   }
   compileTxt() {
-    return this.parent.delimitedData || new TreeNode(this.parent.coreTable).asCsv
+    return this.parent.delimitedData || new Particle(this.parent.coreTable).asCsv
   }
 katexParser
  popularity 0.001592
@@ -1646,7 +1646,7 @@ mapParser
     const lat = ${this.get("lat") ?? 37.8}
     const long = ${this.get("long") ?? 4}
     const zoomLevel = ${this.get("zoom") ?? 4}
-    const points = ${JSON.stringify(this.findNodes("point").map(node => node.toObject()))}
+    const points = ${JSON.stringify(this.findParticles("point").map(particle => particle.toObject()))}
     const map = L.map("map${id}").setView([lat, long], zoomLevel)
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
      attribution: '<a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
@@ -1828,13 +1828,13 @@ printSearchTableParser
    const files = this.files
    const data = files.map(file => file.file.toSearchTsvRow(file.relativePath)).join("\n")
    // A hacky but simple way to do this for now.
-     const node = this.appendSibling("table")
-    node.appendLine("delimiter 	")
-    node.appendLine("printTable")
-    const dataNode = node.appendLine("data")
-    dataNode.setChildren("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
-   const html = node.compile()
-   node.destroy()
+     const particle = this.appendSibling("table")
+    particle.appendLine("delimiter 	")
+    particle.appendLine("printTable")
+    const dataParticle = particle.appendLine("data")
+    dataParticle.setChildren("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
+   const html = particle.compile()
+   particle.destroy()
    return html
   }
 printSiteMapParser
@@ -1874,7 +1874,7 @@ scrollDashboardParser
    return str
   }
   makeRow(items) {
-   return `<tr>` + items.map(node => `<td>${node.firstWord}<span>${node.content}</span></td>`).join("\n") + `</tr>\n`
+   return `<tr>` + items.map(particle => `<td>${particle.firstWord}<span>${particle.content}</span></td>`).join("\n") + `</tr>\n`
   }
   compile() {
    return `<table class="scrollDashboard">${this.tableBody}</table>`
@@ -2011,16 +2011,16 @@ belowAsCodeParser
    const { method } = this
    let code = ""
    
-   let nodes = []
+   let particles = []
    let next = this[method]
    let {howMany} = this
    while (howMany) {
-    nodes.push(next)
+    particles.push(next)
     next = next[method]
     howMany--
    }
-   if (this.reverse) nodes.reverse()
-   return nodes.map(node => node.asString).join("\n")
+   if (this.reverse) particles.reverse()
+   return particles.map(particle => particle.asString).join("\n")
   }
   reverse = false
   compile() {
@@ -2042,11 +2042,11 @@ belowAsCodeUntilParser
   get howMany() {
     let howMany = 1
     const query = this.content
-    let node = this.next
-    while (node !== this) {
-      if (node.getLine().startsWith(query))
+    let particle = this.next
+    while (particle !== this) {
+      if (particle.getLine().startsWith(query))
         return howMany
-      node = node.next
+      particle = particle.next
       howMany++
     }
     return howMany
@@ -2771,7 +2771,7 @@ abstractCaptionedParser
  cruxFromId
  javascript
   compile(compileSettings) {
-   const caption = this.getNode("caption")
+   const caption = this.getParticle("caption")
    const captionFig = caption ? `<figcaption>${caption.compile()}</figcaption>` : ""
    const {figureWidth} = this
    const widthStyle = figureWidth ? `width:${figureWidth}px; margin: auto;` : ""
@@ -2839,7 +2839,7 @@ imageParser
    return `<a href="${clickLink}" target="${target}" ${className} ${id}><img src="${linkRelativeToCompileTarget}" ${dimensionAttributes}loading="lazy"></a>`
   }
   compileTxt() {
-    const children = this.filter(node => node.compileTxt).map(node => node.compileTxt()).filter(i => i).join("\n")
+    const children = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
     return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
 youTubeParser
@@ -2927,13 +2927,13 @@ printUsageStatsParser
   }
   compile() {
     // A hacky but simple way to do this for now.
-   const node = this.appendSibling("table")
-   node.appendLine("delimiter  ")
-   node.appendLine("printTable")
-   const dataNode = node.appendLine("data")
-    dataNode.setChildren(this.stats)
-   const html = node.compile()
-   node.destroy()
+   const particle = this.appendSibling("table")
+   particle.appendLine("delimiter  ")
+   particle.appendLine("printTable")
+   const dataParticle = particle.appendLine("data")
+    dataParticle.setChildren(this.stats)
+   const html = particle.compile()
+   particle.destroy()
    return html
   }
   compileTxt() {
@@ -2960,8 +2960,8 @@ printScrollLeetSheetParser
     return clone
   }
   sortDocs(docs) {
-    return docs.map(node => {
-      const {definition} = node
+    return docs.map(particle => {
+      const {definition} = particle
       const {id, description, isPopular, examples, popularity} = definition
       const tags = definition.get("tags") || ""
       if (tags.includes("deprecate") || tags.includes("experimental"))
@@ -2972,12 +2972,12 @@ printScrollLeetSheetParser
      }).filter(i => i).sort((a, b) => a.id.localeCompare(b.id))
   }
   makeLink(examples, crux) {
-    // if (!examples.length) console.log(crux) // find nodes that need docs
+    // if (!examples.length) console.log(crux) // find particles that need docs
     const example = examples.length ? examples[0].childrenToString() : crux
     const base = `https://try.scroll.pub/`
-    const tree = new TreeNode()
-    tree.appendLineAndChildren("scroll", "gazetteCss\n" + example)
-    return base + "#" + encodeURIComponent(tree.asString)
+    const particle = new Particle()
+    particle.appendLineAndChildren("scroll", "gazetteCss\n" + example)
+    return base + "#" + encodeURIComponent(particle.asString)
   }
   docToHtml(doc) {
    const css = `#scrollLeetSheet {color: grey;} #scrollLeetSheet a {color: #3498db; }`
@@ -3009,7 +3009,7 @@ printScrollLeetSheetParser
         category
       }
     })
-    return new TreeNode(this.lodash.sortBy(rows, "isPopular")).asCsv
+    return new Particle(this.lodash.sortBy(rows, "isPopular")).asCsv
   }
 printparsersLeetSheetParser
  popularity 0.000024
@@ -3033,22 +3033,22 @@ printparsersLeetSheetParser
   get cellParsersToDocument() {
     const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
     const clone = new parsersParser("anyCell\n ").clone()
-    const parserNode = clone.getNode("anyCell")
+    const parserParticle = clone.getParticle("anyCell")
     const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
     words.sort()
-    parserNode.setChildren(words.join("\n"))
-    return parserNode
+    parserParticle.setChildren(words.join("\n"))
+    return parserParticle
   }
   get parsersToDocument() {
     const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
     const clone = new parsersParser("latinParser\n ").clone()
-    const parserNode = clone.getNode("latinParser")
+    const parserParticle = clone.getParticle("latinParser")
     const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
     words.sort()
-    parserNode.setChildren(words.join("\n"))
+    parserParticle.setChildren(words.join("\n"))
     clone.appendLine("myParser")
     clone.appendLine("myCell")
-    return parserNode
+    return parserParticle
   }
 abstractMeasureParser
  cells measureNameCell
@@ -3290,7 +3290,7 @@ stampParser
  javascript
   build() {
     const dir = this.root.file.folderPath
-    this.forEach(node => node.build(dir))
+    this.forEach(particle => particle.build(dir))
   }
 scrollTableParser
  popularity 0.001133
@@ -3309,15 +3309,15 @@ scrollTableParser
  inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
  javascript
   get visualizations() {
-    return this.topDownArray.filter(node => node.isTableVisualization || node.isHeader)
+    return this.topDownArray.filter(particle => particle.isTableVisualization || particle.isHeader)
   }
   compile(compileSettings) {
-   return this.visualizations.map(node => node.compile(compileSettings))
+   return this.visualizations.map(particle => particle.compile(compileSettings))
      .join("\n")
      .trim()
   }
   compileTxt() {
-    return this.visualizations.map(node => node.compileTxt())
+    return this.visualizations.map(particle => particle.compileTxt())
      .join("\n")
      .trim()
   }
@@ -3327,7 +3327,7 @@ scrollTableParser
     if (filename) {
       const extension = filename.split(".").pop()
       if (extension === "json") delimiter = "json"
-      if (extension === "tree") delimiter = "tree"
+      if (extension === "particles") delimiter = "particles"
       if (extension === "csv") delimiter = ","
       if (extension === "tsv") delimiter = "\t"
     }
@@ -3362,10 +3362,10 @@ scrollTableParser
     // json csv tsv
     if (this.filename)
       return this.fileContent
-    const dataNode = this.getNode("data")
-    if (dataNode)
-      return dataNode.childrenToString()
-    // if not datanode and no filename, check [permalink].csv
+    const dataParticle = this.getParticle("data")
+    if (dataParticle)
+      return dataParticle.childrenToString()
+    // if not dataparticle and no filename, check [permalink].csv
     if (this.isNodeJs()) {
       const path = require("path")
       const fs = require("fs")
@@ -3382,9 +3382,9 @@ scrollTableParser
     const {delimiter, delimitedData} = this
     if (delimiter === "json")
        this._coreTable = JSON.parse(delimitedData)
-    else if (delimiter === "tree") {
+    else if (delimiter === "particles") {
        const d3lib = typeof d3 === "undefined" ? require('d3') : d3
-       this._coreTable = d3lib.dsvFormat(",").parse(new TreeNode(delimitedData).asCsv, d3lib.autoType)
+       this._coreTable = d3lib.dsvFormat(",").parse(new Particle(delimitedData).asCsv, d3lib.autoType)
     } else {
       const d3lib = typeof d3 === "undefined" ? require('d3') : d3
       this._coreTable = d3lib.dsvFormat(delimiter).parse(delimitedData, d3lib.autoType)
@@ -3446,12 +3446,12 @@ aftertextStyleParser
 aftertextHiddenParser
  crux hidden
  cells commandWordCell
- description Do not compile this node to HTML.
+ description Do not compile this particle to HTML.
  extends abstractAftertextAttributeParser
  single
 aftertextTagParser
  cells commandWordCell htmlTagCell
- description Override the HTML tag that the compiled node will use.
+ description Override the HTML tag that the compiled particle will use.
  crux tag
  javascript
   compile() {
@@ -3469,7 +3469,7 @@ abstractAftertextDirectiveParser
     const errors = super.getErrors()
     if (!this.isMarkup || this.matchWholeLine) return errors
     const inserts = this.getInserts(this.parent.originalTextPostLinkify)
-    // todo: make AbstractTreeError class exported by sdk to allow Parsers to define their own error types.
+    // todo: make AbstractParticleError class exported by sdk to allow Parsers to define their own error types.
     // todo: also need to be able to map lines back to their line in source (pre-imports)
     if (!inserts.length)
      errors.push(this.makeError(`No match found for "${this.getLine()}".`))
@@ -3497,7 +3497,7 @@ abstractAftertextDirectiveParser
    const matches = this.getMatches(text)
    if (!matches.length) return false
    if (this.shouldMatchAll) return matches.flat()
-   const match = this.getNode("match")
+   const match = this.getParticle("match")
    if (match)
     return match.indexes
      .map(index => matches[index])
@@ -3648,7 +3648,7 @@ linkParser
   get link() {
    const {baseLink} = this
    if (this.has("program"))
-     return baseLink + this.getNode("program").encoded
+     return baseLink + this.getParticle("program").encoded
    return baseLink
   }
   get baseLink() {
@@ -3662,8 +3662,8 @@ linkParser
    const attrs = [`href="${this.link}"`]
    const options = ["title", "target"]
    options.forEach(option => {
-    const node = this.getNode(option)
-    if (node) attrs.push(`${option}="${node.content}"`)
+    const particle = this.getParticle(option)
+    if (particle) attrs.push(`${option}="${particle.content}"`)
    })
    return attrs
   }
@@ -3743,7 +3743,7 @@ inlineMarkupsOnParser
     if (this.content)
       return markups.filter(markup => this.content.includes(markup.name))
     if (root.has("inlineMarkups")) {
-      root.getNode("inlineMarkups").forEach(markup => {
+      root.getParticle("inlineMarkups").forEach(markup => {
         const delimiter = markup.getWord(0)
         const tag = markup.getWord(1)
         // todo: add support for providing custom functions for inline markups?
@@ -3905,11 +3905,11 @@ scrollGroupByParser
    const groupByColNames = this.getWordsFrom(1)
    const {coreTable} = this.parent
    if (!groupByColNames.length) return coreTable
-   const newCols = [].map(reduceNode => {
+   const newCols = [].map(reduceParticle => {
     return {
-     source: reduceNode.getWord(1),
-     reduction: reduceNode.getWord(2),
-     name: reduceNode.getWord(3) || reduceNode.getWordsFrom(1).join("_")
+     source: reduceParticle.getWord(1),
+     reduction: reduceParticle.getWord(2),
+     name: reduceParticle.getWord(3) || reduceParticle.getWordsFrom(1).join("_")
     }
    })
    // Pivot is shorthand for group and reduce?
@@ -3936,7 +3936,7 @@ scrollGroupByParser
        return rowsInGroups
      }
      getNewRows(groupByCols) {
-       // make new trees
+       // make new particles
        const rowsInGroups = this._getGroups(this._rows, groupByCols)
        // Any column in the group should be reused by the children
        const columns = [
@@ -4207,7 +4207,7 @@ loopLinesParser
   catchAllCellType stringCell
  javascript
   get items() {
-   return this.map(node => node.asString)
+   return this.map(particle => particle.asString)
   }
 loopWordsParser
  popularity 0.000024
@@ -4315,7 +4315,7 @@ scrollParser
      .trim() + this.clearSectionStack()
   }
   get footnotes() {
-   if (this._footnotes === undefined) this._footnotes = this.filter(node => node.isFootnote)
+   if (this._footnotes === undefined) this._footnotes = this.filter(particle => particle.isFootnote)
    return this._footnotes
   }
   file = {}
@@ -4364,7 +4364,7 @@ stampFolderParser
    const newPath = path.join(parentDir, this.getLine())
    this.root.file.log(`Creating folder ${newPath}`)
    fs.mkdirSync(newPath, {recursive: true})
-   this.forEach(node => node.build(newPath))
+   this.forEach(particle => particle.build(newPath))
   }
 scrollTableDataParser
  popularity 0.001061

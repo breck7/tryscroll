@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 
 const { Disk } = require("scrollsdk/products/Disk.node.js")
-const { TreeNode } = require("scrollsdk/products/TreeNode.js")
+const { Particle } = require("scrollsdk/products/Particle.js")
 const path = require("path")
 const { TypeScriptRewriter } = require("/Users/breck/sdk/products/TypeScriptRewriter.js") // todo: fix
 const { DefaultScrollParser } = require("scroll-cli")
 
 // Libs
 // todo: fix path
-const libPaths = `../sdk/treeComponentFramework/sweepercraft/lib/mousetrap.min.js
+const libPaths = `../sdk/particleComponentFramework/sweepercraft/lib/mousetrap.min.js
 node_modules/jquery/dist/jquery.min.js
 lib/jquery-ui.min.js
 lib/jquery.ui.touch-punch.min.js
 ../sdk/sandbox/lib/codemirror.js
 ../sdk/sandbox/lib/show-hint.js
 ../sdk/products/Utils.browser.js
-../sdk/products/TreeNode.browser.js
+../sdk/products/Particle.browser.js
 ../sdk/products/Parsers.ts.browser.js
 ../sdk/products/ParsersCodeMirrorMode.browser.js
 ../sdk/products/stump.browser.js
 ../sdk/products/hakon.browser.js
-../sdk/products/TreeComponentFramework.browser.js`.split("\n")
+../sdk/products/ParticleComponentFramework.browser.js`.split("\n")
 const libCode = libPaths.map((filepath) => Disk.read(path.join(__dirname, filepath))).join("\n\n")
 Disk.write(path.join(__dirname, "dist", "libs.js"), libCode)
 
@@ -42,14 +42,14 @@ Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 
 // Scroll code
 let parsers = new DefaultScrollParser().definition.asString
-const tree = new TreeNode(parsers)
+const particle = new Particle(parsers)
 // Remove comments
-tree.filter((line) => line.getLine().startsWith("//")).forEach((node) => node.destroy())
+particle.filter((line) => line.getLine().startsWith("//")).forEach((particle) => particle.destroy())
 // Remove blank lines
-parsers = tree.toString().replace(/^\n/gm, "")
+parsers = particle.toString().replace(/^\n/gm, "")
 
 const AppConstants = {
 	parsers,
 }
-Disk.write(path.join(__dirname, "scroll.parsers"), parsers) // Compile parsers to one file for use in Tree Language Designer.
+Disk.write(path.join(__dirname, "scroll.parsers"), parsers) // Compile parsers to one file for use in Designer.
 Disk.write(path.join(__dirname, "dist", "constants.js"), `const AppConstants = ` + JSON.stringify(AppConstants))
