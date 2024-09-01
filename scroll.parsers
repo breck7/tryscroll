@@ -1146,7 +1146,7 @@ chatParser
    👋
  javascript
   compile() {
-   return this.map((line, index) => `<div style="text-align: ${index % 2 ? "right" : "left"};" class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>`).join("")
+   return this.map((line, index) => line.asString ? `<div style="text-align: ${index % 2 ? "right" : "left"};" class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>` : "").join("")
   }
   compileTxt() {
     return this.childrenToString()
@@ -2842,18 +2842,22 @@ imageParser
     const children = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
     return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
   }
-youTubeParser
+youtubeParser
  popularity 0.000121
  extends abstractCaptionedParser
  // Include the YouTube embed URL such as https://www.youtube.com/embed/CYPYZnVQoLg
  description A YouTube video widget.
  example
-  youTube https://www.youtube.com/watch?v=lO8blNtYYBA
+  youtube https://www.youtube.com/watch?v=lO8blNtYYBA
  javascript
   getFigureContent() {
    const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
    return `<div class="scrollYouTubeHolder"><iframe class="scrollYouTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
+youTubeParser
+ extends youtubeParser
+ tags deprecate
+ // Deprecated. You youtube all lowercase.
 importParser
  description Import a file.
  cruxFromId
