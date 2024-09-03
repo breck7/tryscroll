@@ -767,6 +767,39 @@ viewSourceButtonParser
   get style() {
     return this.parent.findParticles("viewSourceButton")[0] === this ? "right:2rem;": "position:relative;"
   }
+scrollFormParser
+ crux form
+ popularity 0.006391
+ description Generate input form for ScrollSet.
+ extends abstractAftertextParser
+ javascript
+  compile() {
+    const {measures} = this.parent.file
+    const inputs = measures.filter(measure => !measure.IsComputed).map((measure, index) => {
+      const {Name, Question, IsRequired, Type} = measure
+      const type = Type || "text"
+      const placeholder = Question
+      const ucFirst = Name.substr(0, 1).toUpperCase() + Name.substr(1)
+      // ${index ? "" : "autofocus"} 
+      return `<div><label for="${Name}" title="${IsRequired ? "Required" : ""}">${ucFirst}${IsRequired ? "*" : ""}:</label><input placeholder="${placeholder}" type="${type}" id="${Name}" name="${Name}" ${IsRequired ? "required" : ""}></div>`
+    }).join("\n")
+    return `<style> .scrollFormParser {
+      font-family: "Gill Sans", "Bitstream Vera Sans", sans-serif;
+    }
+    .scrollFormParser input {
+    padding: 10px;
+    margin-bottom: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    } .scrollFormParser label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    </style><form class="scrollFormParser" method="get" action="${this.action}">${inputs}<button class="scrollButton" type="submit">Submit</button></form>`
+  }
+  get action() {
+    return this.getWord(1) || ""
+  }
 loopParser
  popularity 0.000024
  extends abstractAftertextParser
@@ -2180,6 +2213,7 @@ abstractThemeCssParser
     return new hakonParser(this.scrollStyles).compile()
   }
 gazetteCssParser
+ // todo: does modern CSS have all the SCSS-esque features  we need to drop Hakon here?
  popularity 0.001375
  description Default Scroll theme CSS.
  extends abstractThemeCssParser
@@ -3079,7 +3113,7 @@ abstractMeasureParser
  boolean isMeasure true
  float sortIndex 1.9
  boolean isComputed false
- string typeForCsvDocs unspecified
+ string typeForWebForms text
  extends abstractScrollParser
  javascript
   compileEmbeddedVersion() {
@@ -3097,14 +3131,16 @@ abstractMeasureParser
 abstractWordMeasureParser
  description A measure that contains a single word.
  cells measureNameCell wordCell
- string typeForCsvDocs word
  extends abstractMeasureParser
+abstractEmailMeasureParser
+ string typeForWebForms email
+ cells measureNameCell emailAddressCell
+ extends abstractWordMeasureParser
 abstractUrlMeasureParser
- string typeForCsvDocs url
+ string typeForWebForms url
  cells measureNameCell urlCell
  extends abstractWordMeasureParser
 abstractStringMeasureParser
- string typeForCsvDocs string
  catchAllCellType stringCell
  extends abstractMeasureParser
 abstractIdParser
@@ -3130,7 +3166,7 @@ abstractIdParser
     return errors
   }
 abstractNumericMeasureParser
- string typeForCsvDocs number
+ string typeForWebForms number
  extends abstractMeasureParser
  javascript
   get measureValue() {
@@ -3138,7 +3174,6 @@ abstractNumericMeasureParser
     return content === undefined ? "" : parseFloat(content)
   }
 abstractIntegerMeasureParser
- string typeForCsvDocs integer
  cells measureNameCell integerCell
  extends abstractNumericMeasureParser
 abstractFloatMeasureParser
@@ -3153,11 +3188,9 @@ abstractPercentageMeasureParser
     return content === undefined ? "" : parseFloat(content)
   }
 abstractEnumMeasureParser
- string typeForCsvDocs enum
  cells measureNameCell enumCell
  extends abstractMeasureParser
 abstractBooleanMeasureParser
- string typeForCsvDocs boolean
  cells measureNameCell booleanCell
  extends abstractMeasureParser
  javascript
