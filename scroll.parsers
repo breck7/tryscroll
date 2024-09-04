@@ -1142,6 +1142,7 @@ loadConceptsParser
    const path = require("path")
    const {file} = this.parent
    const folder = path.join(file.folderPath, this.getWord(1))
+   const importParticleRegex = /^(import .+|[a-zA-Z\_\-\.0-9\/]+\.(scroll|parsers)$)/gm
    const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(Disk.read).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
     this.parent.concat(ONE_BIG_FILE)
    //console.log(ONE_BIG_FILE)
@@ -2983,8 +2984,8 @@ youTubeParser
  // Deprecated. You youtube all lowercase.
 importParser
  description Import a file.
+ popularity 0.007524
  cruxFromId
- boolean isPopular true
  cells preBuildCommandWordCell
  extends abstractScrollParser
  catchAllCellType filePathCell
@@ -2994,6 +2995,19 @@ importParser
   }
  example
   import header.scroll
+quickImportParser
+ popularity 0.007524
+ description Import a Scroll or Parsers file.
+ extends abstractScrollParser
+ boolean isPopular true
+ cells urlCell
+ pattern ^[^\s]+\.(scroll|parsers)$
+ javascript
+  compile() {
+   return ""
+  }
+ example
+  header.scroll
 scrollLeftRightButtonsParser
  popularity 0.006342
  crux leftRightButtons
@@ -3485,7 +3499,12 @@ scrollTableParser
   get fileFromDisk() {
     const path = require("path")
     const fs = require("fs")
-    return fs.readFileSync(path.join(this.parent.file.folderPath, this.filename), "utf8")
+    const fullPath = path.join(this.parent.file.folderPath, this.filename)
+    if (!fs.existsSync(fullPath)) {
+      console.error(`❌ Error in tables. File "${fullPath}" not found. Using empty string`)
+      return ""
+    }
+    return fs.readFileSync(fullPath, "utf8")
   }
   get fileFromLocalStorage() {
     return localStorage.getItem(this.filename) || ""
@@ -4027,6 +4046,7 @@ abstractTableTransformParser
    return super.getRunTimeEnumOptions(cell)
   }
   getRunTimeEnumOptionsForValidation(cell) {
+    // Note: this will fail if the CSV file hasnt been built yet.
     if (cell.cellTypeId === "columnNameCell")
       return this.parent.columnNames.concat(this.parent.columnNames.map(c => "-" + c)) // Add reverse names
    return super.getRunTimeEnumOptions(cell)
