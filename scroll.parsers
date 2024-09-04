@@ -573,12 +573,13 @@ captionAftertextParser
 abstractMediaParser
  extends paragraphParser
  inScope scrollMediaLoopParser scrollAutoplayParser
+ int wordIndex 1
  javascript
   compileTxt() {
     return ""
   }
   get filename() {
-    return this.getWord(1)
+    return this.getWord(this.wordIndex)
   }
   getAsHtmlAttribute(attr) {
     if (!this.has(attr)) return ""
@@ -591,7 +592,7 @@ abstractMediaParser
   compile() {
     return `<${this.tag} src="${this.filename}" controls ${this.getAsHtmlAttributes("width height loop autoplay".split(" "))}></${this.tag}>`
   }
-scrollSoundParser
+scrollMusicParser
  popularity 0.000024
  extends abstractMediaParser
  crux music
@@ -602,6 +603,12 @@ scrollSoundParser
   compile() {
     return `<audio controls ${this.getAsHtmlAttributes("loop autoplay".split(" "))}><source src="${this.filename}" type="audio/mpeg"></audio>`
   }
+quickSoundParser
+ popularity 0.000024
+ extends scrollMusicParser
+ cells urlCell
+ pattern ^[^\s]+\.(mp3|wav|ogg|aac|m4a|flac)
+ int wordIndex 0
 scrollVideoParser
  popularity 0.000024
  extends abstractMediaParser
@@ -617,6 +624,12 @@ scrollVideoParser
   cells commandWordCell
  javascript
   tag = "video"
+quickVideoParser
+ popularity 0.000024
+ extends scrollVideoParser
+ cells urlCell
+ pattern ^[^\s]+\.(mp4|webm|avi|mov)
+ int wordIndex 0
 quickParagraphParser
  popularity 0.001881
  crux *
@@ -964,7 +977,7 @@ printSnippetsParser
   }
   get files() {
    const thisFile = this.parent.file
-   const files = this.parent.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1), this.has("limit") ? parseInt(this.get("limit")) : undefined).filter(file => file.file !== thisFile)
+   const files = this.parent.file.getFilesWithTagsForEmbedding(this.content, this.has("limit") ? parseInt(this.get("limit")) : undefined).filter(file => file.file !== thisFile)
    // allow sortBy lastCommit Time
    if (this.get("sortBy") === "commitTime") {
      return require("lodash").sortBy(files, file => file.file.lastCommitTime).reverse()
@@ -1859,7 +1872,7 @@ abstractPostLoopParser
  catchAllCellType tagWithOptionalFolderCell
  javascript
   get files() {
-   return this.root.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1))
+   return this.root.file.getFilesWithTagsForEmbedding(this.content)
   }
 printFeedParser
  popularity 0.000048
@@ -1900,7 +1913,7 @@ printCsvParser
  javascript
   compile() {
    const file = this.root.file
-   const files = file.getFilesWithTagsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const files = file.getFilesWithTagsForEmbedding(this.content).map(file => file.file)
    const header = file.csvFields
    return `${header.join(",")}\n${files.map(file => file.toCsv()).join("\n")}`
   }
@@ -1917,7 +1930,7 @@ printSourceParser
  javascript
   compile() {
    const file = this.root.file
-   const files = file.getFilesWithTagsForEmbedding(this.getWordsFrom(1)).map(file => file.file)
+   const files = file.getFilesWithTagsForEmbedding(this.content).map(file => file.file)
    return `${files.map(file => file.filePath + "\n " + file.codeAtStart.replace(/\n/g, "\n ") ).join("\n")}`
   }
 printSearchTableParser
@@ -2893,6 +2906,7 @@ scrollImageParser
  description An img tag.
  boolean isPopular true
  extends abstractCaptionedParser
+ int wordIndex 1
  example
   image screenshot.png
    caption A caption.
@@ -2927,7 +2941,7 @@ scrollImageParser
     return this.dimensions.width
   }
   get filename() {
-    return this.getWord(1)
+    return this.getWord(this.wordIndex)
   }
   getFigureContent(compileSettings) {
    const file = this.root.file
@@ -2950,10 +2964,7 @@ quickImageParser
  extends scrollImageParser
  cells urlCell
  pattern ^[^\s]+\.(jpg|jpeg|png|gif|webp|svg|bmp)
- javascript
-  get filename() {
-    return this.getWord(0)
-  }
+ int wordIndex 0
 youtubeParser
  popularity 0.000121
  extends abstractCaptionedParser
@@ -3428,6 +3439,7 @@ scrollTableParser
  extends abstractScrollParser
  catchAllCellType filePathCell
  inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
+ int wordIndex 1
  javascript
   get visualizations() {
     return this.topDownArray.filter(particle => particle.isTableVisualization || particle.isHeader)
@@ -3451,6 +3463,8 @@ scrollTableParser
       if (extension === "particles") delimiter = "particles"
       if (extension === "csv") delimiter = ","
       if (extension === "tsv") delimiter = "\t"
+      if (extension === "ssv") delimiter = " "
+      if (extension === "psv") delimiter = "|"
     }
     if (this.get("delimiter"))
       delimiter = this.get("delimiter")
@@ -3466,7 +3480,7 @@ scrollTableParser
     return delimiter
   }
   get filename() {
-    return this.content
+    return this.getWord(this.wordIndex)
   }
   get fileFromDisk() {
     const path = require("path")
@@ -3519,6 +3533,12 @@ scrollTableParser
     const coreTable = this.coreTable
     return this._columnNames
   }
+quickTableParser
+ popularity 0.000024
+ extends scrollTableParser
+ cells urlCell
+ pattern ^[^\s]+\.(tsv|csv|ssv|psv)
+ int wordIndex 0
 plainTextParser
  description Plain text oneliner or block.
  cruxFromId
@@ -4352,7 +4372,7 @@ loopTagsParser
  description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[tag]
  javascript
   get items() {
-   return this.root.file.getFilesWithTagsForEmbedding(this.getWordsFrom(1))
+   return this.root.file.getFilesWithTagsForEmbedding(this.content)
   }
 abstractPointConfigParser
  // todo: scoped parsers should support abstract types
