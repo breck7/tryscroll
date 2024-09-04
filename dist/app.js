@@ -580,7 +580,8 @@ table
   Scroll,~174 + yours
 
 # Images in Scroll
-image https://scroll.pub/blog/screenshot.png
+// Just put the filename or URL:
+https://scroll.pub/blog/screenshot.png
  caption This is a screenshot of a blog
   https://breckyunits.com/ blog
 aboveAsCode

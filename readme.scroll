@@ -5,7 +5,7 @@ Scroll is a language for scientists of all ages.
  https://scroll.pub/ Scroll
 
 ? Can you show me a screenshot?
-image public/screenshot.png
+public/screenshot.png
 
 ? What is this tool?
 This folder contains a simple web editor for trying Scroll. You can write Scroll and see the rendered HTML in realtime. You can try Scroll without downloading the Scroll command line app.

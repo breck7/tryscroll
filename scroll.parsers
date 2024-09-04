@@ -2887,7 +2887,8 @@ abstractCaptionedParser
   get figureWidth() {
     return this.get("width")
   }
-imageParser
+scrollImageParser
+ crux image
  popularity 0.005908
  description An img tag.
  boolean isPopular true
@@ -2895,11 +2896,7 @@ imageParser
  example
   image screenshot.png
    caption A caption.
- inScope classMarkupParser aftertextIdParser linkParser linkTargetParser
- openGraphParser
-  description Add this line to make this the open graph image.
-  cruxFromId
-  cells commandWordCell
+ inScope classMarkupParser aftertextIdParser linkParser linkTargetParser openGraphParser
  javascript
   get dimensions() {
     const width = this.get("width")
@@ -2947,6 +2944,15 @@ imageParser
   compileTxt() {
     const children = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
     return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
+  }
+quickImageParser
+ popularity 0.005788
+ extends scrollImageParser
+ cells urlCell
+ pattern ^[^\s]+\.(jpg|jpeg|png|gif|webp|svg|bmp)
+ javascript
+  get filename() {
+    return this.getWord(0)
   }
 youtubeParser
  popularity 0.000121
@@ -4294,6 +4300,11 @@ htmlLineParser
 stumpContentParser
  popularity 0.102322
  catchAllCellType anyCell
+openGraphParser
+ // todo: fix Parsers scope issue so we can move this parser def under scrollImageParser
+ description Add this line to make this the open graph image.
+ cruxFromId
+ cells commandWordCell
 linkTitleParser
  popularity 0.000048
  description If you want to set the title of the link.
