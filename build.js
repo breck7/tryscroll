@@ -14,6 +14,7 @@ lib/jquery-ui.min.js
 lib/jquery.ui.touch-punch.min.js
 ../sdk/sandbox/lib/codemirror.js
 ../sdk/sandbox/lib/show-hint.js
+../sdk/sandbox/lib/placeholder.js
 ../sdk/products/Utils.browser.js
 ../sdk/products/Particle.browser.js
 ../sdk/products/Parsers.ts.browser.js
