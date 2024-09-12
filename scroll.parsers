@@ -276,6 +276,13 @@ scrollButtonParser
  javascript
   defaultClassName = "scrollButton"
   tag = "button"
+  get divAttributes() {
+    const link = this.getFromParser("linkParser")
+    return super.divAttributes + link ? `onclick="window.location='${link.link}'"` : "" // better ideas?
+  }
+  getFromParser(parserId) {
+    return this.find(particle => particle.doesExtend(parserId))
+  }
 catchAllParagraphParser
  popularity 0.115562
  description A paragraph.
@@ -887,7 +894,7 @@ scrollFormParser
   }
   get inputs() {
     const Name = "scroll"
-    return `<textarea title="oneTextarea" rows="${this.parent.file.measures.length * 2}" placeholder="${this.placeholder}" id="${Name}" name="${Name}"></textarea>
+    return `<textarea title="oneTextarea" rows="${Math.min(this.parent.file.measures.length * 2, 30)}" placeholder="${this.placeholder}" id="${Name}" name="${Name}"></textarea>
     <script id="${Name}Parsers" type="text/plain">${this.parent.file.parsersBundle}</script>
     <script>{
     let {width, height} = document.getElementById('${Name}').getBoundingClientRect();
@@ -901,12 +908,13 @@ scrollFormParser
   compile(compileSettings) {
     return this.getHtmlRequirements(compileSettings) + super.compile()
   }
-loopParser
+scrollLoopParser
  popularity 0.000024
  extends abstractAftertextParser
  cells commandWordCell
+ boolean isTableVisualization true
  description Iterate over files+ to make HTML.
- cruxFromId
+ crux loop
  inScope abstractItemsProviderParser
  joinParser
   extends abstractLoopConfigParser
@@ -935,7 +943,11 @@ loopParser
   }
   get items() {
    const provider = this.getChildInstancesOfParserId("abstractItemsProviderParser")[0]
-   return provider ? provider.items : []
+   if (provider)
+     return provider.items
+   if (this.parent.coreTable)
+     return this.parent.coreTable
+   return []
   }
   teardown() {}
 loremIpsumParser
@@ -966,7 +978,7 @@ abstractTextLinkParser
     return this.text
   }
   compile() {
-   return `<a class="abstractTextLinkParser" href="${this.link}">${this.text}</a>`
+   return `<div class="abstractTextLinkParser"><a href="${this.link}">${this.text}</a></div>`
   }
 scrollVersionLinkParser
  popularity 0.006294
@@ -1702,12 +1714,14 @@ printTableParser
     column++
     const content = ((columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]) ?? "").toString()
     if (col.isLink) continue
-    let tagged = content
+    const isTimestamp = col.name.toLowerCase().includes("time") && /^\d{10}(\d{3})?$/.test(content)
+    const text =  isTimestamp ? new Date(parseInt(content)).toLocaleString() : content
+    let tagged = text
     const link = words[col.linkIndex]
     const isUrl = content.match(/^https?\:[^ ]+$/)
-    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${content}</a>`
+    if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${text}</a>`
     else if (col.name.endsWith("Url") && isUrl) tagged = `<a href="${content}">${col.name.replace("Url", "")}</a>`
-    else if (isUrl) tagged = `<a href="${content}">${content}</a>`
+    else if (isUrl) tagged = `<a href="${content}">${text}</a>`
     str += `<td>${tagged}</td>\n`
    }
    return str
@@ -2355,6 +2369,7 @@ gazetteCssParser
    cursor pointer
    a
     color white
+    text-decoration none
    &:hover
     background-color rgb(10,92,202,0.9)
    &:active
@@ -2510,15 +2525,15 @@ gazetteCssParser
    text-align center
   
   comment Subtle "Article Source" link
-  a.abstractTextLinkParser
+  .abstractTextLinkParser
    text-align center
-   display block
    margin .5em auto
    font-family Verdana
    font-weight 100
-   color rgba(204,204,204,.5)
-   &:hover
-    color #333
+   a
+    color rgba(204,204,204,.5)
+    &:hover
+     color #333
   
   .scrollContinueReadingLink
    display block
@@ -3487,7 +3502,7 @@ scrollTableParser
     2020,23
  extends abstractScrollParser
  catchAllCellType filePathCell
- inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
+ inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser
  int wordIndex 1
  javascript
   get visualizations() {
@@ -3517,7 +3532,7 @@ scrollTableParser
     }
     if (this.get("delimiter"))
       delimiter = this.get("delimiter")
-    else {
+    else if (!delimiter) {
       const header = this.delimitedData.split("\n")[0]
       if (header.includes("\t"))
         delimiter = "\t"
@@ -3569,8 +3584,12 @@ scrollTableParser
   get coreTable() {
     if (this._coreTable) return this._coreTable
     const {delimiter, delimitedData} = this
-    if (delimiter === "json")
-       this._coreTable = JSON.parse(delimitedData)
+    if (delimiter === "json") {
+       const rows = JSON.parse(delimitedData)
+       this._columnNames = rows.length ? Object.keys(rows[0]) : []
+       this._coreTable = rows
+       return rows
+    }
     else if (delimiter === "particles") {
        const d3lib = typeof d3 === "undefined" ? require('d3') : d3
        this._coreTable = d3lib.dsvFormat(",").parse(new Particle(delimitedData).asCsv, d3lib.autoType)
@@ -4067,7 +4086,7 @@ errorParser
  baseParser errorParser
 abstractTableTransformParser
  cells commandWordCell
- inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser
+ inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser
  javascript
   get coreTable() {
     return this.parent.coreTable
@@ -4253,6 +4272,17 @@ scrollReverseParser
  javascript
   get coreTable() {
    return this.parent.coreTable.slice().reverse()
+  }
+scrollLimitParser
+ extends abstractTableTransformParser
+ description Select a subset.
+ crux limit
+ cells commandWordCell integerCell integerCell
+ javascript
+  get coreTable() {
+   const start = this.getWord(1)
+   const end = this.getWord(2)
+   return this.parent.coreTable.slice(parseInt(start), parseInt(end))
   }
 scrollTransposeParser
  extends abstractTableTransformParser
