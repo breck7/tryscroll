@@ -165,8 +165,14 @@ abstractAftertextParser
    const { originalTextPostLinkify, markupInserts } = this
    let adjustment = 0
    let newText = originalTextPostLinkify
-   // If multiple tags start at same index, the tag that closes first should start last. Otherwise HTML breaks.
-   markupInserts.sort((a, b) => (a.index === b.index ? b.endIndex - a.endIndex : a.index - b.index))
+   markupInserts.sort((a, b) => {
+     if (a.index !== b.index)
+       return a.index - b.index
+     // If multiple tags start at same index, the tag that closes first should start last. Otherwise HTML breaks.
+     if (b.index === b.endIndex) // unless the endIndex is the same as index
+       return a.endIndex - b.endIndex
+     return b.endIndex - a.endIndex
+   })
    markupInserts.forEach(insertion => {
     insertion.index += adjustment
     const consumeStartCharacters = insertion.consumeStartCharacters ?? 0
@@ -3612,6 +3618,23 @@ quickTableParser
  cells urlCell
  pattern ^[^\s]+\.(tsv|csv|ssv|psv)
  int wordIndex 0
+assertHtmlEqualsParser
+ description Test above particle's output.
+ extends abstractScrollParser
+ cruxFromId
+ baseParser blobParser
+ javascript
+  compile() {
+   return ``
+  }
+  getErrors() {
+    const actual = this._getClosestOlderSibling().compile()
+    const expected = this.childrenToString()
+    if (actual === expected)
+    	return []
+    return [this.makeError(`'${actual}' did not match '${expected}'`)]
+  }
+ catchAllParser htmlLineParser
 plainTextParser
  description Plain text oneliner or block.
  cruxFromId
