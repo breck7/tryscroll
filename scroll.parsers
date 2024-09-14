@@ -1920,6 +1920,44 @@ cssParser
   compileCss() {
     return this.css
   }
+abstractQuickIncludeParser
+ popularity 0.007524
+ extends abstractScrollParser
+ cells urlCell
+ javascript
+  get filename() {
+    return this.getWord(0)
+  }
+quickCssParser
+ popularity 0.007524
+ description Make a CSS tag.
+ extends abstractQuickIncludeParser
+ cells urlCell
+ pattern ^[^\s]+\.(css)$
+ javascript
+  compile() {
+   return `<link rel="stylesheet" type="text/css" href="${this.filename}">`
+  }
+quickIncludeHtmlParser
+ popularity 0.007524
+ description Include an HTML file.
+ extends abstractQuickIncludeParser
+ cells urlCell
+ pattern ^[^\s]+\.(html|htm)$
+ javascript
+  compile() {
+   return this.root.readFile(this.filename)
+  }
+quickScriptParser
+ popularity 0.007524
+ description Make a Javascript tag.
+ extends abstractQuickIncludeParser
+ cells urlCell
+ pattern ^[^\s]+\.(js)$
+ javascript
+  compile() {
+   return `<script src="${this.filename}"></script>`
+  }
 abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
@@ -3552,21 +3590,11 @@ scrollTableParser
   get filename() {
     return this.getWord(this.wordIndex)
   }
-  get fileFromDisk() {
-    const path = require("path")
-    const fs = require("fs")
-    const fullPath = path.join(this.parent.file.folderPath, this.filename)
-    if (!fs.existsSync(fullPath)) {
-      console.error(`❌ Error in tables. File "${fullPath}" not found. Using empty string`)
-      return ""
-    }
-    return fs.readFileSync(fullPath, "utf8")
-  }
   get fileFromLocalStorage() {
     return localStorage.getItem(this.filename) || ""
   }
   get fileContent() {
-    return this.isNodeJs() ? this.fileFromDisk : this.fileFromLocalStorage
+    return this.isNodeJs() ? this.root.readFile(this.filename) : this.fileFromLocalStorage
   }
   get delimitedData() {
     // json csv tsv
@@ -3576,14 +3604,8 @@ scrollTableParser
     if (dataParticle)
       return dataParticle.childrenToString()
     // if not dataparticle and no filename, check [permalink].csv
-    if (this.isNodeJs()) {
-      const path = require("path")
-      const fs = require("fs")
-      const filename = this.root.permalink.replace(".html", "") + ".csv"
-      const fullPath = path.join(this.parent.file.folderPath, filename)
-      if (fs.existsSync(fullPath))
-        return fs.readFileSync(fullPath, "utf8")
-    }
+    if (this.isNodeJs())
+      return this.root.readFile(this.root.permalink.replace(".html", "") + ".csv")
     return  ""
   }
   _coreTable
@@ -4559,6 +4581,15 @@ scrollParser
     if (this.isNodeJs())
       return require("scrollsdk/products/hakon.nodejs.js")
     return hakonParser
+  }
+  readFile(filename) {
+    const path = require("path")
+    const fs = require("fs")
+    const fullPath = path.join(this.file.folderPath, filename)
+    if (fs.existsSync(fullPath))
+      return fs.readFileSync(fullPath, "utf8")
+    console.error(`File '${filename}' not found`)
+    return ""
   }
   alreadyRequired = new Set()
   compileEmbeddedVersion(compileSettings) {
