@@ -83,7 +83,7 @@ class BrowserGlue extends AbstractParticleComponentParser {
     history.pushState("", document.title, window.location.pathname)
 
     if (fromUrl) return this.fetchAndLoadScrollCodeFromUrlCommand(fromUrl)
-    if (code) return code.childrenToString()
+    if (code) return code.subparticlesToString()
 
     const localStorageCode = this.getFromLocalStorage()
     if (localStorageCode) return localStorageCode

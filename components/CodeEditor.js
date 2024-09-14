@@ -88,7 +88,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   }
 
   get scrollCode() {
-    return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").childrenToString()
+    return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").subparticlesToString()
   }
 
   async particleComponentDidMount() {
@@ -139,7 +139,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   }
 
   _updateCodeMirror() {
-    this.setCodeMirrorValue(this.getParticle("value").childrenToString())
+    this.setCodeMirrorValue(this.getParticle("value").subparticlesToString())
   }
 }
 

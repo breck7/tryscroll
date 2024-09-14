@@ -140,7 +140,7 @@ class EditorApp extends AbstractParticleComponentParser {
 
   get urlHash() {
     const particle = new Particle()
-    particle.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
+    particle.appendLineAndSubparticles(UrlKeys.scroll, this.scrollCode ?? "")
     return "#" + encodeURIComponent(particle.asString)
   }
 

@@ -226,9 +226,9 @@ paragraphParser
    return compiled
   }
   compileTxt() {
-    const children = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
+    const subparticles = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
     const dateline = this.getParticle("dateline")
-    return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
+    return (dateline ? dateline.day + "\n\n" : "") + (this.originalText || "") + (subparticles ? "\n " + subparticles.replace(/\n/g, "\n ") : "")
   }
 authorsParser
  popularity 0.007379
@@ -324,13 +324,13 @@ abstractIndentableParagraphParser
  extends paragraphParser
  inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser abstractIndentableParagraphParser
  javascript
-  compileChildren() {
+  compileSubparticles() {
     return this.map(particle => particle.compile())
      .join("\n")
      .trim()
   }
   compile() {
-   return super.compile() + this.compileChildren()
+   return super.compile() + this.compileSubparticles()
   }
   compileTxt() {
     return this.getWord(0) + " " + super.compileTxt()
@@ -948,7 +948,7 @@ scrollLoopParser
    }
   }
   get items() {
-   const provider = this.getChildInstancesOfParserId("abstractItemsProviderParser")[0]
+   const provider = this.getSubparticleInstancesOfParserId("abstractItemsProviderParser")[0]
    if (provider)
      return provider.items
    if (this.parent.coreTable)
@@ -1021,7 +1021,7 @@ printSnippetsParser
     const linkRelativeToCompileTarget = compileSettings.relativePath + file.permalink
     const joinChar = "\n"
     const html = scrollProgram
-        .map((child, index) => (index >= endSnippetIndex ? "" : child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+        .map((subparticle, index) => (index >= endSnippetIndex ? "" : subparticle.compileEmbeddedVersion ? subparticle.compileEmbeddedVersion(compileSettings) : subparticle.compile(compileSettings)))
         .filter(i => i)
         .join(joinChar)
         .trim() +
@@ -1302,7 +1302,7 @@ chatParser
    return this.map((line, index) => line.asString ? `<div style="text-align: ${index % 2 ? "right" : "left"};" class="scrollChat ${index % 2 ? "scrollChatRight" : "scrollChatLeft"}"><span>${line.asString}</span></div>` : "").join("")
   }
   compileTxt() {
-    return this.childrenToString()
+    return this.subparticlesToString()
   }
 codeParser
  popularity 0.001929
@@ -1315,10 +1315,10 @@ codeParser
    two = 1 + 1
  javascript
   compile() {
-   return `<code class="scrollCodeBlock">${this.childrenToString().replace(/\</g, "&lt;")}</code>`
+   return `<code class="scrollCodeBlock">${this.subparticlesToString().replace(/\</g, "&lt;")}</code>`
   }
   compileTxt() {
-    return this.childrenToString()
+    return this.subparticlesToString()
   }
  cruxFromId
 codeWithHeaderParser
@@ -1388,8 +1388,8 @@ heatrixParser
   compile() {
    // A hacky but simple way to do this for now.
    const advanced = new Particle("heatrixAdvanced")
-   advanced.appendLineAndChildren("table", "\n " + this.tableData.replace(/\n/g, "\n "))
-   const particle = this.appendSibling("heatrixAdvanced", advanced.childrenToString())
+   advanced.appendLineAndSubparticles("table", "\n " + this.tableData.replace(/\n/g, "\n "))
+   const particle = this.appendSibling("heatrixAdvanced", advanced.subparticlesToString())
    const html = particle.compile()
    particle.destroy()
    return html
@@ -1397,7 +1397,7 @@ heatrixParser
   get tableData() {
     const {coreTable} = this.parent
     if (!coreTable)
-      return this.childrenToString()
+      return this.subparticlesToString()
     let table = new Particle(coreTable).asSsv
     if (this.parent.firstWord === "transpose") {
       // drop first line after transpose
@@ -1465,8 +1465,8 @@ heatrixAdvancedParser
         numbers.unshift(0)
         return generateColorBinningString(numbers, colors);
       }
-      const table = particle.getParticle("table").childrenToString()
-      const scale = particle.getParticle("scale")?.childrenToString() || buildScale(table)
+      const table = particle.getParticle("table").subparticlesToString()
+      const scale = particle.getParticle("scale")?.subparticlesToString() || buildScale(table)
       const thresholds = []
       const colors = []
       scale.split("\n").map((line) => {
@@ -1592,7 +1592,7 @@ heatrixAdvancedParser
       ).replace(/\n/g, "")
     }
   }
-    return new Heatrix(this.childrenToString().trim()).html
+    return new Heatrix(this.subparticlesToString().trim()).html
   }
 abstractPlotParser
  // Observablehq
@@ -1778,10 +1778,10 @@ katexParser
   compileInstance() {
    const id = this._getUid()
    const content = this.content === undefined ? "" : this.content
-   return `<div class="scrollKatex" id="${id}">${content + this.childrenToString()}</div>`
+   return `<div class="scrollKatex" id="${id}">${content + this.subparticlesToString()}</div>`
   }
   compileTxt() {
-    return ( this.content ? this.content : "" )+ this.childrenToString()
+    return ( this.content ? this.content : "" )+ this.subparticlesToString()
   }
 mapParser
  inScope latParser longParser
@@ -1915,7 +1915,7 @@ cssParser
    return `<style>${this.css}</style>`
   }
   get css() {
-    return this.content ?? this.childrenToString()
+    return this.content ?? this.subparticlesToString()
   }
   compileCss() {
     return this.css
@@ -2044,7 +2044,7 @@ printSearchTableParser
     particle.appendLine("delimiter 	")
     particle.appendLine("printTable")
     const dataParticle = particle.appendLine("data")
-    dataParticle.setChildren("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
+    dataParticle.setSubparticles("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
    const html = particle.compile()
    particle.destroy()
    return html
@@ -2092,7 +2092,7 @@ scrollDashboardParser
    return `<table class="scrollDashboard">${this.tableBody}</table>`
   }
   compileTxt() {
-    return this.childrenToString()
+    return this.subparticlesToString()
   }
 abstractTopLevelSingleMetaParser
  description Use these keywords once per file.
@@ -2927,7 +2927,7 @@ abstractHtmlParser
  catchAllCellType htmlAnyCell
  javascript
   compile() {
-   return `${this.content ?? ""}${this.childrenToString()}`
+   return `${this.content ?? ""}${this.subparticlesToString()}`
   }
   compileTxt() {
     return ""
@@ -2946,7 +2946,7 @@ htmlInlineParser
  boolean isPopular true
  javascript
   compile() {
-   return `${this.getLine() ?? ""}${this.childrenToString()}`
+   return `${this.getLine() ?? ""}${this.subparticlesToString()}`
   }
 scrollBrParser
  popularity 0.000096
@@ -2966,7 +2966,7 @@ stumpParser
  javascript
   compile() {
    const file = this.parent.file
-   return file.compileStumpCode(this.childrenToString())
+   return file.compileStumpCode(this.subparticlesToString())
   }
 stumpNoSnippetParser
  popularity 0.010177
@@ -3051,8 +3051,8 @@ scrollImageParser
    return `<a href="${clickLink}" target="${target}" ${className} ${id}><img src="${linkRelativeToCompileTarget}" ${dimensionAttributes}loading="lazy"></a>`
   }
   compileTxt() {
-    const children = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
-    return  "[Image Omitted]" + (children ? "\n " + children.replace(/\n/g, "\n ") : "")
+    const subparticles = this.filter(particle => particle.compileTxt).map(particle => particle.compileTxt()).filter(i => i).join("\n")
+    return  "[Image Omitted]" + (subparticles ? "\n " + subparticles.replace(/\n/g, "\n ") : "")
   }
 quickImageParser
  popularity 0.005788
@@ -3166,7 +3166,7 @@ printUsageStatsParser
    particle.appendLine("delimiter  ")
    particle.appendLine("printTable")
    const dataParticle = particle.appendLine("data")
-    dataParticle.setChildren(this.stats)
+    dataParticle.setSubparticles(this.stats)
    const html = particle.compile()
    particle.destroy()
    return html
@@ -3185,13 +3185,13 @@ printScrollLeetSheetParser
  javascript
   get parsersToDocument() {
     const clone = this.root.clone()
-    clone.setChildren("")
+    clone.setSubparticles("")
     const words = clone.getAutocompleteResultsAt(0,0).matches.map(a => a.text)
     words.push("blankline") // manually add blank line
     words.push("Catch All Paragraph.") // manually add catch all paragraph
     words.push("<h></h>") // manually add html
     words.sort()
-    clone.setChildren(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
+    clone.setSubparticles(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
     return clone
   }
   sortDocs(docs) {
@@ -3208,10 +3208,10 @@ printScrollLeetSheetParser
   }
   makeLink(examples, crux) {
     // if (!examples.length) console.log(crux) // find particles that need docs
-    const example = examples.length ? examples[0].childrenToString() : crux
+    const example = examples.length ? examples[0].subparticlesToString() : crux
     const base = `https://try.scroll.pub/`
     const particle = new Particle()
-    particle.appendLineAndChildren("scroll", "gazetteCss\n" + example)
+    particle.appendLineAndSubparticles("scroll", "gazetteCss\n" + example)
     return base + "#" + encodeURIComponent(particle.asString)
   }
   docToHtml(doc) {
@@ -3271,7 +3271,7 @@ printparsersLeetSheetParser
     const parserParticle = clone.getParticle("anyCell")
     const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
     words.sort()
-    parserParticle.setChildren(words.join("\n"))
+    parserParticle.setSubparticles(words.join("\n"))
     return parserParticle
   }
   get parsersToDocument() {
@@ -3280,7 +3280,7 @@ printparsersLeetSheetParser
     const parserParticle = clone.getParticle("latinParser")
     const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
     words.sort()
-    parserParticle.setChildren(words.join("\n"))
+    parserParticle.setSubparticles(words.join("\n"))
     clone.appendLine("myParser")
     clone.appendLine("myCell")
     return parserParticle
@@ -3349,7 +3349,7 @@ abstractTextareaMeasureParser
  baseParser blobParser
  javascript
   get measureValue() {
-    return this.childrenToString().replace(/\n/g, "\\n")
+    return this.subparticlesToString().replace(/\n/g, "\\n")
   }
 abstractNumericMeasureParser
  string typeForWebForms number
@@ -3435,10 +3435,10 @@ quoteParser
  extends abstractScrollParser
  javascript
   compile() {
-   return `<blockquote class="scrollQuote">${this.childrenToString()}</blockquote>`
+   return `<blockquote class="scrollQuote">${this.subparticlesToString()}</blockquote>`
   }
   compileTxt() {
-    return this.childrenToString()
+    return this.subparticlesToString()
   }
 redirectToParser
  popularity 0.000072
@@ -3495,7 +3495,7 @@ scriptParser
    return `<script>${this.scriptContent}</script>`
   }
   get scriptContent() {
-    return this.content ?? this.childrenToString()
+    return this.content ?? this.subparticlesToString()
   }
   compileJs() {
     return this.scriptContent
@@ -3602,7 +3602,7 @@ scrollTableParser
       return this.fileContent
     const dataParticle = this.getParticle("data")
     if (dataParticle)
-      return dataParticle.childrenToString()
+      return dataParticle.subparticlesToString()
     // if not dataparticle and no filename, check [permalink].csv
     if (this.isNodeJs())
       return this.root.readFile(this.root.permalink.replace(".html", "") + ".csv")
@@ -3651,7 +3651,7 @@ assertHtmlEqualsParser
   }
   getErrors() {
     const actual = this._getClosestOlderSibling().compile()
-    const expected = this.childrenToString()
+    const expected = this.subparticlesToString()
     if (actual === expected)
     	return []
     return [this.makeError(`'${actual}' did not match '${expected}'`)]
@@ -3668,7 +3668,7 @@ plainTextParser
    return this.compileTxt()
   }
   compileTxt() {
-    return `${this.content ?? ""}${this.childrenToString()}`
+    return `${this.content ?? ""}${this.subparticlesToString()}`
   }
 plainTextOnlyParser
  popularity 0.000072
@@ -3881,7 +3881,7 @@ hoverNoteParser
    return [`class="scrollHoverNote"`, `title="${this.hoverNoteText}"`]
   }
   get hoverNoteText() {
-   return this.childrenToString().replace(/\n/g, " ")
+   return this.subparticlesToString().replace(/\n/g, " ")
   }
 linkParser
  popularity 0.008706
@@ -3896,7 +3896,7 @@ linkParser
   catchAllParser programLinkParser
   javascript
    get encoded() {
-    return encodeURIComponent(this.childrenToString())
+    return encodeURIComponent(this.subparticlesToString())
    }
  cruxFromId
  javascript
@@ -4569,7 +4569,7 @@ scrollParser
   }
   compile(compileSettings) {
     this.sectionStack = []
-    return this.map(child => child.compile(compileSettings)).filter(i => i).join("\n") + this.clearSectionStack()
+    return this.map(subparticle => subparticle.compile(compileSettings)).filter(i => i).join("\n") + this.clearSectionStack()
   }
   sectionStack = []
   clearSectionStack() {
@@ -4594,7 +4594,7 @@ scrollParser
   alreadyRequired = new Set()
   compileEmbeddedVersion(compileSettings) {
    this.sectionStack = []
-   return this.map(child => (child.compileEmbeddedVersion ? child.compileEmbeddedVersion(compileSettings) : child.compile(compileSettings)))
+   return this.map(subparticle => (subparticle.compileEmbeddedVersion ? subparticle.compileEmbeddedVersion(compileSettings) : subparticle.compile(compileSettings)))
      .filter(i => i)
      .join("\n")
      .trim() + this.clearSectionStack()
@@ -4631,7 +4631,7 @@ stampFileParser
    const fullPath = path.join(parentDir, this.getLine())
    this.root.file.log(`Creating file ${fullPath}`)
    fs.mkdirSync(path.dirname(fullPath), {recursive: true})
-   const content = this.childrenToString()
+   const content = this.subparticlesToString()
    fs.writeFileSync(fullPath, content, "utf8")
    const isExecutable = content.startsWith("#!")
    if (isExecutable) fs.chmodSync(fullPath, "755")

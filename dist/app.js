@@ -99,7 +99,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   }
 
   get scrollCode() {
-    return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").childrenToString()
+    return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").subparticlesToString()
   }
 
   async particleComponentDidMount() {
@@ -150,7 +150,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   }
 
   _updateCodeMirror() {
-    this.setCodeMirrorValue(this.getParticle("value").childrenToString())
+    this.setCodeMirrorValue(this.getParticle("value").subparticlesToString())
   }
 }
 
@@ -297,7 +297,7 @@ class EditorApp extends AbstractParticleComponentParser {
 
   get urlHash() {
     const particle = new Particle()
-    particle.appendLineAndChildren(UrlKeys.scroll, this.scrollCode ?? "")
+    particle.appendLineAndSubparticles(UrlKeys.scroll, this.scrollCode ?? "")
     return "#" + encodeURIComponent(particle.asString)
   }
 
@@ -622,7 +622,7 @@ class BrowserGlue extends AbstractParticleComponentParser {
     history.pushState("", document.title, window.location.pathname)
 
     if (fromUrl) return this.fetchAndLoadScrollCodeFromUrlCommand(fromUrl)
-    if (code) return code.childrenToString()
+    if (code) return code.subparticlesToString()
 
     const localStorageCode = this.getFromLocalStorage()
     if (localStorageCode) return localStorageCode
