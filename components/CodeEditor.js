@@ -61,7 +61,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
 
       errs
         .filter((err) => !err.isBlankLineError())
-        .filter((err) => !err.isCursorOnWord(cursor.line, cursor.ch))
+        .filter((err) => !err.isCursorOnAtom(cursor.line, cursor.ch))
         .slice(0, 1) // Only show 1 error at a time. Otherwise UX is not fun.
         .forEach((err) => {
           const el = err.getCodeMirrorLineWidgetElement(() => {
@@ -126,11 +126,11 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   }
 
   get width() {
-    return parseInt(this.getWord(1))
+    return parseInt(this.getAtom(1))
   }
 
   get chromeHeight() {
-    return parseInt(this.getWord(2))
+    return parseInt(this.getAtom(2))
   }
 
   setSize() {

@@ -1,118 +1,118 @@
-buildCommandWordCell
- extends commandWordCell
- description Give build command words their own color.
- paint constant
-blankCell
-anyCell
-enumCell
+blankAtom
+anyAtom
+enumAtom
  paint constant.language
-booleanCell
+booleanAtom
  enum true false
- extends enumCell
-stringCell
+ extends enumAtom
+stringAtom
  paint string
-wordCell
+atomAtom
  paint string
- description A non-empty single word string.
+ description A non-empty single atom string.
  regex .+
-columnNameCell
- extends stringCell
-semanticVersionCell
+columnNameAtom
+ extends stringAtom
+semanticVersionAtom
  paint string
  description A 3 part sem version string like 1.2.1
-dateCell
+dateAtom
  paint string
-numberCell
+numberAtom
  paint constant.numeric
-integerCell
- extends numberCell
+integerAtom
+ extends numberAtom
  paint constant.numeric.integer
-floatCell
- extends numberCell
+floatAtom
+ extends numberAtom
  paint constant.numeric.float
-percentCell
+percentAtom
  paint constant.numeric.float
- extends stringCell
- // todo: this currently extends from stringCell b/c scrollsdk needs to be fixed. seems like if extending from number then the hard coded number typescript regex takes precedence over a custom regex
-countCell
- extends integerCell
-yearCell
- extends integerCell
-commandWordCell
- description A word that indicates a certain parser to use.
+ extends stringAtom
+ // todo: this currently extends from stringAtom b/c scrollsdk needs to be fixed. seems like if extending from number then the hard coded number typescript regex takes precedence over a custom regex
+countAtom
+ extends integerAtom
+yearAtom
+ extends integerAtom
+cueAtom
+ description A atom that indicates a certain parser to use.
  paint keyword
-preBuildCommandWordCell
- extends commandWordCell
- description Give build command words their own color.
+preBuildCommandAtom
+ extends cueAtom
+ description Give build command atoms their own color.
  paint constant.character.escape
-commentCell
+commentAtom
  paint comment
-delimiterCell
+delimiterAtom
  description String to use as a delimiter.
  paint string
-codeCell
+codeAtom
  paint comment
-bulletPointCell
+bulletPointAtom
  description Any token used as a bullet point such as "-" or "1." or ">"
  paint keyword
-comparisonCell
+comparisonAtom
  enum < > <= >= = != includes doesNotInclude empty notEmpty
  paint constant
-personNameCell
- extends stringCell
-urlCell
+personNameAtom
+ extends stringAtom
+urlAtom
  paint constant.language
-absoluteUrlCell
+absoluteUrlAtom
  paint constant.language
  regex (ftp|https?)://.+
-emailAddressCell
- extends stringCell
-permalinkCell
+emailAddressAtom
+ extends stringAtom
+permalinkAtom
  paint string
  description A string that doesn't contain characters that might interfere with most filesystems. No slashes, for instance.
-filePathCell
- extends stringCell
-tagOrUrlCell
+filePathAtom
+ extends stringAtom
+tagOrUrlAtom
  description An HTML tag or a url.
  paint constant.language
-htmlAttributesCell
+htmlAttributesAtom
  paint comment
-htmlTagCell
+htmlTagAtom
  paint constant.language
  enum div span p a img ul ol li h1 h2 h3 h4 h5 h6 header nav section article aside main footer input button form label select option textarea table tr td th tbody thead tfoot br hr meta link script style title code
-classNameCell
+classNameAtom
  paint constant
-htmlIdCell
- extends anyCell
-cssAnyCell
- extends anyCell
-htmlAnyCell
- extends stringCell
-inlineMarkupNameCell
+htmlIdAtom
+ extends anyAtom
+buildCommandAtom
+ extends cueAtom
+ description Give build command atoms their own color.
+ paint constant
+cssAnyAtom
+ extends anyAtom
+htmlAnyAtom
+ extends stringAtom
+inlineMarkupNameAtom
  description Options to turn on some inline markups.
  enum bold italics code katex none
-measureNameCell
- extends commandWordCell
+measureNameAtom
+ extends cueAtom
  // A regex for column names for max compatibility with a broad range of data science tools:
  regex [a-zA-Z][a-zA-Z0-9]*
-javascriptCell
- extends stringCell
-metaCommandWordCell
- extends commandWordCell
- description Give meta command words their own color.
+javascriptAtom
+ extends stringAtom
+metaCommandAtom
+ extends cueAtom
+ description Give meta command atoms their own color.
  paint constant.numeric
  // Obviously this is not numeric. But I like the green color for now.
    We need a better design to replace this "paint" concept
    https://github.com/breck7/scrollsdk/issues/186
-scriptAnyCell
- extends anyCell
-tagCell
- extends permalinkCell
-tagWithOptionalFolderCell
+scriptAnyAtom
+ extends anyAtom
+tagAtom
+ extends permalinkAtom
+tagWithOptionalFolderAtom
  description A group name optionally combined with a folder path. Only used when referencing tags, not in posts.
- extends stringCell
+ extends stringAtom
 abstractScrollParser
- cells commandWordCell
+ atoms cueAtom
  javascript
   compileEmbeddedVersion(compileSettings) {
    return this.compile(compileSettings)
@@ -155,7 +155,7 @@ abstractAftertextParser
    // Skip the replacements if there are no footnotes or the text has none.
    if (!this.root.footnotes.length || !originalText.includes("^")) return originalText
    this.root.footnotes.forEach((note, index) => {
-    const needle = note.firstWord
+    const needle = note.firstAtom
     const {linkBack} = note
     if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.anchorId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.label}</sup></a>`)
    })
@@ -211,7 +211,7 @@ abstractAftertextParser
 paragraphParser
  // todo Perhaps rewrite this from scratch and move out of aftertext.
  extends abstractAftertextParser
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  description A paragraph.
  boolean suggestInAutocomplete false
  cruxFromId
@@ -240,7 +240,7 @@ authorsParser
   authors Breck Yunits
    https://breckyunits.com Breck Yunits
  // note: once we have mixins in Parsers, lets mixin the below from abstractTopLevelSingleMetaParser
- cells metaCommandWordCell
+ atoms metaCommandAtom
  javascript
   isTopMatter = true
   isSetterParser = true
@@ -295,7 +295,7 @@ catchAllParagraphParser
  extends paragraphParser
  boolean suggestInAutocomplete false
  boolean isPopular true
- cells stringCell
+ atoms stringAtom
  javascript
   getErrors() {
     const errors = super.getErrors() || []
@@ -333,7 +333,7 @@ abstractIndentableParagraphParser
    return super.compile() + this.compileSubparticles()
   }
   compileTxt() {
-    return this.getWord(0) + " " + super.compileTxt()
+    return this.getAtom(0) + " " + super.compileTxt()
   }
 checklistTodoParser
  popularity 0.000193
@@ -385,7 +385,7 @@ abstractCustomListItemParser
  extends listAftertextParser
  javascript
   get requireOnce() {
-    return `<style>\n.${this.constructor.name} li::marker {content: "${this.firstWord} ";}\n</style>`
+    return `<style>\n.${this.constructor.name} li::marker {content: "${this.firstAtom} ";}\n</style>`
   }
   get attributes() {
     return `class="${this.constructor.name}"`
@@ -399,7 +399,7 @@ orderedListAftertextParser
  pattern ^\d+\. 
  javascript
   listType = "ol"
-  get attributes() { return ` start="${this.getWord(0)}"`}
+  get attributes() { return ` start="${this.getAtom(0)}"`}
 quickQuoteParser
  popularity 0.000482
  crux >
@@ -417,16 +417,16 @@ scrollCounterParser
  crux counter
  example
   counter 4.5 Babies Born
- cells commandWordCell numberCell
+ atoms cueAtom numberAtom
  javascript
   compile() {
    const line = this.getLine()
-   const words = line.split(" ")
-   words.shift() // drop the counter word
-   const perSecond = parseFloat(words.shift()) // get number
+   const atoms = line.split(" ")
+   atoms.shift() // drop the counter atom
+   const perSecond = parseFloat(atoms.shift()) // get number
    const increment = perSecond/10
    const id = this._getUid()
-   this.setLine(`* <span id="counter${id}" title="0">0</span><script>setInterval(()=>{ const el = document.getElementById('counter${id}'); el.title = parseFloat(el.title) + ${increment}; el.textContent = Math.floor(parseFloat(el.title)).toLocaleString()}, 100)</script> ` + words.join(" "))
+   this.setLine(`* <span id="counter${id}" title="0">0</span><script>setInterval(()=>{ const el = document.getElementById('counter${id}'); el.title = parseFloat(el.title) + ${increment}; el.textContent = Math.floor(parseFloat(el.title)).toLocaleString()}, 100)</script> ` + atoms.join(" "))
    const html = super.compile()
    this.setLine(line)
    return html
@@ -460,8 +460,8 @@ footnoteDefinitionParser
  labelParser
   description If you want to show a custom label for a footnote. Default label is the note definition index.
   cruxFromId
-  cells commandWordCell
-  catchAllCellType stringCell
+  atoms cueAtom
+  catchAllAtomType stringAtom
  javascript
   get divAttributes() {
    return super.divAttributes + ` id="${this.anchorId}"`
@@ -483,7 +483,7 @@ footnoteDefinitionParser
    return this.parent.footnotes.indexOf(this) + 1
   }
   compileTxt() {
-    return this.getWord(0) + ": " + super.compileTxt()
+    return this.getAtom(0) + ": " + super.compileTxt()
   }
 abstractHeaderParser
  extends paragraphParser
@@ -586,13 +586,13 @@ captionAftertextParser
 abstractMediaParser
  extends paragraphParser
  inScope scrollMediaLoopParser scrollAutoplayParser
- int wordIndex 1
+ int atomIndex 1
  javascript
   compileTxt() {
     return ""
   }
   get filename() {
-    return this.getWord(this.wordIndex)
+    return this.getAtom(this.atomIndex)
   }
   getAsHtmlAttribute(attr) {
     if (!this.has(attr)) return ""
@@ -600,7 +600,7 @@ abstractMediaParser
     return value ? `${attr}="${value}"` : attr
   }
   getAsHtmlAttributes(list) {
-    return list.map(word => this.getAsHtmlAttribute(word)).filter(i => i).join(" ")
+    return list.map(atom => this.getAsHtmlAttribute(atom)).filter(i => i).join(" ")
   }
   compile() {
     return `<${this.tag} src="${this.filename}" controls ${this.getAsHtmlAttributes("width height loop autoplay".split(" "))}></${this.tag}>`
@@ -619,9 +619,9 @@ scrollMusicParser
 quickSoundParser
  popularity 0.000024
  extends scrollMusicParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(mp3|wav|ogg|aac|m4a|flac)
- int wordIndex 0
+ int atomIndex 0
 scrollVideoParser
  popularity 0.000024
  extends abstractMediaParser
@@ -631,18 +631,18 @@ scrollVideoParser
  description Play video files.
  widthParser
   cruxFromId
-  cells commandWordCell
+  atoms cueAtom
  heightParser
   cruxFromId
-  cells commandWordCell
+  atoms cueAtom
  javascript
   tag = "video"
 quickVideoParser
  popularity 0.000024
  extends scrollVideoParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(mp4|webm|avi|mov)
- int wordIndex 0
+ int atomIndex 0
 quickParagraphParser
  popularity 0.001881
  crux *
@@ -654,7 +654,7 @@ thinColumnsParser
  popularity 0.003690
  extends abstractAftertextParser
  cruxFromId
- catchAllCellType integerCell
+ catchAllAtomType integerAtom
  description Thin columns.
  javascript
   compileEmbeddedVersion() {
@@ -670,7 +670,7 @@ thinColumnsParser
    return stackContents + `<div class="scrollColumns" style="column-width:${columnWidth}ch;column-count:${maxColumns};max-width:${maxTotalWidth}ch;">`
   }
   get maxColumns() {
-    return this.singleColumn ? 1 : parseInt(this.getWord(1) ?? 10)
+    return this.singleColumn ? 1 : parseInt(this.getAtom(1) ?? 10)
   }
 wideColumnsParser
  popularity 0.000386
@@ -768,7 +768,7 @@ downloadButtonParser
  popularity 0.006294
  description Link to download/WWS page.
  extends abstractIconButtonParser
- catchAllCellType urlCell
+ catchAllAtomType urlAtom
  string style position:relative;
  string svg <svg fill="#000000" xmlns="http://www.w3.org/2000/svg" width="800px" height="800px" viewBox="0 0 52 52" enable-background="new 0 0 52 52" xml:space="preserve"><path d="M38.6,20.4c-1-6.5-6.7-11.5-13.5-11.5c-7.6,0-13.7,6.1-13.7,13.7c0,0.3,0,0.7,0.1,1c-5,0.4-8.9,4.6-8.9,9.6 c0,5.4,4.3,9.7,9.7,9.7h11.5c-0.8-0.8-8.1-8.1-8.1-8.1c-0.4-0.4-0.4-0.9,0-1.3l1.3-1.3c0.4-0.4,0.9-0.4,1.3,0l3.5,3.5 c0.4,0.4,1.1,0.1,1.1-0.4V21.8c0-0.4,0.5-0.9,1-0.9h1.9c0.5,0,0.9,0.4,0.9,0.9v13.4c0,0.6,0.8,0.8,1.1,0.4l3.5-3.5 c0.4-0.4,0.9-0.4,1.3,0l1.3,1.3c0.4,0.4,0.4,0.9,0,1.3L26,42.9h12.3v0c6.1-0.1,11-5.1,11-11.3C49.4,25.5,44.6,20.6,38.6,20.4z"/></svg><!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
  javascript
@@ -779,8 +779,8 @@ emailButtonParser
  popularity 0.006294
  description Email button.
  extends abstractIconButtonParser
- catchAllCellType emailAddressCell
- // todo: should just be "optionalCellType"
+ catchAllAtomType emailAddressAtom
+ // todo: should just be "optionalAtomType"
  string style position:relative;
  string svg <svg viewBox="3 5 24 20" width="24" height="20" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1, 0, 0, 1, 0, -289.0625)"><path style="opacity:1;stroke:none;stroke-width:0.49999997;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 5 5 C 4.2955948 5 3.6803238 5.3628126 3.3242188 5.9101562 L 14.292969 16.878906 C 14.696939 17.282876 15.303061 17.282876 15.707031 16.878906 L 26.675781 5.9101562 C 26.319676 5.3628126 25.704405 5 25 5 L 5 5 z M 3 8.4140625 L 3 23 C 3 24.108 3.892 25 5 25 L 25 25 C 26.108 25 27 24.108 27 23 L 27 8.4140625 L 17.121094 18.292969 C 15.958108 19.455959 14.041892 19.455959 12.878906 18.292969 L 3 8.4140625 z " transform="translate(0,289.0625)" id="rect4592"/></g></svg>
  javascript
@@ -792,7 +792,7 @@ homeButtonParser
  popularity 0.006391
  description Home button.
  extends abstractIconButtonParser
- catchAllCellType urlCell
+ catchAllAtomType urlAtom
  string style left:2rem;
  string svg <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.7166 3.79541C12.2835 3.49716 11.7165 3.49716 11.2834 3.79541L4.14336 8.7121C3.81027 8.94146 3.60747 9.31108 3.59247 9.70797C3.54064 11.0799 3.4857 13.4824 3.63658 15.1877C3.7504 16.4742 4.05336 18.1747 4.29944 19.4256C4.41371 20.0066 4.91937 20.4284 5.52037 20.4284H8.84433C8.98594 20.4284 9.10074 20.3111 9.10074 20.1665V15.9754C9.10074 14.9627 9.90433 14.1417 10.8956 14.1417H13.4091C14.4004 14.1417 15.204 14.9627 15.204 15.9754V20.1665C15.204 20.3111 15.3188 20.4284 15.4604 20.4284H18.4796C19.0806 20.4284 19.5863 20.0066 19.7006 19.4256C19.9466 18.1747 20.2496 16.4742 20.3634 15.1877C20.5143 13.4824 20.4594 11.0799 20.4075 9.70797C20.3925 9.31108 20.1897 8.94146 19.8566 8.7121L12.7166 3.79541ZM10.4235 2.49217C11.3764 1.83602 12.6236 1.83602 13.5765 2.49217L20.7165 7.40886C21.4457 7.91098 21.9104 8.73651 21.9448 9.64736C21.9966 11.0178 22.0564 13.5119 21.8956 15.3292C21.7738 16.7067 21.4561 18.4786 21.2089 19.7353C20.9461 21.0711 19.7924 22.0001 18.4796 22.0001H15.4604C14.4691 22.0001 13.6655 21.1791 13.6655 20.1665V15.9754C13.6655 15.8307 13.5507 15.7134 13.4091 15.7134H10.8956C10.754 15.7134 10.6392 15.8307 10.6392 15.9754V20.1665C10.6392 21.1791 9.83561 22.0001 8.84433 22.0001H5.52037C4.20761 22.0001 3.05389 21.0711 2.79113 19.7353C2.54392 18.4786 2.22624 16.7067 2.10437 15.3292C1.94358 13.5119 2.00338 11.0178 2.05515 9.64736C2.08957 8.73652 2.55427 7.91098 3.28346 7.40886L10.4235 2.49217Z"/></svg>
  javascript
@@ -816,8 +816,8 @@ classicFormParser
  popularity 0.006391
  description Generate input form for ScrollSet.
  extends abstractAftertextParser
- cells commandWordCell emailAddressCell
- catchAllCellType stringCell
+ atoms cueAtom emailAddressAtom
+ catchAllAtomType stringAtom
  string script
   <script>
   sendFormViaEmail = form => {
@@ -868,10 +868,10 @@ classicFormParser
     return `${this.script}${this.style}<form onsubmit="sendFormViaEmail(this); return false;" class="scrollFormParser">${this.inputs}<button value="${this.subject}" title="${this.emailDestination}" class="scrollButton" type="submit">Submit via email</button>${this.footer}</form>`
   }
   get emailDestination() {
-    return this.getWord(1)
+    return this.getAtom(1)
   }
   get subject() {
-    return this.getWordsFrom(2)?.join(" ") || ""
+    return this.getAtomsFrom(2)?.join(" ") || ""
   }
   get footer() {
     return ""
@@ -917,7 +917,7 @@ scrollFormParser
 scrollLoopParser
  popularity 0.000024
  extends abstractAftertextParser
- cells commandWordCell
+ atoms cueAtom
  boolean isTableVisualization true
  description Iterate over files+ to make HTML.
  crux loop
@@ -960,14 +960,14 @@ loremIpsumParser
  extends abstractAftertextParser
  cruxFromId
  description Generate dummy text.
- catchAllCellType integerCell
+ catchAllAtomType integerAtom
  javascript
   text = `Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
   compile() {
    return this.text.repeat(this.howMany)
   }
   get howMany() {
-    return this.getWord(1) ? parseInt(this.getWord(1)) : 1
+    return this.getAtom(1) ? parseInt(this.getAtom(1)) : 1
   }
 nickelbackIpsumParser
  extends loremIpsumParser
@@ -1009,8 +1009,8 @@ printSnippetsParser
  // todo: why are we extending AT here and not loops? Is it for class/id etc?
  extends abstractAftertextParser
  cruxFromId
- cells commandWordCell
- catchAllCellType tagWithOptionalFolderCell
+ atoms cueAtom
+ catchAllAtomType tagWithOptionalFolderAtom
  description Prints snippets matching tag(s).
  example
   printSnippets index
@@ -1116,8 +1116,8 @@ printAuthorsParser
  description Prints author(s) byline.
  boolean isPopular true
  extends abstractPrintMetaParser
- // todo: we need pattern matching added to sdk to support having no params or a url and personNameCell
- catchAllCellType anyCell
+ // todo: we need pattern matching added to sdk to support having no params or a url and personNameAtom
+ catchAllAtomType anyAtom
  example
   authors Breck Yunits
    https://breckyunits.com
@@ -1174,8 +1174,8 @@ printFormatLinksParser
 abstractBuildCommandParser
  extends abstractScrollParser
  cruxFromId
- cells buildCommandWordCell
- catchAllCellType filePathCell
+ atoms buildCommandAtom
+ catchAllAtomType filePathAtom
  inScope slashCommentParser
  javascript
   isTopMatter = true
@@ -1188,13 +1188,13 @@ loadConceptsParser
  description Import all concepts in a folder.
  extends abstractBuildCommandParser
  cruxFromId
- cells preBuildCommandWordCell filePathCell
+ atoms preBuildCommandAtom filePathAtom
  javascript
   build() {
    const { Disk } = require("scrollsdk/products/Disk.node.js")
    const path = require("path")
    const {file} = this.parent
-   const folder = path.join(file.folderPath, this.getWord(1))
+   const folder = path.join(file.folderPath, this.getAtom(1))
    const importParticleRegex = /^(import .+|[a-zA-Z\_\-\.0-9\/]+\.(scroll|parsers)$)/gm
    const ONE_BIG_FILE = Disk.getFiles(folder).filter(file => file.endsWith(".scroll")).map(Disk.read).filter(str => /^id /mg.test(str)).join("\n\n").replace(/import .+/g, "")
     this.parent.concat(ONE_BIG_FILE)
@@ -1210,7 +1210,7 @@ buildConceptsParser
  extends abstractBuildCommandParser
  sortByParser
   cruxFromId
-  cells commandWordCell anyCell
+  atoms cueAtom anyAtom
 buildCssParser
  popularity 0.000048
  description Compile to CSS file.
@@ -1223,16 +1223,16 @@ fetchParser
  description Download URL to disk.
  extends abstractBuildCommandParser
  cruxFromId
- cells preBuildCommandWordCell urlCell
+ atoms preBuildCommandAtom urlAtom
  example
   fetch https://breckyunits.com/posts.csv
   fetch https://breckyunits.com/posts.csv renamed.csv
  javascript
   get url() {
-    return this.getWord(1)
+    return this.getAtom(1)
   }
   get filename() {
-    return this.getWord(2) || new URL(this.url).pathname.split('/').pop()
+    return this.getAtom(2) || new URL(this.url).pathname.split('/').pop()
   }
   get fullDiskPath() {
     return require("path").join(this.parent.file.folderPath, this.filename)
@@ -1270,7 +1270,7 @@ buildMeasuresParser
  extends abstractBuildCommandParser
  sortByParser
   cruxFromId
-  cells commandWordCell anyCell
+  atoms cueAtom anyAtom
 buildPdfParser
  popularity 0.000096
  description Compile to PDF file.
@@ -1324,7 +1324,7 @@ codeParser
 codeWithHeaderParser
  popularity 0.000169
  cruxFromId
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  extends codeParser
  example
   codeWithHeader math.py
@@ -1399,7 +1399,7 @@ heatrixParser
     if (!coreTable)
       return this.subparticlesToString()
     let table = new Particle(coreTable).asSsv
-    if (this.parent.firstWord === "transpose") {
+    if (this.parent.firstAtom === "transpose") {
       // drop first line after transpose
       const lines = table.split("\n")
       lines.shift()
@@ -1437,7 +1437,7 @@ heatrixAdvancedParser
     static HeatrixId = 0
     uid = Heatrix.HeatrixId++
     constructor(program) {
-      const isDirective = word => /^(f|l|w|h)\d+$/.test(word) || word === "right" || word === "left" || word.startsWith("http://") || word.startsWith("https://") || word.endsWith(".html")
+      const isDirective = atom => /^(f|l|w|h)\d+$/.test(atom) || atom === "right" || atom === "left" || atom.startsWith("http://") || atom.startsWith("https://") || atom.endsWith(".html")
       const particle = new Particle(program)
       this.program = particle
       const generateColorBinningString = (data, colors) => {
@@ -1460,7 +1460,7 @@ heatrixAdvancedParser
        return result.trim();
       }
       const buildScale = (table) => {
-        const numbers = table.split("\n").map(line => line.split(" ")).flat().filter(word => !isDirective(word)).map(word => parseFloat(word)).filter(number => !isNaN(number))
+        const numbers = table.split("\n").map(line => line.split(" ")).flat().filter(atom => !isDirective(atom)).map(atom => parseFloat(atom)).filter(number => !isNaN(number))
         const colors = ['#ebedf0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'];
         numbers.unshift(0)
         return generateColorBinningString(numbers, colors);
@@ -1492,24 +1492,24 @@ heatrixAdvancedParser
         line
           .trimEnd()
           .split(" ")
-          .map((cell) => {
-            const words = cell.split(directiveDelimiter).filter((word) => !isDirective(word)).join("")
-            const directivesInThisCell = cell
+          .map((atom) => {
+            const atoms = atom.split(directiveDelimiter).filter((atom) => !isDirective(atom)).join("")
+            const directivesInThisAtom = atom
               .split(directiveDelimiter)
               .filter(isDirective)
-            const value = parseFloat(words)
-            const label = words.includes("'") ? words.split("'")[1] : words
-            const alignment = directivesInThisCell.includes("right")
+            const value = parseFloat(atoms)
+            const label = atoms.includes("'") ? atoms.split("'")[1] : atoms
+            const alignment = directivesInThisAtom.includes("right")
               ? "right"
-              : directivesInThisCell.includes("left")
+              : directivesInThisAtom.includes("left")
               ? "left"
               : ""
             const color = colorFunction(value)
-            const width = getSize(directivesInThisCell, "w")
-            const height = getSize(directivesInThisCell, "h")
-            const fontSize = getSize(directivesInThisCell, "f")
-            const lineHeight = getSize(directivesInThisCell, "l") || height
-            const link = directivesInThisCell.filter(i => i.startsWith("http") || i.endsWith(".html"))[0]
+            const width = getSize(directivesInThisAtom, "w")
+            const height = getSize(directivesInThisAtom, "h")
+            const fontSize = getSize(directivesInThisAtom, "f")
+            const lineHeight = getSize(directivesInThisAtom, "l") || height
+            const link = directivesInThisAtom.filter(i => i.startsWith("http") || i.endsWith(".html"))[0]
             const style = {
               "background-color": color,
               width,
@@ -1539,7 +1539,7 @@ heatrixAdvancedParser
       .heatrixContainer {
         margin: auto;
       }.heatrixRow {white-space: nowrap;}
-  ${cssId} .heatrixCell {
+  ${cssId} .heatrixAtom {
     font-family: arial;
     border-radius: 2px;
     border: 1px solid transparent;
@@ -1550,10 +1550,10 @@ heatrixAdvancedParser
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .heatrixCell a {
+  .heatrixAtom a {
     color: black;
   }
-  ${cssId} .heatrixCell{
+  ${cssId} .heatrixAtom{
    width: ${defaultWidth};
    height: ${defaultHeight};
    font-size: ${fontSize};
@@ -1568,10 +1568,10 @@ heatrixAdvancedParser
             if (!rowIndex) return ""
             const rowStyle = row[0].style
             return `<div class="heatrixRow heatrixRow${rowIndex}">${row
-              .map((cell, columnIndex) => {
+              .map((atom, columnIndex) => {
                 if (!columnIndex) return ""
                 const columnStyle = firstRow[columnIndex]?.style || {}
-                let { value, label, style, link } = cell
+                let { value, label, style, link } = atom
                 const extendedStyle = Object.assign(
                   {},
                   rowStyle,
@@ -1581,9 +1581,9 @@ heatrixAdvancedParser
                 const inlineStyle = Object.keys(extendedStyle)
                   .map((key) => `${key}:${extendedStyle[key]};`)
                   .join("")
-                let valueClass = value ? " valueCell" : ""
+                let valueClass = value ? " valueAtom" : ""
                 const href = link ? ` href="${link}"` : ""
-                return `<div class="heatrixCell heatrixColumn${columnIndex}${valueClass}" style="${inlineStyle}"><a title="${label}" ${href}>${label}</a></div>`
+                return `<div class="heatrixAtom heatrixColumn${columnIndex}${valueClass}" style="${inlineStyle}"><a title="${label}" ${href}>${label}</a></div>`
               })
               .join("")}</div>`
           })
@@ -1663,7 +1663,7 @@ sparklineParser
   sparkline 1 2 3 4 5
  string copyFromExternal sparkline.js
  string requireOnce <script src="sparkline.js"></script>
- catchAllCellType numberCell
+ catchAllAtomType numberAtom
  // we need pattern matching
  inScope scrollYParser
  javascript
@@ -1711,19 +1711,19 @@ printTableParser
   }
   toRow(row) {
     const {columns} = this
-    const words = columns.map(col => row[col.name])
+    const atoms = columns.map(col => row[col.name])
    let str = ""
    let column = 0
    const columnCount = columns.length
    while (column < columnCount) {
     const col = columns[column]
     column++
-    const content = ((columnCount === column ? words.slice(columnCount - 1).join(" ") : words[column - 1]) ?? "").toString()
+    const content = ((columnCount === column ? atoms.slice(columnCount - 1).join(" ") : atoms[column - 1]) ?? "").toString()
     if (col.isLink) continue
     const isTimestamp = col.name.toLowerCase().includes("time") && /^\d{10}(\d{3})?$/.test(content)
     const text =  isTimestamp ? new Date(parseInt(content.length === 10 ? content * 1000 : content)).toLocaleString() : content
     let tagged = text
-    const link = words[col.linkIndex]
+    const link = atoms[col.linkIndex]
     const isUrl = content.match(/^https?\:[^ ]+$/)
     if (col.linkIndex > -1 && link) tagged = `<a href="${link}">${text}</a>`
     else if (col.name.endsWith("Url")) tagged = `<a href="${content}">${col.name.replace("Url", "")}</a>`
@@ -1755,7 +1755,7 @@ printTableParser
 katexParser
  popularity 0.001592
  extends abstractScrollWithRequirementsParser
- catchAllCellType codeCell
+ catchAllAtomType codeAtom
  catchAllParser lineOfCodeParser
  example
   katex
@@ -1786,15 +1786,15 @@ katexParser
 mapParser
  inScope latParser longParser
  zoomParser
-  cells commandWordCell integerCell
+  atoms cueAtom integerAtom
   cruxFromId
   single
  heightParser
-  cells commandWordCell floatCell
+  atoms cueAtom floatAtom
   cruxFromId
   single
  pointParser
-  cells commandWordCell
+  atoms cueAtom
   inScope latParser longParser
   cruxFromId
   titleParser
@@ -1834,7 +1834,7 @@ mapParser
 helpfulNotFoundParser
  popularity 0.000048
  extends abstractScrollWithRequirementsParser
- catchAllCellType filePathCell
+ catchAllAtomType filePathAtom
  string copyFromExternal helpfulNotFound.js
  description Helpful not found widget.
  javascript
@@ -1876,8 +1876,8 @@ tableSearchParser
   }
 abstractCommentParser
  description Prints nothing.
- catchAllCellType commentCell
- cells commentCell
+ catchAllAtomType commentAtom
+ atoms commentAtom
  extends abstractScrollParser
  baseParser blobParser
  javascript
@@ -1909,7 +1909,7 @@ cssParser
  description A style tag.
  cruxFromId
  catchAllParser cssLineParser
- catchAllCellType cssAnyCell
+ catchAllAtomType cssAnyAtom
  javascript
   compile() {
    return `<style>${this.css}</style>`
@@ -1923,16 +1923,16 @@ cssParser
 abstractQuickIncludeParser
  popularity 0.007524
  extends abstractScrollParser
- cells urlCell
+ atoms urlAtom
  javascript
   get filename() {
-    return this.getWord(0)
+    return this.getAtom(0)
   }
 quickCssParser
  popularity 0.007524
  description Make a CSS tag.
  extends abstractQuickIncludeParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(css)$
  javascript
   compile() {
@@ -1942,7 +1942,7 @@ quickIncludeHtmlParser
  popularity 0.007524
  description Include an HTML file.
  extends abstractQuickIncludeParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(html|htm)$
  javascript
   compile() {
@@ -1952,7 +1952,7 @@ quickScriptParser
  popularity 0.007524
  description Make a Javascript tag.
  extends abstractQuickIncludeParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(js)$
  javascript
   compile() {
@@ -1962,8 +1962,8 @@ abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
  cruxFromId
- cells commandWordCell
- catchAllCellType tagWithOptionalFolderCell
+ atoms cueAtom
+ catchAllAtomType tagWithOptionalFolderAtom
  javascript
   get files() {
    return this.root.file.getFilesWithTagsForEmbedding(this.content)
@@ -2086,7 +2086,7 @@ scrollDashboardParser
    return str
   }
   makeRow(items) {
-   return `<tr>` + items.map(particle => `<td>${particle.firstWord}<span>${particle.content}</span></td>`).join("\n") + `</tr>\n`
+   return `<tr>` + items.map(particle => `<td>${particle.firstAtom}<span>${particle.content}</span></td>`).join("\n") + `</tr>\n`
   }
   compile() {
    return `<table class="scrollDashboard">${this.tableBody}</table>`
@@ -2095,11 +2095,11 @@ scrollDashboardParser
     return this.subparticlesToString()
   }
 abstractTopLevelSingleMetaParser
- description Use these keywords once per file.
+ description Use these parsers once per file.
  extends abstractScrollParser
  inScope slashCommentParser
  cruxFromId
- cells metaCommandWordCell
+ atoms metaCommandAtom
  javascript
   isTopMatter = true
   isSetterParser = true
@@ -2108,7 +2108,7 @@ abstractTopLevelSingleMetaParser
   }
 dateParser
  popularity 0.006680
- catchAllCellType dateCell
+ catchAllAtomType dateAtom
  description Set published date.
  extends abstractTopLevelSingleMetaParser
  boolean isPopular true
@@ -2122,13 +2122,13 @@ siteOwnerEmailParser
  description Set email address for site contact.
  extends abstractTopLevelSingleMetaParser
  crux email
- cells metaCommandWordCell emailAddressCell
+ atoms metaCommandAtom emailAddressAtom
 importOnlyParser
  popularity 0.033569
  // This line will be not be imported into the importing file.
  description Don't build this file.
  cruxFromId
- cells preBuildCommandWordCell
+ atoms preBuildCommandAtom
  extends abstractTopLevelSingleMetaParser
  javascript
   compile() {
@@ -2147,7 +2147,7 @@ inlineMarkupsParser
     // Make _ underline
 abstractUrlSettingParser
  extends abstractTopLevelSingleMetaParser
- cells metaCommandWordCell urlCell
+ atoms metaCommandAtom urlAtom
  cruxFromId
 canonicalUrlParser
  description Override canonical URL.
@@ -2171,13 +2171,13 @@ viewSourceBaseUrlParser
  description Override source link baseUrl.
  extends abstractUrlSettingParser
 htmlLangParser
- cells metaCommandWordCell stringCell
+ atoms metaCommandAtom stringAtom
  // for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
  description Override HTML lang attribute.
  extends abstractTopLevelSingleMetaParser
 openGraphDescriptionParser
  popularity 0.001688
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  crux description
  description Meta tag description.
  extends abstractTopLevelSingleMetaParser
@@ -2185,7 +2185,7 @@ permalinkParser
  popularity 0.000265
  description Override output filename.
  extends abstractTopLevelSingleMetaParser
- cells metaCommandWordCell permalinkCell
+ atoms metaCommandAtom permalinkAtom
 scrollTagsParser
  popularity 0.006801
  crux tags
@@ -2193,13 +2193,13 @@ scrollTagsParser
  example
   tags All
  extends abstractTopLevelSingleMetaParser
- catchAllCellType tagCell
+ catchAllAtomType tagAtom
 testStrictParser
  description Make catchAllParagraphParser = error.
  extends abstractTopLevelSingleMetaParser
 pageTitleParser
  popularity 0.007524
- catchAllCellType personNameCell
+ catchAllAtomType personNameAtom
  crux title
  description Set title.
  example
@@ -2208,14 +2208,14 @@ pageTitleParser
  extends abstractTopLevelSingleMetaParser
  boolean isPopular true
 viewSourceUrlParser
- catchAllCellType urlCell
+ catchAllAtomType urlAtom
  description Override source link.
  extends abstractTopLevelSingleMetaParser
 belowAsCodeParser
  popularity 0.000651
  description Print code below.
  extends abstractScrollParser
- catchAllCellType integerCell
+ catchAllAtomType integerAtom
  cruxFromId
  javascript
   method = "next"
@@ -2239,14 +2239,14 @@ belowAsCodeParser
    return `<code class="scrollCodeBlock">${this.code.replace(/\</g, "&lt;")}</code>`
   }
   get howMany() {
-    let howMany = parseInt(this.getWord(1))
+    let howMany = parseInt(this.getAtom(1))
    if (!howMany || isNaN(howMany)) howMany = 1
    return howMany
   }
 belowAsCodeUntilParser
  description Print code above until match.
  extends belowAsCodeParser
- catchAllCellType anyCell
+ catchAllAtomType anyAtom
  example
   belowAsCode
   counter 1 second
@@ -2278,7 +2278,7 @@ abstractThemeCssParser
  extends abstractScrollParser
  inScope themeTagsParser
  cruxFromId
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  string scrollStyles
   figure
    margin 0
@@ -2924,7 +2924,7 @@ tufteCssParser
 abstractHtmlParser
  extends abstractScrollParser
  catchAllParser htmlLineParser
- catchAllCellType htmlAnyCell
+ catchAllAtomType htmlAnyAtom
  javascript
   compile() {
    return `${this.content ?? ""}${this.subparticlesToString()}`
@@ -2940,7 +2940,7 @@ htmlParser
 htmlInlineParser
  popularity 0.005788
  extends abstractHtmlParser
- cells htmlAnyCell
+ atoms htmlAnyAtom
  pattern ^<
  description Inline HTML.
  boolean isPopular true
@@ -2953,10 +2953,10 @@ scrollBrParser
  crux br
  description A break.
  extends abstractScrollParser
- catchAllCellType integerCell
+ catchAllAtomType integerAtom
  javascript
   compile() {
-   return `<br>`.repeat(parseInt(this.getWord(1) || 1))
+   return `<br>`.repeat(parseInt(this.getAtom(1) || 1))
   }
 stumpParser
  cruxFromId
@@ -2980,7 +2980,7 @@ stumpNoSnippetParser
   }
 abstractCaptionedParser
  extends abstractScrollParser
- cells commandWordCell urlCell
+ atoms cueAtom urlAtom
  inScope captionAftertextParser slashCommentParser
  cruxFromId
  javascript
@@ -3001,7 +3001,7 @@ scrollImageParser
  description An img tag.
  boolean isPopular true
  extends abstractCaptionedParser
- int wordIndex 1
+ int atomIndex 1
  example
   image screenshot.png
    caption A caption.
@@ -3036,7 +3036,7 @@ scrollImageParser
     return this.dimensions.width
   }
   get filename() {
-    return this.getWord(this.wordIndex)
+    return this.getAtom(this.atomIndex)
   }
   getFigureContent(compileSettings) {
    const file = this.root.file
@@ -3057,9 +3057,9 @@ scrollImageParser
 quickImageParser
  popularity 0.005788
  extends scrollImageParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(jpg|jpeg|png|gif|webp|svg|bmp)
- int wordIndex 0
+ int atomIndex 0
 youtubeParser
  popularity 0.000121
  extends abstractCaptionedParser
@@ -3069,7 +3069,7 @@ youtubeParser
   youtube https://www.youtube.com/watch?v=lO8blNtYYBA
  javascript
   getFigureContent() {
-   const url = this.getWord(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
+   const url = this.getAtom(1).replace("youtube.com/watch?v=", "youtube.com/embed/")
    return `<div class="scrollYouTubeHolder"><iframe class="scrollYouTubeEmbed" src="${url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
   }
 youTubeParser
@@ -3080,9 +3080,9 @@ importParser
  description Import a file.
  popularity 0.007524
  cruxFromId
- cells preBuildCommandWordCell
+ atoms preBuildCommandAtom
  extends abstractScrollParser
- catchAllCellType filePathCell
+ catchAllAtomType filePathAtom
  javascript
   compile() {
    return ""
@@ -3094,7 +3094,7 @@ quickImportParser
  description Import a Scroll or Parsers file.
  extends abstractScrollParser
  boolean isPopular true
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(scroll|parsers)$
  javascript
   compile() {
@@ -3123,15 +3123,15 @@ keyboardNavParser
  description Make left and right navigate files.
  extends abstractScrollParser
  cruxFromId
- catchAllCellType urlCell
+ catchAllAtomType urlAtom
  javascript
   compileEmbeddedVersion() {
    return ""
   }
   compile() {
    const file = this.root.file
-   const linkToPrevious = this.getWord(1) ?? file.linkToPrevious
-   const linkToNext = this.getWord(2) ?? file.linkToNext
+   const linkToPrevious = this.getAtom(1) ?? file.linkToPrevious
+   const linkToNext = this.getAtom(2) ?? file.linkToNext
    const script = `<script>document.addEventListener('keydown', function(event) {
     if (document.activeElement !== document.body) return
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return // dont interfere with keyboard back button shortcut
@@ -3145,17 +3145,17 @@ keyboardNavParser
   }
 printUsageStatsParser
  popularity 0.000096
- // todo: if we include the word "Parser" in a crux, bad things seem to happen.
+ // todo: if we include the atom "Parser" in a crux, bad things seem to happen.
  description Parser usage stats for folder.
  extends abstractScrollParser
  cruxFromId
  javascript
   get stats() {
    const input = this.root.file.allScrollFiles.map(file => file.parserIds.join("\n")).join("\n")
-   const result = input.split('\n').reduce((acc, word) => (acc[word] = (acc[word] || 0) + 1, acc), {})
-   const rows = Object.entries(result).map(([word, count]) => { return {word, count}})
+   const result = input.split('\n').reduce((acc, atom) => (acc[atom] = (acc[atom] || 0) + 1, acc), {})
+   const rows = Object.entries(result).map(([atom, count]) => { return {atom, count}})
    const sorted = this.lodash.sortBy(rows, "count").reverse()
-   return "parserId uses\n" + sorted.map(row => `${row.word} ${row.count}`).join('\n')
+   return "parserId uses\n" + sorted.map(row => `${row.atom} ${row.count}`).join('\n')
   }
   get lodash() {
     return this.isNodeJs() ? require("lodash") : lodash
@@ -3186,12 +3186,12 @@ printScrollLeetSheetParser
   get parsersToDocument() {
     const clone = this.root.clone()
     clone.setSubparticles("")
-    const words = clone.getAutocompleteResultsAt(0,0).matches.map(a => a.text)
-    words.push("blankline") // manually add blank line
-    words.push("Catch All Paragraph.") // manually add catch all paragraph
-    words.push("<h></h>") // manually add html
-    words.sort()
-    clone.setSubparticles(words.join("\n").replace(/blankline/, "")) // insert blank line in right spot
+    const atoms = clone.getAutocompleteResultsAt(0,0).matches.map(a => a.text)
+    atoms.push("blankline") // manually add blank line
+    atoms.push("Catch All Paragraph.") // manually add catch all paragraph
+    atoms.push("<h></h>") // manually add html
+    atoms.sort()
+    clone.setSubparticles(atoms.join("\n").replace(/blankline/, "")) // insert blank line in right spot
     return clone
   }
   sortDocs(docs) {
@@ -3248,12 +3248,12 @@ printScrollLeetSheetParser
   }
 printparsersLeetSheetParser
  popularity 0.000024
- // todo: fix parse bug when word Parser appears in parserId
+ // todo: fix parse bug when atom Parser appears in parserId
  extends printScrollLeetSheetParser
  description Parsers leetsheet.
  javascript
   compile() {
-    return "<p><b>Parser Definition Parsers</b> define parsers that acquire, analyze and act on code.</p>" + this.docToHtml(this.sortDocs(this.parsersToDocument)) + "<p><b>Cell Definition Parsers</b> analyze the words in a line.</p>" + this.docToHtml(this.sortDocs(this.cellParsersToDocument))
+    return "<p><b>Parser Definition Parsers</b> define parsers that acquire, analyze and act on code.</p>" + this.docToHtml(this.sortDocs(this.parsersToDocument)) + "<p><b>Atom Definition Parsers</b> analyze the atoms in a line.</p>" + this.docToHtml(this.sortDocs(this.atomParsersToDocument))
   }
   makeLink() {
     return ""
@@ -3265,28 +3265,28 @@ printparsersLeetSheetParser
   getNote(category) {
     return ` <span class="note">A${category.replace("Phase", "").substr(1)}Time.</span>`
   }
-  get cellParsersToDocument() {
+  get atomParsersToDocument() {
     const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
-    const clone = new parsersParser("anyCell\n ").clone()
-    const parserParticle = clone.getParticle("anyCell")
-    const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
-    words.sort()
-    parserParticle.setSubparticles(words.join("\n"))
+    const clone = new parsersParser("anyAtom\n ").clone()
+    const parserParticle = clone.getParticle("anyAtom")
+    const atoms = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
+    atoms.sort()
+    parserParticle.setSubparticles(atoms.join("\n"))
     return parserParticle
   }
   get parsersToDocument() {
     const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
     const clone = new parsersParser("latinParser\n ").clone()
     const parserParticle = clone.getParticle("latinParser")
-    const words = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
-    words.sort()
-    parserParticle.setSubparticles(words.join("\n"))
+    const atoms = clone.getAutocompleteResultsAt(1,1).matches.map(a => a.text)
+    atoms.sort()
+    parserParticle.setSubparticles(atoms.join("\n"))
     clone.appendLine("myParser")
-    clone.appendLine("myCell")
+    clone.appendLine("myAtom")
     return parserParticle
   }
 abstractMeasureParser
- cells measureNameCell
+ atoms measureNameAtom
  cruxFromId
  boolean isMeasure true
  float sortIndex 1.9
@@ -3304,22 +3304,22 @@ abstractMeasureParser
     return this.content ?? ""
   }
   get measureName() {
-    return this.getFirstWordPath().replace(/ /g, "_")
+    return this.getFirstAtomPath().replace(/ /g, "_")
   }
-abstractWordMeasureParser
- description A measure that contains a single word.
- cells measureNameCell wordCell
+abstractAtomMeasureParser
+ description A measure that contains a single atom.
+ atoms measureNameAtom atomAtom
  extends abstractMeasureParser
 abstractEmailMeasureParser
  string typeForWebForms email
- cells measureNameCell emailAddressCell
- extends abstractWordMeasureParser
+ atoms measureNameAtom emailAddressAtom
+ extends abstractAtomMeasureParser
 abstractUrlMeasureParser
  string typeForWebForms url
- cells measureNameCell urlCell
- extends abstractWordMeasureParser
+ atoms measureNameAtom urlAtom
+ extends abstractAtomMeasureParser
 abstractStringMeasureParser
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  extends abstractMeasureParser
 abstractIdParser
  crux id
@@ -3334,8 +3334,8 @@ abstractIdParser
     let requiredMeasureNames = this.parent.file.measures.filter(measure => measure.isMeasureRequired).map(measure => measure.Name).filter(name => name !== "id")
     if (!requiredMeasureNames.length) return errors
     let next = this.next
-    while (requiredMeasureNames.length && next.firstWord !== "id" && next.getIndex() !== 0) {
-      requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.firstWord)
+    while (requiredMeasureNames.length && next.firstAtom !== "id" && next.getIndex() !== 0) {
+      requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.firstAtom)
       next = next.next
     }
     requiredMeasureNames.forEach(name =>
@@ -3360,13 +3360,13 @@ abstractNumericMeasureParser
     return content === undefined ? "" : parseFloat(content)
   }
 abstractIntegerMeasureParser
- cells measureNameCell integerCell
+ atoms measureNameAtom integerAtom
  extends abstractNumericMeasureParser
 abstractFloatMeasureParser
- cells measureNameCell floatCell
+ atoms measureNameAtom floatAtom
  extends abstractNumericMeasureParser
 abstractPercentageMeasureParser
- cells measureNameCell percentCell
+ atoms measureNameAtom percentAtom
  extends abstractNumericMeasureParser
  javascript
   get measureValue() {
@@ -3374,10 +3374,10 @@ abstractPercentageMeasureParser
     return content === undefined ? "" : parseFloat(content)
   }
 abstractEnumMeasureParser
- cells measureNameCell enumCell
+ atoms measureNameAtom enumAtom
  extends abstractMeasureParser
 abstractBooleanMeasureParser
- cells measureNameCell booleanCell
+ atoms measureNameAtom booleanAtom
  extends abstractMeasureParser
  javascript
   get measureValue() {
@@ -3444,18 +3444,18 @@ redirectToParser
  popularity 0.000072
  description HTML redirect tag.
  extends abstractScrollParser
- cells commandWordCell urlCell
+ atoms cueAtom urlAtom
  cruxFromId
  example
   redirectTo https://scroll.pub/releaseNotes.html
  javascript
   compile() {
-   return `<meta http-equiv="Refresh" content="0; url='${this.getWord(1)}'" />`
+   return `<meta http-equiv="Refresh" content="0; url='${this.getAtom(1)}'" />`
   }
 abstractVariableParser
  extends abstractScrollParser
- catchAllCellType stringCell
- cells preBuildCommandWordCell
+ catchAllAtomType stringAtom
+ atoms preBuildCommandAtom
  cruxFromId
  javascript
   isTopMatter = true
@@ -3471,14 +3471,14 @@ replaceParser
 replaceJsParser
  description Replace this with evaled JS.
  extends replaceParser
- catchAllCellType javascriptCell
+ catchAllAtomType javascriptAtom
  example
   replaceJs SUM 1+1
   * 1+1 = SUM
 replaceNodejsParser
  description Replace with evaled Node.JS.
  extends abstractVariableParser
- catchAllCellType javascriptCell
+ catchAllAtomType javascriptAtom
  baseParser blobParser
  example
   replaceNodejs
@@ -3489,7 +3489,7 @@ scriptParser
  description Print script tag.
  cruxFromId
  catchAllParser scriptLineParser
- catchAllCellType scriptAnyCell
+ catchAllAtomType scriptAnyAtom
  javascript
   compile() {
    return `<script>${this.scriptContent}</script>`
@@ -3526,7 +3526,7 @@ stampParser
      hello.js
       console.log("Hello world")
  cruxFromId
- cells preBuildCommandWordCell
+ atoms preBuildCommandAtom
  javascript
   build() {
     const dir = this.root.file.folderPath
@@ -3545,9 +3545,9 @@ scrollTableParser
     2000,122
     2020,23
  extends abstractScrollParser
- catchAllCellType filePathCell
+ catchAllAtomType filePathAtom
  inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser
- int wordIndex 1
+ int atomIndex 1
  javascript
   get visualizations() {
     return this.topDownArray.filter(particle => particle.isTableVisualization || particle.isHeader)
@@ -3588,7 +3588,7 @@ scrollTableParser
     return delimiter
   }
   get filename() {
-    return this.getWord(this.wordIndex)
+    return this.getAtom(this.atomIndex)
   }
   get fileFromLocalStorage() {
     return localStorage.getItem(this.filename) || ""
@@ -3637,9 +3637,9 @@ scrollTableParser
 quickTableParser
  popularity 0.000024
  extends scrollTableParser
- cells urlCell
+ atoms urlAtom
  pattern ^[^\s]+\.(tsv|csv|ssv|psv)
- int wordIndex 0
+ int atomIndex 0
 assertHtmlEqualsParser
  description Test above particle's output.
  extends abstractScrollParser
@@ -3662,7 +3662,7 @@ plainTextParser
  cruxFromId
  extends abstractScrollParser
  catchAllParser plainTextLineParser
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  javascript
   compile() {
    return this.compileTxt()
@@ -3679,11 +3679,11 @@ plainTextOnlyParser
    return ""
   }
 abstractAftertextAttributeParser
- cells commandWordCell
+ atoms cueAtom
  boolean isAttribute true
  javascript
   get divAttributes() {
-   return `${this.firstWord}="${this.content}"`
+   return `${this.firstAtom}="${this.content}"`
   }
   compile() {
    return ""
@@ -3693,23 +3693,23 @@ aftertextIdParser
  crux id
  description Provide an ID to be output in the generated HTML tag.
  extends abstractAftertextAttributeParser
- cells commandWordCell htmlIdCell
+ atoms cueAtom htmlIdAtom
  single
 aftertextStyleParser
  popularity 0.000217
  crux style
  description Provide code for the generated HTML tag's "style" attribute.
  extends abstractAftertextAttributeParser
- cells commandWordCell
- catchAllCellType cssAnyCell
+ atoms cueAtom
+ catchAllAtomType cssAnyAtom
 aftertextHiddenParser
  crux hidden
- cells commandWordCell
+ atoms cueAtom
  description Do not compile this particle to HTML.
  extends abstractAftertextAttributeParser
  single
 aftertextTagParser
- cells commandWordCell htmlTagCell
+ atoms cueAtom htmlTagAtom
  description Override the HTML tag that the compiled particle will use.
  crux tag
  javascript
@@ -3717,8 +3717,8 @@ aftertextTagParser
    return ""
   }
 abstractAftertextDirectiveParser
- cells commandWordCell
- catchAllCellType stringCell
+ atoms cueAtom
+ catchAllAtomType stringAtom
  javascript
   isMarkup = true
   compile() {
@@ -3735,7 +3735,7 @@ abstractAftertextDirectiveParser
     return errors
   }
   get pattern() {
-   return this.getWordsFrom(1).join(" ")
+   return this.getAtomsFrom(1).join(" ")
   }
   get shouldMatchAll() {
    return this.has("matchAll")
@@ -3782,12 +3782,12 @@ abstractMarkupParser
  inScope abstractMarkupParameterParser
  javascript
   get matchWholeLine() {
-    return this.getWordsFrom(this.patternStartsAtWord).length === 0
+    return this.getAtomsFrom(this.patternStartsAtAtom).length === 0
   }
   get pattern() {
-   return this.matchWholeLine ? this.parent.originalText : this.getWordsFrom(this.patternStartsAtWord).join(" ")
+   return this.matchWholeLine ? this.parent.originalText : this.getAtomsFrom(this.patternStartsAtAtom).join(" ")
   }
-  patternStartsAtWord = 1
+  patternStartsAtAtom = 1
 boldParser
  popularity 0.000096
  cruxFromId
@@ -3834,12 +3834,12 @@ classMarkupParser
  popularity 0.000772
  description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
  extends abstractMarkupParser
- cells commandWordCell classNameCell
+ atoms cueAtom classNameAtom
  crux class
  javascript
   tag = "span"
   get applyToParentElement() {
-   return this.words.length === 2
+   return this.atoms.length === 2
   }
   getInserts(text) {
    // If no select text is added, set the class on the parent element.
@@ -3847,7 +3847,7 @@ classMarkupParser
    return super.getInserts(text)
   }
   get className() {
-   return this.getWord(1)
+   return this.getAtom(1)
   }
   get attributes() {
    return [`class="${this.className}"`]
@@ -3856,7 +3856,7 @@ classMarkupParser
     return this.applyToParentElement
   }
   get pattern() {
-   return this.matchWholeLine ? this.parent.content : this.getWordsFrom(2).join(" ")
+   return this.matchWholeLine ? this.parent.content : this.getAtomsFrom(2).join(" ")
   }
 classesMarkupParser
  extends classMarkupParser
@@ -3872,10 +3872,10 @@ hoverNoteParser
  cruxFromId
  extends classMarkupParser
  catchAllParser lineOfTextParser
- cells commandWordCell
+ atoms cueAtom
  javascript
   get pattern() {
-   return this.getWordsFrom(1).join(" ")
+   return this.getAtomsFrom(1).join(" ")
   }
   get attributes() {
    return [`class="scrollHoverNote"`, `title="${this.hoverNoteText}"`]
@@ -3887,12 +3887,12 @@ linkParser
  popularity 0.008706
  extends abstractMarkupParser
  description Put the matching text in an <a> tag.
- cells commandWordCell urlCell
+ atoms cueAtom urlAtom
  inScope linkTitleParser linkTargetParser commentParser
  programParser
   description Anything here will be URI encoded and then appended to the link.
   cruxFromId
-  cells commandWordCell
+  atoms cueAtom
   catchAllParser programLinkParser
   javascript
    get encoded() {
@@ -3911,7 +3911,7 @@ linkParser
    return baseLink
   }
   get baseLink() {
-   const link = this.getWord(1)
+   const link = this.getAtom(1)
    const isAbsoluteLink = link.includes("://")
    if (isAbsoluteLink) return link
    const relativePath = this.parent.compileSettings?.relativePath || ""
@@ -3926,7 +3926,7 @@ linkParser
    })
    return attrs
   }
-  patternStartsAtWord = 2
+  patternStartsAtAtom = 2
 emailLinkParser
  popularity 0.000048
  description A mailto link
@@ -3940,12 +3940,12 @@ quickLinkParser
  popularity 0.029228
  pattern ^https?\:
  extends linkParser
- cells urlCell
+ atoms urlAtom
  javascript
   get link() {
-   return this.firstWord
+   return this.firstAtom
   }
-  patternStartsAtWord = 1
+  patternStartsAtAtom = 1
 datelineParser
  popularity 0.006005
  cruxFromId
@@ -3988,7 +3988,7 @@ inlineMarkupsOnParser
   Hello *world*!
    inlineMarkupsOn bold
  extends abstractAftertextDirectiveParser
- catchAllCellType inlineMarkupNameCell
+ catchAllAtomType inlineMarkupNameAtom
  javascript
   get shouldMatchAll() {
    return true
@@ -4003,11 +4003,11 @@ inlineMarkupsOnParser
       return markups.filter(markup => this.content.includes(markup.name))
     if (root.has("inlineMarkups")) {
       root.getParticle("inlineMarkups").forEach(markup => {
-        const delimiter = markup.getWord(0)
-        const tag = markup.getWord(1)
+        const delimiter = markup.getAtom(0)
+        const tag = markup.getAtom(1)
         // todo: add support for providing custom functions for inline markups?
         // for example, !2+2! could run eval, or :about: could search a link map.
-        const attributes = markup.getWordsFrom(2).join(" ")
+        const attributes = markup.getAtomsFrom(2).join(" ")
         markups = markups.filter(mu => mu.delimiter !== delimiter) // Remove any overridden markups
         if (tag)
           markups.push({delimiter, tag, attributes})
@@ -4045,8 +4045,8 @@ inlineMarkupsOnParser
 inlineMarkupParser
  popularity 0.000169
  cruxFromId
- cells commandWordCell delimiterCell tagOrUrlCell
- catchAllCellType htmlAttributesCell
+ atoms cueAtom delimiterAtom tagOrUrlAtom
+ catchAllAtomType htmlAttributesAtom
  extends inlineMarkupsOnParser
  description Custom inline markup. for
  example
@@ -4055,9 +4055,9 @@ inlineMarkupParser
  javascript
   getMatches(text) {
    try {
-    const delimiter = this.getWord(1)
-    const tag = this.getWord(2)
-    const attributes = this.getWordsFrom(3).join(" ")
+    const delimiter = this.getAtom(1)
+    const tag = this.getAtom(2)
+    const attributes = this.getAtomsFrom(3).join(" ")
     return this.applyMarkup(text, {delimiter, tag, attributes})
    } catch (err) {
     console.error(err)
@@ -4069,9 +4069,9 @@ linkifyParser
  description Use this to disable linkify on the text.
  extends abstractAftertextDirectiveParser
  cruxFromId
- cells commandWordCell booleanCell
+ atoms cueAtom booleanAtom
 abstractMarkupParameterParser
- cells commandWordCell
+ atoms cueAtom
  cruxFromId
 matchAllParser
  popularity 0.000024
@@ -4079,11 +4079,11 @@ matchAllParser
  extends abstractMarkupParameterParser
 matchParser
  popularity 0.000048
- catchAllCellType integerCell
+ catchAllAtomType integerAtom
  description Use this to specify which index(es) to match.
  javascript
   get indexes() {
-   return this.getWordsFrom(1).map(num => parseInt(num))
+   return this.getAtomsFrom(1).map(num => parseInt(num))
   }
  example
   aftertext
@@ -4101,11 +4101,11 @@ linkTargetParser
  extends abstractHtmlAttributeParser
  description If you want to set the target of the link. To "_blank", for example.
  crux target
- cells commandWordCell anyCell
+ atoms cueAtom anyAtom
 blankLineParser
  popularity 0.308149
  description Print nothing. Break section.
- cells blankCell
+ atoms blankAtom
  boolean isPopular true
  javascript
   compile() {
@@ -4115,22 +4115,22 @@ blankLineParser
  tags doNotSynthesize
 chatLineParser
  popularity 0.009887
- catchAllCellType anyCell
+ catchAllAtomType anyAtom
  catchAllParser chatLineParser
 lineOfCodeParser
  popularity 0.018665
- catchAllCellType codeCell
+ catchAllAtomType codeAtom
  catchAllParser lineOfCodeParser
 commentLineParser
- catchAllCellType commentCell
+ catchAllAtomType commentAtom
 cssLineParser
  popularity 0.002870
- catchAllCellType cssAnyCell
+ catchAllAtomType cssAnyAtom
  catchAllParser cssLineParser
 errorParser
  baseParser errorParser
 abstractTableTransformParser
- cells commandWordCell
+ atoms cueAtom
  inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser
  javascript
   get coreTable() {
@@ -4139,19 +4139,19 @@ abstractTableTransformParser
   get columnNames() {
     return this.parent.columnNames
   }
-  getRunTimeEnumOptions(cell) {
-   if (cell.cellTypeId === "columnNameCell")
+  getRunTimeEnumOptions(atom) {
+   if (atom.atomTypeId === "columnNameAtom")
       return this.parent.columnNames
-   return super.getRunTimeEnumOptions(cell)
+   return super.getRunTimeEnumOptions(atom)
   }
-  getRunTimeEnumOptionsForValidation(cell) {
+  getRunTimeEnumOptionsForValidation(atom) {
     // Note: this will fail if the CSV file hasnt been built yet.
-    if (cell.cellTypeId === "columnNameCell")
+    if (atom.atomTypeId === "columnNameAtom")
       return this.parent.columnNames.concat(this.parent.columnNames.map(c => "-" + c)) // Add reverse names
-   return super.getRunTimeEnumOptions(cell)
+   return super.getRunTimeEnumOptions(atom)
   }
 scrollGroupByParser
- catchAllCellType columnNameCell
+ catchAllAtomType columnNameAtom
  extends abstractTableTransformParser
  description Combine rows with matching values into groups.
  example
@@ -4162,14 +4162,14 @@ scrollGroupByParser
  javascript
   get coreTable() {
     if (this._coreTable) return this._coreTable
-   const groupByColNames = this.getWordsFrom(1)
+   const groupByColNames = this.getAtomsFrom(1)
    const {coreTable} = this.parent
    if (!groupByColNames.length) return coreTable
    const newCols = [].map(reduceParticle => {
     return {
-     source: reduceParticle.getWord(1),
-     reduction: reduceParticle.getWord(2),
-     name: reduceParticle.getWord(3) || reduceParticle.getWordsFrom(1).join("_")
+     source: reduceParticle.getAtom(1),
+     reduction: reduceParticle.getAtom(2),
+     name: reduceParticle.getAtom(3) || reduceParticle.getAtomsFrom(1).join("_")
     }
    })
    // Pivot is shorthand for group and reduce?
@@ -4258,37 +4258,37 @@ scrollWhereParser
  extends abstractTableTransformParser
  description Filter rows by condition.
  crux where
- cells commandWordCell columnNameCell comparisonCell wordCell
+ atoms cueAtom columnNameAtom comparisonAtom atomAtom
  example
   table iris.csv
    where Species = setosa
  javascript
   get coreTable() {
-   // todo: use cells here.
-   const columnName = this.getWord(1)
-   const operator = this.getWord(2)
-   let untypedScalarValue = this.getWord(3)
+   // todo: use atoms here.
+   const columnName = this.getAtom(1)
+   const operator = this.getAtom(2)
+   let untypedScalarValue = this.getAtom(3)
    const typedValue = isNaN(parseFloat(untypedScalarValue)) ? untypedScalarValue : parseFloat(untypedScalarValue)
    const coreTable = this.parent.coreTable
    if (!columnName || !operator || untypedScalarValue === undefined) return coreTable
     const filterFn = row => {
-      const cell = row[columnName]
-      const typedCell = cell
-      if (operator === "=") return typedValue === typedCell
-      else if (operator === "!=") return typedValue !== typedCell
-      else if (operator === "includes") return typedCell !== undefined && typedCell.includes(typedValue)
-      else if (operator === "doesNotInclude") return typedCell === undefined || !typedCell.includes(typedValue)
-      else if (operator === ">") return typedCell > typedValue
-      else if (operator === "<") return typedCell < typedValue
-      else if (operator === ">=") return typedCell >= typedValue
-      else if (operator === "<=") return typedCell <= typedValue
-      else if (operator === "empty") return cell === "" || cell === undefined
-      else if (operator === "notEmpty") return !(cell === "" || cell === undefined)
+      const atom = row[columnName]
+      const typedAtom = atom
+      if (operator === "=") return typedValue === typedAtom
+      else if (operator === "!=") return typedValue !== typedAtom
+      else if (operator === "includes") return typedAtom !== undefined && typedAtom.includes(typedValue)
+      else if (operator === "doesNotInclude") return typedAtom === undefined || !typedAtom.includes(typedValue)
+      else if (operator === ">") return typedAtom > typedValue
+      else if (operator === "<") return typedAtom < typedValue
+      else if (operator === ">=") return typedAtom >= typedValue
+      else if (operator === "<=") return typedAtom <= typedValue
+      else if (operator === "empty") return atom === "" || atom === undefined
+      else if (operator === "notEmpty") return !(atom === "" || atom === undefined)
     }
    return coreTable.filter(filterFn)
   }
 scrollSelectParser
- catchAllCellType columnNameCell
+ catchAllAtomType columnNameAtom
  extends abstractTableTransformParser
  description Drop all columns except these.
  example
@@ -4308,7 +4308,7 @@ scrollSelectParser
    return coreTable.map(row => Object.fromEntries(columnNames.map(colName => [colName, row[colName]])))
   }
   get columnNames() {
-    return this.getWordsFrom(1)
+    return this.getAtomsFrom(1)
   }
 scrollReverseParser
  extends abstractTableTransformParser
@@ -4322,11 +4322,11 @@ scrollLimitParser
  extends abstractTableTransformParser
  description Select a subset.
  crux limit
- cells commandWordCell integerCell integerCell
+ atoms cueAtom integerAtom integerAtom
  javascript
   get coreTable() {
-   const start = this.getWord(1)
-   const end = this.getWord(2)
+   const start = this.getAtom(1)
+   const end = this.getAtom(2)
    return this.parent.coreTable.slice(parseInt(start), parseInt(end))
   }
 scrollTransposeParser
@@ -4342,7 +4342,7 @@ scrollTransposeParser
 scrollImputeParser
  extends abstractTableTransformParser
  description Impute missing values of a columm.
- cells commandWordCell columnNameCell
+ atoms cueAtom columnNameAtom
  crux impute
  javascript
   get coreTable() {
@@ -4367,7 +4367,7 @@ scrollImputeParser
    return imputed
   }
   get columnName() {
-    return this.getWord(1)
+    return this.getAtom(1)
   }
   get lodash() {
     return this.isNodeJs() ? require("lodash") : lodash
@@ -4375,7 +4375,7 @@ scrollImputeParser
 scrollOrderByParser
  extends abstractTableTransformParser
  description Sort rows by column(s).
- catchAllCellType columnNameCell
+ catchAllAtomType columnNameAtom
  crux orderBy
  javascript
   get coreTable() {
@@ -4392,8 +4392,8 @@ scrollOrderByParser
   }
 scrollRenameParser
  // todo: add support in Parsers for tuple catch alls
-  catchAllCellType columnNameCell wordCell
- catchAllCellType wordCell
+  catchAllAtomType columnNameAtom atomAtom
+ catchAllAtomType atomAtom
  extends abstractTableTransformParser
  description Rename columns.
  example
@@ -4420,7 +4420,7 @@ scrollRenameParser
   }
   get renameMap() {
     const map = {}
-    const pairs = this.getWordsFrom(1)
+    const pairs = this.getAtomsFrom(1)
     let oldName
     while (oldName = pairs.shift()) {
       map[oldName] = pairs.shift()
@@ -4438,67 +4438,67 @@ scrollRenameParser
 heatrixCatchAllParser
  popularity 0.000193
  // todo Fill this out
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
 lineOfTextParser
  popularity 0.000289
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  boolean isTextParser true
 htmlLineParser
  popularity 0.005209
- catchAllCellType htmlAnyCell
+ catchAllAtomType htmlAnyAtom
  catchAllParser htmlLineParser
 stumpContentParser
  popularity 0.102322
- catchAllCellType anyCell
+ catchAllAtomType anyAtom
 openGraphParser
  // todo: fix Parsers scope issue so we can move this parser def under scrollImageParser
  description Add this line to make this the open graph image.
  cruxFromId
- cells commandWordCell
+ atoms cueAtom
 linkTitleParser
  popularity 0.000048
  description If you want to set the title of the link.
  crux title
- cells commandWordCell
- catchAllCellType anyCell
+ atoms cueAtom
+ catchAllAtomType anyAtom
  example
   * This report showed the treatment had a big impact.
    https://example.com/report This report.
     title The average growth in the treatment group was 14.2x higher than the control group.
 programLinkParser
  popularity 0.000531
- catchAllCellType codeCell
+ catchAllAtomType codeAtom
 abstractLoopConfigParser
- cells commandWordCell
+ atoms cueAtom
  cruxFromId
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
 abstractItemsProviderParser
- cells commandWordCell
+ atoms cueAtom
 loopLinesParser
  crux lines
  extends abstractItemsProviderParser
  description Iterate over the provided lines.
  catchAllParser loopLineParser
  loopLineParser
-  catchAllCellType stringCell
+  catchAllAtomType stringAtom
  javascript
   get items() {
    return this.map(particle => particle.asString)
   }
-loopWordsParser
+loopAtomsParser
  popularity 0.000024
- crux words
+ crux atoms
  extends abstractItemsProviderParser
- catchAllCellType stringCell
- description Iterate over the provided words.
+ catchAllAtomType stringAtom
+ description Iterate over the provided atoms.
  javascript
   get items() {
-   return this.getWordsFrom(1)
+   return this.getAtomsFrom(1)
   }
 loopTagsParser
  crux tags
  extends abstractItemsProviderParser
- catchAllCellType tagWithOptionalFolderCell
+ catchAllAtomType tagWithOptionalFolderAtom
  description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[tag]
  javascript
   get items() {
@@ -4507,31 +4507,31 @@ loopTagsParser
 abstractPointConfigParser
  // todo: scoped parsers should support abstract types
  cruxFromId
- cells commandWordCell
- catchAllCellType stringCell
+ atoms cueAtom
+ catchAllAtomType stringAtom
  single
 latParser
- cells commandWordCell floatCell
+ atoms cueAtom floatAtom
  cruxFromId
  single
 longParser
- cells commandWordCell floatCell
+ atoms cueAtom floatAtom
  cruxFromId
  single
 scrollMediaLoopParser
  popularity 0.000048
  crux loop
- cells commandWordCell
+ atoms cueAtom
 scrollAutoplayParser
  crux autoplay
- cells commandWordCell
+ atoms cueAtom
 abstractColumnNameParser
- cells commandWordCell columnNameCell
+ atoms cueAtom columnNameAtom
  javascript
-  getRunTimeEnumOptions(cell) {
-   if (cell.cellTypeId === "columnNameCell")
+  getRunTimeEnumOptions(atom) {
+   if (atom.atomTypeId === "columnNameAtom")
       return this.parent.columnNames
-   return super.getRunTimeEnumOptions(cell)
+   return super.getRunTimeEnumOptions(atom)
   }
 scrollRadiusParser
  crux radius
@@ -4553,7 +4553,7 @@ scrollYParser
  extends abstractColumnNameParser
 quoteLineParser
  popularity 0.004172
- catchAllCellType anyCell
+ catchAllAtomType anyAtom
  catchAllParser quoteLineParser
 scrollParser
  extensions scroll
@@ -4619,10 +4619,10 @@ scrollParser
    // You can add code as well.
    print("Hello world")
 scriptLineParser
- catchAllCellType scriptAnyCell
+ catchAllAtomType scriptAnyAtom
  catchAllParser scriptLineParser
 stampFileParser
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  description Create a file.
  javascript
   build(parentDir) {
@@ -4637,7 +4637,7 @@ stampFileParser
    if (isExecutable) fs.chmodSync(fullPath, "755")
   }
 stampFolderParser
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  description Create a folder.
  inScope stampFolderParser
  catchAllParser stampFileParser
@@ -4655,18 +4655,18 @@ scrollTableDataParser
  popularity 0.001061
  crux data
  description Table from inline delimited data.
- catchAllCellType anyCell
+ catchAllAtomType anyAtom
  baseParser blobParser
 scrollTableDelimiterParser
  popularity 0.001037
  description Set the delimiter.
  crux delimiter
- cells commandWordCell stringCell
+ atoms cueAtom stringAtom
  javascript
   compile() {
     return ""
   }
 plainTextLineParser
  popularity 0.000121
- catchAllCellType stringCell
+ catchAllAtomType stringAtom
  catchAllParser plainTextLineParser

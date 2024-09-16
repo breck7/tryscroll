@@ -152,7 +152,7 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   resizeEditorCommand(newSize = SIZES.EDITOR_WIDTH) {
-    this.editor.setWord(1, newSize)
+    this.editor.setAtom(1, newSize)
 
     if (!this.isNodeJs()) localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
     this.renderAndGetRenderReport()
