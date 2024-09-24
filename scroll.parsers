@@ -1304,6 +1304,141 @@ chatParser
   compileTxt() {
     return this.subparticlesToString()
   }
+abstractDatatableProviderParser
+ description A datatable.
+ extends abstractScrollParser
+ inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser htmlInlineParser scrollBrParser
+ javascript
+  get visualizations() {
+    return this.topDownArray.filter(particle => particle.isTableVisualization || particle.isHeader || particle.isHtml)
+  }
+  compile(compileSettings) {
+   return this.visualizations.map(particle => particle.compile(compileSettings))
+     .join("\n")
+     .trim()
+  }
+  compileTxt() {
+    return this.visualizations.map(particle => particle.compileTxt())
+     .join("\n")
+     .trim()
+  }
+  _coreTable
+  get coreTable() {
+    if (this._coreTable) return this._coreTable
+    const {delimiter, delimitedData} = this
+    return []
+  }
+  get columnNames() {
+    return []
+  }
+scrollTableParser
+ extends abstractDatatableProviderParser
+ popularity 0.002133
+ crux table
+ example
+  table
+   printTable
+   data
+    year,count
+    1900,10
+    2000,122
+    2020,23
+ catchAllAtomType filePathAtom
+ int atomIndex 1
+ javascript
+  get delimiter() {
+     const {filename} = this
+     let delimiter = ""
+     if (filename) {
+       const extension = filename.split(".").pop()
+       if (extension === "json") delimiter = "json"
+       if (extension === "particles") delimiter = "particles"
+       if (extension === "csv") delimiter = ","
+       if (extension === "tsv") delimiter = "\t"
+       if (extension === "ssv") delimiter = " "
+       if (extension === "psv") delimiter = "|"
+     }
+     if (this.get("delimiter"))
+       delimiter = this.get("delimiter")
+     else if (!delimiter) {
+       const header = this.delimitedData.split("\n")[0]
+       if (header.includes("\t"))
+         delimiter = "\t"
+       else if (header.includes(","))
+        delimiter = ","
+       else
+        delimiter = " "
+     }
+     return delimiter
+   }
+   get filename() {
+     return this.getAtom(this.atomIndex)
+   }
+   get fileFromLocalStorage() {
+     return localStorage.getItem(this.filename) || ""
+   }
+   get fileContent() {
+     return this.isNodeJs() ? this.root.readFile(this.filename) : this.fileFromLocalStorage
+   }
+   get coreTable() {
+    if (this._coreTable) return this._coreTable
+    const {delimiter, delimitedData} = this
+    if (delimiter === "json") {
+       const rows = JSON.parse(delimitedData)
+       this._columnNames = rows.length ? Object.keys(rows[0]) : []
+       this._coreTable = rows
+       return rows
+    }
+    else if (delimiter === "particles") {
+       const d3lib = typeof d3 === "undefined" ? require('d3') : d3
+       this._coreTable = d3lib.dsvFormat(",").parse(new Particle(delimitedData).asCsv, d3lib.autoType)
+    } else {
+      const d3lib = typeof d3 === "undefined" ? require('d3') : d3
+      this._coreTable = d3lib.dsvFormat(delimiter).parse(delimitedData, d3lib.autoType)
+    }
+    this._columnNames = this._coreTable.columns
+    delete this._coreTable.columns
+    return this._coreTable
+  }
+  get columnNames() {
+    // init coreTable to set columns
+    const coreTable = this.coreTable
+    return this._columnNames
+  }
+   get delimitedData() {
+     // json csv tsv
+     if (this.filename)
+       return this.fileContent
+     const dataParticle = this.getParticle("data")
+     if (dataParticle)
+       return dataParticle.subparticlesToString()
+     // if not dataparticle and no filename, check [permalink].csv
+     if (this.isNodeJs())
+       return this.root.readFile(this.root.permalink.replace(".html", "") + ".csv")
+     return  ""
+   }
+clocParser
+ extends scrollTableParser
+ description Output results of cloc as table.
+ crux cloc
+ string copyFromExternal clocLangs.txt
+ javascript
+  delimiter = ","
+  get delimitedData() {
+   const { execSync } = require("child_process")
+   const results = execSync(this.command).toString().trim()
+   const csv = results.split("\n\n").pop().replace(/,\"github\.com\/AlDanial.+/, "") // cleanup output
+   return csv
+  }
+  get command(){
+   return `cloc --vcs git . --csv --read-lang-def=clocLangs.txt ${this.content || ""}`
+  }
+quickTableParser
+ popularity 0.000024
+ extends scrollTableParser
+ atoms urlAtom
+ pattern ^[^\s]+\.(tsv|csv|ssv|psv)
+ int atomIndex 0
 codeParser
  popularity 0.001929
  description A code block.
@@ -2951,6 +3086,7 @@ htmlInlineParser
  popularity 0.005788
  extends abstractHtmlParser
  atoms htmlAnyAtom
+ boolean isHtml true
  pattern ^<
  description Inline HTML.
  boolean isPopular true
@@ -2964,6 +3100,7 @@ scrollBrParser
  description A break.
  extends abstractScrollParser
  catchAllAtomType integerAtom
+ boolean isHtml true
  javascript
   compile() {
    return `<br>`.repeat(parseInt(this.getAtom(1) || 1))
@@ -3545,114 +3682,6 @@ stampParser
     const dir = this.root.file.folderPath
     this.forEach(particle => particle.build(dir))
   }
-scrollTableParser
- popularity 0.001133
- description A table.
- crux table
- example
-  table
-   printTable
-   data
-    year,count
-    1900,10
-    2000,122
-    2020,23
- extends abstractScrollParser
- catchAllAtomType filePathAtom
- inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser
- int atomIndex 1
- javascript
-  get visualizations() {
-    return this.topDownArray.filter(particle => particle.isTableVisualization || particle.isHeader)
-  }
-  compile(compileSettings) {
-   return this.visualizations.map(particle => particle.compile(compileSettings))
-     .join("\n")
-     .trim()
-  }
-  compileTxt() {
-    return this.visualizations.map(particle => particle.compileTxt())
-     .join("\n")
-     .trim()
-  }
-  get delimiter() {
-    const {filename} = this
-    let delimiter = ""
-    if (filename) {
-      const extension = filename.split(".").pop()
-      if (extension === "json") delimiter = "json"
-      if (extension === "particles") delimiter = "particles"
-      if (extension === "csv") delimiter = ","
-      if (extension === "tsv") delimiter = "\t"
-      if (extension === "ssv") delimiter = " "
-      if (extension === "psv") delimiter = "|"
-    }
-    if (this.get("delimiter"))
-      delimiter = this.get("delimiter")
-    else if (!delimiter) {
-      const header = this.delimitedData.split("\n")[0]
-      if (header.includes("\t"))
-        delimiter = "\t"
-      else if (header.includes(","))
-       delimiter = ","
-      else
-       delimiter = " "
-    }
-    return delimiter
-  }
-  get filename() {
-    return this.getAtom(this.atomIndex)
-  }
-  get fileFromLocalStorage() {
-    return localStorage.getItem(this.filename) || ""
-  }
-  get fileContent() {
-    return this.isNodeJs() ? this.root.readFile(this.filename) : this.fileFromLocalStorage
-  }
-  get delimitedData() {
-    // json csv tsv
-    if (this.filename)
-      return this.fileContent
-    const dataParticle = this.getParticle("data")
-    if (dataParticle)
-      return dataParticle.subparticlesToString()
-    // if not dataparticle and no filename, check [permalink].csv
-    if (this.isNodeJs())
-      return this.root.readFile(this.root.permalink.replace(".html", "") + ".csv")
-    return  ""
-  }
-  _coreTable
-  get coreTable() {
-    if (this._coreTable) return this._coreTable
-    const {delimiter, delimitedData} = this
-    if (delimiter === "json") {
-       const rows = JSON.parse(delimitedData)
-       this._columnNames = rows.length ? Object.keys(rows[0]) : []
-       this._coreTable = rows
-       return rows
-    }
-    else if (delimiter === "particles") {
-       const d3lib = typeof d3 === "undefined" ? require('d3') : d3
-       this._coreTable = d3lib.dsvFormat(",").parse(new Particle(delimitedData).asCsv, d3lib.autoType)
-    } else {
-      const d3lib = typeof d3 === "undefined" ? require('d3') : d3
-      this._coreTable = d3lib.dsvFormat(delimiter).parse(delimitedData, d3lib.autoType)
-    }
-    this._columnNames = this._coreTable.columns
-    delete this._coreTable.columns
-    return this._coreTable
-  }
-  get columnNames() {
-    // init coreTable to set columns
-    const coreTable = this.coreTable
-    return this._columnNames
-  }
-quickTableParser
- popularity 0.000024
- extends scrollTableParser
- atoms urlAtom
- pattern ^[^\s]+\.(tsv|csv|ssv|psv)
- int atomIndex 0
 assertHtmlEqualsParser
  description Test above particle's output.
  extends abstractScrollParser
@@ -4144,7 +4173,7 @@ errorParser
  baseParser errorParser
 abstractTableTransformParser
  atoms cueAtom
- inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser
+ inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser htmlInlineParser scrollBrParser
  javascript
   get coreTable() {
     return this.parent.coreTable
