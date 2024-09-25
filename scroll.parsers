@@ -2093,6 +2093,17 @@ quickScriptParser
   compile() {
    return `<script src="${this.filename}"></script>`
   }
+quickIncludeJsonParser
+ popularity 0.007524
+ description Include JSON and assign to window.
+ extends abstractQuickIncludeParser
+ atoms urlAtom
+ pattern ^[^\s]+\.json$
+ javascript
+  compile() {
+   const varName = this.filename.split("/").pop().replace(".json", "")
+   return `<script>window.${varName} = ${this.root.readFile(this.filename)}</script>`
+  }
 abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
@@ -4367,6 +4378,26 @@ scrollReverseParser
  javascript
   get coreTable() {
    return this.parent.coreTable.slice().reverse()
+  }
+scrollComposeParser
+ extends abstractTableTransformParser
+ description Add column using format string.
+ crux compose
+ javascript
+  get coreTable() {
+   const {newColumnName} = this
+   const formatString = this.getAtomsFrom(2).join(" ")
+   return this.parent.coreTable.map(row => {
+     const newRow = Object.assign({}, row)
+     newRow[newColumnName] = new Particle(row).evalTemplateString(formatString)
+     return newRow
+   })
+  }
+  get newColumnName() {
+    return this.atoms[1]
+  }
+  get columnNames() {
+    return this.parent.columnNames.concat(this.newColumnName)
   }
 scrollLimitParser
  extends abstractTableTransformParser
