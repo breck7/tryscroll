@@ -545,6 +545,8 @@ window.UrlKeys = UrlKeys
 const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
 printTitle
 
+theme gazette
+
 # Refine, share and collaborate on ideas
 
 ## Build html files, CSV files, text files, and more.
@@ -592,8 +594,6 @@ You can easily add collapsed content.
 ## Scroll has footnotes^note
 
 ^note Sometimes called endnotes
-
-gazetteCss
 `
 
 class BrowserGlue extends AbstractParticleComponentParser {
