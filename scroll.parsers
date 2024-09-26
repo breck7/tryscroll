@@ -111,6 +111,9 @@ tagAtom
 tagWithOptionalFolderAtom
  description A group name optionally combined with a folder path. Only used when referencing tags, not in posts.
  extends stringAtom
+scrollThemeAtom
+ enum roboto gazette dark
+ paint constant
 abstractScrollParser
  atoms cueAtom
  javascript
@@ -3162,6 +3165,18 @@ stumpNoSnippetParser
   compileEmbeddedVersion() {
    return ""
   }
+iframesParser
+ popularity 0.000121
+ cruxFromId
+ catchAllAtomType urlAtom
+ extends abstractScrollParser
+ description An iframe(s).
+ example
+  iframes frame.html
+ javascript
+  compile() {
+   return this.atoms.slice(1).map(url => `<iframe src="${url}" frameborder="0"></iframe>`).join("\n")
+  }
 abstractCaptionedParser
  extends abstractScrollParser
  atoms cueAtom urlAtom
@@ -3756,6 +3771,25 @@ plainTextOnlyParser
  javascript
   compile() {
    return ""
+  }
+scrollThemeParser
+ popularity 0.007524
+ boolean isPopular true
+ crux theme
+ extends abstractScrollParser
+ catchAllAtomType scrollThemeAtom
+ description A collection of simple themes.
+ string copyFromExternal gazette.css
+  // Note this will be replaced at runtime
+ javascript
+  get copyFromExternal() {
+   return this.files.join(" ")
+  }
+  get files() {
+    return this.atoms.slice(1).map(name => `${name}.css`)
+  }
+  compile() {
+   return this.files.map(name => `<link rel="stylesheet" type="text/css" href="${name}">`).join("\n")
   }
 abstractAftertextAttributeParser
  atoms cueAtom

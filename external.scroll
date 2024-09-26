@@ -8,3 +8,6 @@ helpfulNotFound
 sparkline 1 2 3
 scatterplot
 buildHtml
+theme gazette
+theme roboto
+theme dark
