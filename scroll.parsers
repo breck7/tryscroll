@@ -86,6 +86,8 @@ buildCommandAtom
  paint constant
 cssAnyAtom
  extends anyAtom
+cssLengthAtom
+ extends anyAtom
 htmlAnyAtom
  extends stringAtom
 inlineMarkupNameAtom
@@ -2041,6 +2043,21 @@ thanksToParser
  description Acknowledge reviewers. Prints nothing.
  extends abstractCommentParser
  cruxFromId
+scrollContainerParser
+ popularity 0.000096
+ crux container
+ description A centered HTML div.
+ catchAllAtomType cssLengthAtom
+ extends abstractScrollParser
+ boolean isHtml true
+ javascript
+  get maxWidth() {
+    return this.atoms[1] || "1200px"
+  }
+  compile() {
+    this.parent.bodyStack.push("</div>")
+   return `<div style="width: 100%; box-sizing: border-box; max-width: ${this.maxWidth}; margin: 0 auto; padding: 20px;" class="scrollContainerParser">`
+  }
 cssParser
  popularity 0.007211
  extends abstractScrollParser
@@ -2432,6 +2449,22 @@ aboveAsCodeParser
  javascript
   method = "previous"
   reverse = true
+hakonParser
+ cruxFromId
+ extends abstractScrollParser
+ description Compile Hakon to CSS.
+ catchAllParser hakonContentParser
+ javascript
+  compile() {
+   return `<style>${this.css}</style>`
+  }
+  get css() {
+    const {hakonParser} = this.root
+    return new hakonParser(this.subparticlesToString()).compile()
+  }
+  compileCss() {
+    return this.css
+  }
 hamlParser
  popularity 0.007524
  description HTML tag via HAML syntax.
@@ -2496,26 +2529,6 @@ scrollBrParser
  javascript
   compile() {
    return `<br>`.repeat(parseInt(this.getAtom(1) || 1))
-  }
-stumpParser
- cruxFromId
- extends abstractScrollParser
- description Compile Stump to HTML.
- catchAllParser stumpContentParser
- javascript
-  compile() {
-   const file = this.parent.file
-   return file.compileStumpCode(this.subparticlesToString())
-  }
-stumpNoSnippetParser
- popularity 0.010177
- // todo: make noSnippets an aftertext directive?
- extends stumpParser
- description Compile Stump unless snippet.
- cruxFromId
- javascript
-  compileEmbeddedVersion() {
-   return ""
   }
 iframesParser
  popularity 0.000121
@@ -3085,6 +3098,26 @@ stampParser
   build() {
     const dir = this.root.file.folderPath
     this.forEach(particle => particle.build(dir))
+  }
+stumpParser
+ cruxFromId
+ extends abstractScrollParser
+ description Compile Stump to HTML.
+ catchAllParser stumpContentParser
+ javascript
+  compile() {
+   const file = this.parent.file
+   return file.compileStumpCode(this.subparticlesToString())
+  }
+stumpNoSnippetParser
+ popularity 0.010177
+ // todo: make noSnippets an aftertext directive?
+ extends stumpParser
+ description Compile Stump unless snippet.
+ cruxFromId
+ javascript
+  compileEmbeddedVersion() {
+   return ""
   }
 assertHtmlEqualsParser
  description Test above particle's output.
@@ -3958,6 +3991,9 @@ scrollRenameParser
     this._renamed = this.parent.columnNames.map(name => renameMap[name] || name )
     return this._renamed
   }
+hakonContentParser
+ popularity 0.102322
+ catchAllAtomType anyAtom
 heatrixCatchAllParser
  popularity 0.000193
  // todo Fill this out
@@ -3970,9 +4006,6 @@ htmlLineParser
  popularity 0.005209
  catchAllAtomType htmlAnyAtom
  catchAllParser htmlLineParser
-stumpContentParser
- popularity 0.102322
- catchAllAtomType anyAtom
 openGraphParser
  // todo: fix Parsers scope issue so we can move this parser def under scrollImageParser
  description Add this line to make this the open graph image.
@@ -4100,6 +4133,12 @@ scrollParser
    this.sectionStack = []
    return result
   }
+  bodyStack = []
+  clearBodyStack() {
+   const result = this.bodyStack.join("")
+   this.bodyStack = []
+   return result
+  }
   get hakonParser() {
     if (this.isNodeJs())
       return require("scrollsdk/products/hakon.nodejs.js")
@@ -4174,6 +4213,9 @@ stampFolderParser
    fs.mkdirSync(newPath, {recursive: true})
    this.forEach(particle => particle.build(newPath))
   }
+stumpContentParser
+ popularity 0.102322
+ catchAllAtomType anyAtom
 scrollTableDataParser
  popularity 0.001061
  crux data
