@@ -655,6 +655,23 @@ quickParagraphParser
  description A paragraph.
  example
   * I had a _new_ idea.
+scrollStopwatchParser
+ description A stopwatch.
+ extends paragraphParser
+ crux stopwatch
+ example
+  stopwatch
+ atoms cueAtom
+ catchAllAtomType numberAtom
+ javascript
+  compile() {
+   const line = this.getLine()
+   const id = this._getUid()
+   this.setLine(`* <span class="scrollStopwatchParser" id="stopwatch${id}">0.0</span><script>{let startTime = parseFloat(new URLSearchParams(window.location.search).get('start') || 0); document.getElementById('stopwatch${id}').title = startTime; setInterval(()=>{ const el = document.getElementById('stopwatch${id}'); el.title = parseFloat(el.title) + .1; el.textContent = (parseFloat(el.title)).toFixed(1)}, 100)}</script> `)
+   const html = super.compile()
+   this.setLine(line)
+   return html
+  }
 thinColumnsParser
  popularity 0.003690
  extends abstractAftertextParser
