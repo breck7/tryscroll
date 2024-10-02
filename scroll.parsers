@@ -300,6 +300,7 @@ catchAllParagraphParser
  extends paragraphParser
  boolean suggestInAutocomplete false
  boolean isPopular true
+ boolean isArticleContent true
  atoms stringAtom
  javascript
   getErrors() {
@@ -510,6 +511,7 @@ h1Parser
  popularity 0.017918
  description An html h1 tag.
  extends abstractHeaderParser
+ boolean isArticleContent true
  crux #
  boolean isPopular true
  javascript
@@ -518,6 +520,7 @@ h2Parser
  popularity 0.005257
  description An html h2 tag.
  extends abstractHeaderParser
+ boolean isArticleContent true
  crux ##
  boolean isPopular true
  javascript
@@ -526,6 +529,7 @@ h3Parser
  popularity 0.001085
  description An html h3 tag.
  extends abstractHeaderParser
+ boolean isArticleContent true
  crux ###
  javascript
   tag = "h3"
@@ -653,6 +657,7 @@ quickParagraphParser
  crux *
  extends paragraphParser
  description A paragraph.
+ boolean isArticleContent true
  example
   * I had a _new_ idea.
 scrollStopwatchParser
@@ -1084,6 +1089,19 @@ printFullSnippetsParser
  javascript
   makeSnippet(file, compileSettings) {
    return file.scrollProgram.compileEmbeddedVersion(compileSettings) + file.viewSourceHtml
+  }
+printShortSnippetsParser
+ popularity 0.000048
+ extends printSnippetsParser
+ cruxFromId
+ description Titles and descriptions in group(s).
+ javascript
+  makeSnippet(file, compileSettings) {
+   const { title, permalink, description, timestamp } = file
+   return `<div><a href="${permalink}">${title}</a><div>${description}...</div><div class="subdued" style="text-align:right;">${this.dayjs(timestamp * 1000).format(`MMMM D, YYYY`)}</div></div>`
+  }
+  get dayjs() {
+    return this.isNodeJs() ? require("dayjs") : dayjs
   }
 printRelatedParser
  popularity 0.001182
@@ -2515,6 +2533,15 @@ aboveAsCodeParser
  javascript
   method = "previous"
   reverse = true
+scrollFooterParser
+ extends abstractScrollParser
+ description Move section to file footer.
+ atoms preBuildCommandAtom
+ crux footer
+ javascript
+  compile() {
+   return ""
+  }
 hakonParser
  cruxFromId
  extends abstractScrollParser
