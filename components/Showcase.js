@@ -5,7 +5,8 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
     return this.root.completeHtml
   }
 
-  refresh() {
+  async refresh() {
+    this.root.mainDocument.build()
     document.getElementById("theIframe").srcdoc = this.html
     jQuery("#theIframe")
       .contents()

@@ -10,9 +10,6 @@ class ExportComponent extends AbstractParticleComponentParser {
  a Download HTML
   clickCommand downloadHtmlCommand
  span  | 
- a Run Build
-  clickCommand runBuildCommand
- span  | 
  a Tutorial
   target _blank
   href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
@@ -20,13 +17,6 @@ class ExportComponent extends AbstractParticleComponentParser {
 
   copyHtmlToClipboardCommand() {
     this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
-  }
-
-  async runBuildCommand() {
-    await Promise.all(
-      this.root.mainDocument.topDownArray.filter((particle) => particle.build).map(async (particle) => particle.build())
-    )
-    this.root.refreshHtml()
   }
 
   downloadHtmlCommand() {

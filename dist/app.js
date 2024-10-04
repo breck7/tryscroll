@@ -255,6 +255,7 @@ class EditorApp extends AbstractParticleComponentParser {
   updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
+    this.buildMainDocument()
     console.log("Local storage updated...")
   }
 
@@ -263,8 +264,14 @@ class EditorApp extends AbstractParticleComponentParser {
     console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
+  async buildMainDocument() {
+    this._mainDocument = new scrollParser(this.scrollCode)
+    await this._mainDocument.build()
+  }
+
   get mainDocument() {
-    return new scrollParser(this.scrollCode)
+    if (!this._mainDocument) this.buildMainDocument()
+    return this._mainDocument
   }
 
   refreshHtml() {
@@ -409,9 +416,6 @@ class ExportComponent extends AbstractParticleComponentParser {
  a Download HTML
   clickCommand downloadHtmlCommand
  span  | 
- a Run Build
-  clickCommand runBuildCommand
- span  | 
  a Tutorial
   target _blank
   href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
@@ -419,13 +423,6 @@ class ExportComponent extends AbstractParticleComponentParser {
 
   copyHtmlToClipboardCommand() {
     this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
-  }
-
-  async runBuildCommand() {
-    await Promise.all(
-      this.root.mainDocument.topDownArray.filter((particle) => particle.build).map(async (particle) => particle.build())
-    )
-    this.root.refreshHtml()
   }
 
   downloadHtmlCommand() {
@@ -477,7 +474,8 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
     return this.root.completeHtml
   }
 
-  refresh() {
+  async refresh() {
+    this.root.mainDocument.build()
     document.getElementById("theIframe").srcdoc = this.html
     jQuery("#theIframe")
       .contents()
