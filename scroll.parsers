@@ -164,7 +164,7 @@ abstractAftertextParser
    this.root.footnotes.forEach((note, index) => {
     const needle = note.firstAtom
     const {linkBack} = note
-    if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.anchorId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.label}</sup></a>`)
+    if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.htmlId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.label}</sup></a>`)
    })
    return originalText
   }
@@ -209,11 +209,15 @@ abstractAftertextParser
    const tag = this.get("tag") || this.tag
    if (tag === "none") // Allow no tag for aftertext in tables
      return this.text
-   return this.getHtmlRequirements(compileSettings) + `<${tag} ${this.divAttributes}${classAttr}>${this.text}</${tag}>`
+   const id = this.has("id") ? "" : `id="${this.htmlId}" ` // always add an html id
+   return this.getHtmlRequirements(compileSettings) + `<${tag} ${id}${this.htmlAttributes}${classAttr}>${this.text}</${tag}>`
   }
-  get divAttributes() {
+  get htmlAttributes() {
    const attrs = this.filter(particle => particle.isAttribute)
-   return attrs.length ? attrs.map(particle => particle.divAttributes).join(" ") + " " : ""
+   return attrs.length ? attrs.map(particle => particle.htmlAttributes).join(" ") + " " : ""
+  }
+  get htmlId() {
+   return this.get("id") || "particle" + this.index
   }
 paragraphParser
  // todo Perhaps rewrite this from scratch and move out of aftertext.
@@ -289,9 +293,9 @@ scrollButtonParser
  javascript
   defaultClassName = "scrollButton"
   tag = "button"
-  get divAttributes() {
+  get htmlAttributes() {
     const link = this.getFromParser("linkParser")
-    return super.divAttributes + link ? `onclick="window.location='${link.link}'"` : "" // better ideas?
+    return super.htmlAttributes + link ? `onclick="window.location='${link.link}'"` : "" // better ideas?
   }
   getFromParser(parserId) {
     return this.find(particle => particle.doesExtend(parserId))
@@ -376,8 +380,7 @@ listAftertextParser
  javascript
   defaultClassName = ""
   compile() {
-   const index = this.getIndex()
-   const parent = this.parent
+   const {index, parent} = this
    const particleClass = this.constructor
    const isStartOfList = index === 0 || !(parent.particleAt(index - 1) instanceof particleClass)
    const isEndOfList = parent.length === index + 1 || !(parent.particleAt(index + 1) instanceof particleClass)
@@ -471,10 +474,7 @@ footnoteDefinitionParser
   atoms cueAtom
   catchAllAtomType stringAtom
  javascript
-  get divAttributes() {
-   return super.divAttributes + ` id="${this.anchorId}"`
-  }
-  get anchorId() {
+  get htmlId() {
    return `note${this.noteDefinitionIndex}`
   }
   get label() {
@@ -3035,7 +3035,7 @@ abstractIdParser
     let requiredMeasureNames = this.parent.file.measures.filter(measure => measure.isMeasureRequired).map(measure => measure.Name).filter(name => name !== "id")
     if (!requiredMeasureNames.length) return errors
     let next = this.next
-    while (requiredMeasureNames.length && next.firstAtom !== "id" && next.getIndex() !== 0) {
+    while (requiredMeasureNames.length && next.firstAtom !== "id" && next.index !== 0) {
       requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.firstAtom)
       next = next.next
     }
@@ -3317,7 +3317,7 @@ abstractAftertextAttributeParser
  atoms cueAtom
  boolean isAttribute true
  javascript
-  get divAttributes() {
+  get htmlAttributes() {
    return `${this.firstAtom}="${this.content}"`
   }
   compile() {
