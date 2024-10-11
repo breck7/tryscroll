@@ -1518,7 +1518,7 @@ quickTableParser
  popularity 0.000024
  extends scrollTableParser
  atoms urlAtom
- pattern ^[^\s]+\.(tsv|csv|ssv|psv)
+ pattern ^[^\s]+\.(tsv|csv|ssv|psv|json)
  int atomIndex 0
 codeParser
  popularity 0.001929
@@ -2270,17 +2270,6 @@ quickScriptParser
   compile() {
    return `<script src="${this.filename}"></script>`
   }
-quickIncludeJsonParser
- popularity 0.007524
- description Include JSON and assign to window.
- extends abstractQuickIncludeParser
- atoms urlAtom
- pattern ^[^\s]+\.json$
- javascript
-  compile() {
-   const varName = this.filename.split("/").pop().replace(".json", "")
-   return `<script>window.${varName} = ${this.root.readFile(this.filename)}</script>`
-  }
 abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
@@ -2832,6 +2821,20 @@ quickImportParser
   }
  example
   header.scroll
+jsonScriptParser
+ popularity 0.007524
+ cruxFromId
+ description Include JSON and assign to window.
+ extends abstractScrollParser
+ atoms cueAtom urlAtom
+ javascript
+  compile() {
+   const varName = this.filename.split("/").pop().replace(".json", "")
+   return `<script>window.${varName} = ${this.root.readFile(this.filename)}</script>`
+  }
+  get filename() {
+     return this.getAtom(1)
+  }
 scrollLeftRightButtonsParser
  popularity 0.006342
  crux leftRightButtons
