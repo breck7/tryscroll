@@ -162,7 +162,7 @@ abstractAftertextParser
    // Skip the replacements if there are no footnotes or the text has none.
    if (!this.root.footnotes.length || !originalText.includes("^")) return originalText
    this.root.footnotes.forEach((note, index) => {
-    const needle = note.firstAtom
+    const needle = note.cue
     const {linkBack} = note
     if (originalText.includes(needle)) originalText = originalText.replace(new RegExp("\\" + needle + "\\b"), `<a href="#${note.htmlId}" class="scrollNoteLink" id="${linkBack}"><sup>${note.label}</sup></a>`)
    })
@@ -396,7 +396,7 @@ abstractCustomListItemParser
  extends listAftertextParser
  javascript
   get requireOnce() {
-    return `<style>\n.${this.constructor.name} li::marker {content: "${this.firstAtom} ";}\n</style>`
+    return `<style>\n.${this.constructor.name} li::marker {content: "${this.cue} ";}\n</style>`
   }
   get attributes() {
     return `class="${this.constructor.name}"`
@@ -1615,7 +1615,7 @@ heatrixParser
     if (!coreTable)
       return this.subparticlesToString()
     let table = new Particle(coreTable).asSsv
-    if (this.parent.firstAtom === "transpose") {
+    if (this.parent.cue === "transpose") {
       // drop first line after transpose
       const lines = table.split("\n")
       lines.shift()
@@ -2398,7 +2398,7 @@ scrollDashboardParser
    return str
   }
   makeRow(items) {
-   return `<tr>` + items.map(particle => `<td>${particle.firstAtom}<span>${particle.content}</span></td>`).join("\n") + `</tr>\n`
+   return `<tr>` + items.map(particle => `<td>${particle.cue}<span>${particle.content}</span></td>`).join("\n") + `</tr>\n`
   }
   compile() {
    return `<table class="scrollDashboard">${this.tableBody}</table>`
@@ -3057,7 +3057,7 @@ abstractMeasureParser
     return this.content ?? ""
   }
   get measureName() {
-    return this.getFirstAtomPath().replace(/ /g, "_")
+    return this.getCuePath().replace(/ /g, "_")
   }
 abstractAtomMeasureParser
  description A measure that contains a single atom.
@@ -3087,8 +3087,8 @@ abstractIdParser
     let requiredMeasureNames = this.parent.file.measures.filter(measure => measure.isMeasureRequired).map(measure => measure.Name).filter(name => name !== "id")
     if (!requiredMeasureNames.length) return errors
     let next = this.next
-    while (requiredMeasureNames.length && next.firstAtom !== "id" && next.index !== 0) {
-      requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.firstAtom)
+    while (requiredMeasureNames.length && next.cue !== "id" && next.index !== 0) {
+      requiredMeasureNames = requiredMeasureNames.filter(i => i !== next.cue)
       next = next.next
     }
     requiredMeasureNames.forEach(name =>
@@ -3370,7 +3370,7 @@ abstractAftertextAttributeParser
  boolean isAttribute true
  javascript
   get htmlAttributes() {
-   return `${this.firstAtom}="${this.content}"`
+   return `${this.cue}="${this.content}"`
   }
   compile() {
    return ""
@@ -3630,7 +3630,7 @@ quickLinkParser
  atoms urlAtom
  javascript
   get link() {
-   return this.firstAtom
+   return this.cue
   }
   patternStartsAtAtom = 1
 quickRelativeLinkParser
@@ -3642,7 +3642,7 @@ quickRelativeLinkParser
  atoms urlAtom
  javascript
   get link() {
-   return this.firstAtom
+   return this.cue
   }
   patternStartsAtAtom = 1
 datelineParser
