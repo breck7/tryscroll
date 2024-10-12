@@ -225,7 +225,7 @@ paragraphParser
  catchAllAtomType stringAtom
  description A paragraph.
  boolean suggestInAutocomplete false
- cruxFromId
+ cueFromId
  javascript
   compile(compileSettings) {
    if (this.isHidden) return ""
@@ -278,7 +278,7 @@ blinkParser
  extends paragraphParser
  example
   blink Carpe diem!
- crux blink
+ cue blink
  javascript
   compile() {
    return `<span class="scrollBlink">${super.compile()}</span>
@@ -286,7 +286,7 @@ blinkParser
   }
 scrollButtonParser
  extends paragraphParser
- crux button
+ cue button
  description A button.
  example
   button Click me
@@ -318,7 +318,7 @@ catchAllParagraphParser
   }
 scrollCenterParser
  popularity 0.006415
- crux center
+ cue center
  description A centered section.
  extends paragraphParser
  example
@@ -353,7 +353,7 @@ checklistTodoParser
  example
   [] Get milk
  description A task todo.
- crux []
+ cue []
  string checked 
  javascript
   get text() {
@@ -367,7 +367,7 @@ checklistDoneParser
  extends checklistTodoParser
  description A completed task.
  string checked checked
- crux [x]
+ cue [x]
  example
   [x] get milk
 listAftertextParser
@@ -376,7 +376,7 @@ listAftertextParser
  example
   - I had a _new_ thought.
  description A list item.
- crux -
+ cue -
  javascript
   defaultClassName = ""
   compile() {
@@ -413,7 +413,7 @@ orderedListAftertextParser
   get attributes() { return ` start="${this.getAtom(0)}"`}
 quickQuoteParser
  popularity 0.000482
- crux >
+ cue >
  example
   > The only thing we have to fear is fear itself. - FDR
  boolean isPopular true
@@ -425,7 +425,7 @@ quickQuoteParser
 scrollCounterParser
  description Visualize the speed of something.
  extends paragraphParser
- crux counter
+ cue counter
  example
   counter 4.5 Babies Born
  atoms cueAtom numberAtom
@@ -444,7 +444,7 @@ scrollCounterParser
   }
 expanderParser
  popularity 0.000072
- cruxFromId
+ cueFromId
  description An collapsible HTML details tag.
  extends paragraphParser
  example
@@ -470,7 +470,7 @@ footnoteDefinitionParser
  inScope quickLinkParser
  labelParser
   description If you want to show a custom label for a footnote. Default label is the note definition index.
-  cruxFromId
+  cueFromId
   atoms cueAtom
   catchAllAtomType stringAtom
  javascript
@@ -514,7 +514,7 @@ h1Parser
  description An html h1 tag.
  extends abstractHeaderParser
  boolean isArticleContent true
- crux #
+ cue #
  boolean isPopular true
  javascript
   tag = "h1"
@@ -523,7 +523,7 @@ h2Parser
  description An html h2 tag.
  extends abstractHeaderParser
  boolean isArticleContent true
- crux ##
+ cue ##
  boolean isPopular true
  javascript
   tag = "h2"
@@ -532,21 +532,21 @@ h3Parser
  description An html h3 tag.
  extends abstractHeaderParser
  boolean isArticleContent true
- crux ###
+ cue ###
  javascript
   tag = "h3"
 h4Parser
  popularity 0.000289
  description An html h4 tag.
  extends abstractHeaderParser
- crux ####
+ cue ####
  javascript
   tag = "h4"
 scrollQuestionParser
  popularity 0.004244
  description A question.
  extends h4Parser
- crux ?
+ cue ?
  example
   ? Why is the sky blue?
  javascript
@@ -554,7 +554,7 @@ scrollQuestionParser
 h5Parser
  description An html h5 tag.
  extends abstractHeaderParser
- crux #####
+ cue #####
  javascript
   tag = "h5"
 printTitleParser
@@ -565,7 +565,7 @@ printTitleParser
  example
   title Eureka
   printTitle
- cruxFromId
+ cueFromId
  javascript
   compile(compileSettings) {
    // Hacky, I know.
@@ -591,7 +591,7 @@ printTitleParser
 captionAftertextParser
  popularity 0.003207
  description An image caption.
- crux caption
+ cue caption
  extends paragraphParser
  boolean isPopular true
 abstractMediaParser
@@ -619,7 +619,7 @@ abstractMediaParser
 scrollMusicParser
  popularity 0.000024
  extends abstractMediaParser
- crux music
+ cue music
  description Play sound files.
  example
   music sipOfCoffee.m4a
@@ -636,15 +636,15 @@ quickSoundParser
 scrollVideoParser
  popularity 0.000024
  extends abstractMediaParser
- crux video
+ cue video
  example
   video spirit.mp4
  description Play video files.
  widthParser
-  cruxFromId
+  cueFromId
   atoms cueAtom
  heightParser
-  cruxFromId
+  cueFromId
   atoms cueAtom
  javascript
   tag = "video"
@@ -656,7 +656,7 @@ quickVideoParser
  int atomIndex 0
 quickParagraphParser
  popularity 0.001881
- crux *
+ cue *
  extends paragraphParser
  description A paragraph.
  boolean isArticleContent true
@@ -665,7 +665,7 @@ quickParagraphParser
 scrollStopwatchParser
  description A stopwatch.
  extends paragraphParser
- crux stopwatch
+ cue stopwatch
  example
   stopwatch
  atoms cueAtom
@@ -682,7 +682,7 @@ scrollStopwatchParser
 thinColumnsParser
  popularity 0.003690
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  catchAllAtomType integerAtom
  description Thin columns.
  javascript
@@ -731,7 +731,7 @@ thinColumnParser
 endColumnsParser
  popularity 0.007789
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  description End columns.
  javascript
   compile() {
@@ -756,7 +756,7 @@ abstractDinkusParser
   }
 horizontalRuleParser
  popularity 0.000362
- crux ---
+ cue ---
  description A horizontal rule.
  extends abstractDinkusParser
  javascript
@@ -765,14 +765,14 @@ horizontalRuleParser
   }
 scrollDinkusParser
  popularity 0.010828
- crux ***
+ cue ***
  description A dinkus. Breaks section.
  boolean isPopular true
  extends abstractDinkusParser
  javascript
   dinkus = "*"
 customDinkusParser
- crux dinkus
+ cue dinkus
  description A custom dinkus.
  extends abstractDinkusParser
 endOfPostDinkusParser
@@ -780,12 +780,12 @@ endOfPostDinkusParser
  extends abstractDinkusParser
  description End of post dinkus.
  boolean isPopular true
- crux ****
+ cue ****
  javascript
   dinkus = "⁂"
 abstractIconButtonParser
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  javascript
   compileEmbeddedVersion() {
    return ""
@@ -852,7 +852,7 @@ theScrollButtonParser
     return "https://wws.scroll.pub"
   }
 classicFormParser
- crux classicForm
+ cue classicForm
  popularity 0.006391
  description Generate input form for ScrollSet.
  extends abstractAftertextParser
@@ -925,16 +925,16 @@ classicFormParser
   }
 scrollFormParser
  extends classicFormParser
- crux scrollForm
+ cue scrollForm
  placeholderParser
   atoms cueAtom
   baseParser blobParser
-  cruxFromId
+  cueFromId
   single
  valueParser
   atoms cueAtom
   baseParser blobParser
-  cruxFromId
+  cueFromId
   single
  description Generate a Scroll Form.
  string copyFromExternal codeMirror.css scrollLibs.js
@@ -974,7 +974,7 @@ scrollLoopParser
  atoms cueAtom
  boolean isTableVisualization true
  description Iterate over files+ to make HTML.
- crux loop
+ cue loop
  inScope abstractItemsProviderParser
  joinParser
   extends abstractLoopConfigParser
@@ -1012,7 +1012,7 @@ scrollLoopParser
   teardown() {}
 loremIpsumParser
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  description Generate dummy text.
  catchAllAtomType integerAtom
  javascript
@@ -1029,7 +1029,7 @@ nickelbackIpsumParser
   text = `And one day, I’ll be at the door. And lose your wings to fall in love? To the bottom of every bottle. I’m on the ledge of the eighteenth story. Why must the blind always lead the blind?`
 abstractTextLinkParser
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  javascript
   compileEmbeddedVersion() {
    return ""
@@ -1062,7 +1062,7 @@ printSnippetsParser
  popularity 0.000338
  // todo: why are we extending AT here and not loops? Is it for class/id etc?
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  atoms cueAtom
  catchAllAtomType tagWithOptionalFolderAtom
  description Prints snippets matching tag(s).
@@ -1110,7 +1110,7 @@ printSnippetsParser
 printFullSnippetsParser
  popularity 0.000048
  extends printSnippetsParser
- cruxFromId
+ cueFromId
  description Print full pages in group(s).
  javascript
   makeSnippet(file, compileSettings) {
@@ -1119,7 +1119,7 @@ printFullSnippetsParser
 printShortSnippetsParser
  popularity 0.000048
  extends printSnippetsParser
- cruxFromId
+ cueFromId
  description Titles and descriptions in group(s).
  javascript
   makeSnippet(file, compileSettings) {
@@ -1133,7 +1133,7 @@ printRelatedParser
  popularity 0.001182
  description Print links to related posts.
  extends printSnippetsParser
- cruxFromId
+ cueFromId
  javascript
   compile() {
    const alreadyRequired = this.root.alreadyRequired
@@ -1151,7 +1151,7 @@ printSourceStackParser
  // useful for debugging
  description Print compilation steps.
  extends abstractAftertextParser
- cruxFromId
+ cueFromId
  example
   printOriginalSource
  javascript
@@ -1177,7 +1177,7 @@ printSourceStackParser
   }
 abstractPrintMetaParser
  extends abstractScrollParser
- cruxFromId
+ cueFromId
 printAuthorsParser
  popularity 0.001664
  description Prints author(s) byline.
@@ -1240,7 +1240,7 @@ printFormatLinksParser
   }
 abstractBuildCommandParser
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  atoms buildCommandAtom
  catchAllAtomType filePathAtom
  inScope slashCommentParser
@@ -1254,7 +1254,7 @@ loadConceptsParser
  // this currently removes any "import" statements.
  description Import all concepts in a folder.
  extends abstractBuildCommandParser
- cruxFromId
+ cueFromId
  atoms preBuildCommandAtom filePathAtom
  javascript
   build() {
@@ -1272,11 +1272,11 @@ loadConceptsParser
   }
 buildConceptsParser
  popularity 0.000024
- cruxFromId
+ cueFromId
  description Write concepts to csv+ files.
  extends abstractBuildCommandParser
  sortByParser
-  cruxFromId
+  cueFromId
   atoms cueAtom anyAtom
 buildCssParser
  popularity 0.000048
@@ -1289,7 +1289,7 @@ buildCsvParser
 fetchParser
  description Download URL to disk.
  extends abstractBuildCommandParser
- cruxFromId
+ cueFromId
  atoms preBuildCommandAtom urlAtom
  example
   fetch https://breckyunits.com/posts.csv
@@ -1314,11 +1314,11 @@ buildHtmlParser
  boolean isPopular true
 buildMeasuresParser
  popularity 0.000024
- cruxFromId
+ cueFromId
  description Write measures to csv+ files.
  extends abstractBuildCommandParser
  sortByParser
-  cruxFromId
+  cueFromId
   atoms cueAtom anyAtom
 buildPdfParser
  popularity 0.000096
@@ -1340,7 +1340,7 @@ chatParser
  popularity 0.000362
  description A faux text chat conversation.
  catchAllParser chatLineParser
- cruxFromId
+ cueFromId
  extends abstractScrollParser
  example
   chat
@@ -1383,7 +1383,7 @@ abstractDatatableProviderParser
 scrollTableParser
  extends abstractDatatableProviderParser
  popularity 0.002133
- crux table
+ cue table
  example
   table
    printTable
@@ -1470,7 +1470,7 @@ scrollTableParser
 clocParser
  extends scrollTableParser
  description Output results of cloc as table.
- crux cloc
+ cue cloc
  string copyFromExternal clocLangs.txt
  javascript
   delimiter = ","
@@ -1486,7 +1486,7 @@ clocParser
 scrollDiskParser
  extends scrollTableParser
  description Output file into as table.
- crux disk
+ cue disk
  javascript
   delimiter = "json"
   get delimitedData() {
@@ -1536,10 +1536,10 @@ codeParser
   compileTxt() {
     return this.subparticlesToString()
   }
- cruxFromId
+ cueFromId
 codeWithHeaderParser
  popularity 0.000169
- cruxFromId
+ cueFromId
  catchAllAtomType stringAtom
  extends codeParser
  example
@@ -1556,7 +1556,7 @@ codeWithLanguageParser
  pattern ^[a-zA-Z0-9_]+Code$
 abstractScrollWithRequirementsParser
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  javascript
   compile(compileSettings) {
     return this.getHtmlRequirements(compileSettings) + this.compileInstance()
@@ -1592,7 +1592,7 @@ abstractTableVisualizationParser
     return this.parent.columnNames
   }
 heatrixParser
- cruxFromId
+ cueFromId
  example
   heatrix
    '2007 '2008 '2009 '2010 '2011 '2012 '2013 '2014 '2015 '2016 '2017 '2018 '2019 '2020 '2021 '2022 '2023 '2024
@@ -1632,7 +1632,7 @@ heatrixParser
   }
 heatrixAdvancedParser
  popularity 0.000048
- cruxFromId
+ cueFromId
  catchAllParser heatrixCatchAllParser
  extends abstractTableVisualizationParser
  description Advanced heatrix.
@@ -1813,49 +1813,49 @@ heatrixAdvancedParser
 mapParser
  latParser
   atoms cueAtom floatAtom
-  cruxFromId
+  cueFromId
   single
  longParser
   atoms cueAtom floatAtom
-  cruxFromId
+  cueFromId
   single
  tilesParser
   atoms cueAtom tileOptionAtom
-  cruxFromId
+  cueFromId
   single
  zoomParser
   atoms cueAtom integerAtom
-  cruxFromId
+  cueFromId
   single
  geolocateParser
   description Geolocate user.
   atoms cueAtom
-  cruxFromId
+  cueFromId
   single
  radiusParser
   atoms cueAtom floatAtom
-  cruxFromId
+  cueFromId
   single
  fillOpacityParser
   atoms cueAtom floatAtom
-  cruxFromId
+  cueFromId
   single
  fillColorParser
   atoms cueAtom anyAtom
-  cruxFromId
+  cueFromId
   single
  colorParser
   atoms cueAtom anyAtom
-  cruxFromId
+  cueFromId
   single
  heightParser
   atoms cueAtom floatAtom
-  cruxFromId
+  cueFromId
   single
  hoverParser
   atoms cueAtom
   catchAllAtomType anyAtom
-  cruxFromId
+  cueFromId
   single
  extends abstractTableVisualizationParser
  description Map widget.
@@ -2035,7 +2035,7 @@ printColumnParser
   }
 printTableParser
  popularity 0.001085
- cruxFromId
+ cueFromId
  description Print table.
  extends abstractTableVisualizationParser
  javascript
@@ -2182,24 +2182,24 @@ abstractCommentParser
 commentParser
  popularity 0.000193
  extends abstractCommentParser
- cruxFromId
+ cueFromId
 slashCommentParser
  popularity 0.005643
  extends commentParser
- crux //
+ cue //
  boolean isPopular true
  description A comment. Prints nothing.
 counterpointParser
  description A counterpoint. Prints nothing.
  extends commentParser
- crux !
+ cue !
 thanksToParser
  description Acknowledge reviewers. Prints nothing.
  extends abstractCommentParser
- cruxFromId
+ cueFromId
 scrollContainerParser
  popularity 0.000096
- crux container
+ cue container
  description A centered HTML div.
  catchAllAtomType cssLengthAtom
  extends abstractScrollParser
@@ -2219,7 +2219,7 @@ cssParser
  popularity 0.007211
  extends abstractScrollParser
  description A style tag.
- cruxFromId
+ cueFromId
  catchAllParser cssLineParser
  catchAllAtomType cssAnyAtom
  javascript
@@ -2273,7 +2273,7 @@ quickScriptParser
 abstractPostLoopParser
  description Do something with all posts. Takes an optional list of folder/group names.
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  atoms cueAtom
  catchAllAtomType tagWithOptionalFolderAtom
  javascript
@@ -2381,7 +2381,7 @@ scrollDashboardParser
  popularity 0.000145
  description Key stats in large font.
  catchAllParser lineOfCodeParser
- crux dashboard
+ cue dashboard
  extends abstractScrollParser
  example
   dashboard
@@ -2410,7 +2410,7 @@ abstractTopLevelSingleMetaParser
  description Use these parsers once per file.
  extends abstractScrollParser
  inScope slashCommentParser
- cruxFromId
+ cueFromId
  atoms metaCommandAtom
  javascript
   isTopMatter = true
@@ -2433,12 +2433,12 @@ siteOwnerEmailParser
  popularity 0.001302
  description Set email address for site contact.
  extends abstractTopLevelSingleMetaParser
- crux email
+ cue email
  atoms metaCommandAtom emailAddressAtom
 faviconParser
  popularity 0.001688
  catchAllAtomType stringAtom
- crux favicon
+ cue favicon
  description Favicon file.
  example
   favicon logo.png
@@ -2449,7 +2449,7 @@ importOnlyParser
  popularity 0.033569
  // This line will be not be imported into the importing file.
  description Don't build this file.
- cruxFromId
+ cueFromId
  atoms preBuildCommandAtom
  extends abstractTopLevelSingleMetaParser
  javascript
@@ -2460,7 +2460,7 @@ inlineMarkupsParser
  popularity 0.000024
  description Set global inline markups.
  extends abstractTopLevelSingleMetaParser
- cruxFromId
+ cueFromId
  example
   inlineMarkups
    * 
@@ -2470,7 +2470,7 @@ inlineMarkupsParser
 abstractUrlSettingParser
  extends abstractTopLevelSingleMetaParser
  atoms metaCommandAtom urlAtom
- cruxFromId
+ cueFromId
 canonicalUrlParser
  description Override canonical URL.
  extends abstractUrlSettingParser
@@ -2500,7 +2500,7 @@ htmlLangParser
 openGraphDescriptionParser
  popularity 0.001688
  catchAllAtomType stringAtom
- crux description
+ cue description
  description Meta tag description.
  extends abstractTopLevelSingleMetaParser
 permalinkParser
@@ -2510,7 +2510,7 @@ permalinkParser
  atoms metaCommandAtom permalinkAtom
 scrollTagsParser
  popularity 0.006801
- crux tags
+ cue tags
  description Set tags.
  example
   tags All
@@ -2522,7 +2522,7 @@ testStrictParser
 pageTitleParser
  popularity 0.007524
  catchAllAtomType personNameAtom
- crux title
+ cue title
  description Set title.
  example
   title Eureka
@@ -2538,7 +2538,7 @@ belowAsCodeParser
  description Print code below.
  extends abstractScrollParser
  catchAllAtomType integerAtom
- cruxFromId
+ cueFromId
  javascript
   method = "next"
   get code() {
@@ -2599,13 +2599,13 @@ scrollFooterParser
  extends abstractScrollParser
  description Move section to file footer.
  atoms preBuildCommandAtom
- crux footer
+ cue footer
  javascript
   compile() {
    return ""
   }
 hakonParser
- cruxFromId
+ cueFromId
  extends abstractScrollParser
  description Compile Hakon to CSS.
  catchAllParser hakonContentParser
@@ -2661,7 +2661,7 @@ htmlParser
  popularity 0.000048
  extends abstractHtmlParser
  description HTML one liners or blocks.
- cruxFromId
+ cueFromId
 htmlInlineParser
  popularity 0.005788
  extends abstractHtmlParser
@@ -2676,7 +2676,7 @@ htmlInlineParser
   }
 scrollBrParser
  popularity 0.000096
- crux br
+ cue br
  description A break.
  extends abstractScrollParser
  catchAllAtomType integerAtom
@@ -2687,7 +2687,7 @@ scrollBrParser
   }
 iframesParser
  popularity 0.000121
- cruxFromId
+ cueFromId
  catchAllAtomType urlAtom
  extends abstractScrollParser
  description An iframe(s).
@@ -2701,7 +2701,7 @@ abstractCaptionedParser
  extends abstractScrollParser
  atoms cueAtom urlAtom
  inScope captionAftertextParser slashCommentParser
- cruxFromId
+ cueFromId
  javascript
   compile(compileSettings) {
    const caption = this.getParticle("caption")
@@ -2715,7 +2715,7 @@ abstractCaptionedParser
     return this.get("width")
   }
 scrollImageParser
- crux image
+ cue image
  popularity 0.005908
  description An img tag.
  boolean isPopular true
@@ -2818,7 +2818,7 @@ youTubeParser
 importParser
  description Import a file.
  popularity 0.007524
- cruxFromId
+ cueFromId
  atoms preBuildCommandAtom
  extends abstractScrollParser
  catchAllAtomType filePathAtom
@@ -2843,7 +2843,7 @@ quickImportParser
   header.scroll
 jsonScriptParser
  popularity 0.007524
- cruxFromId
+ cueFromId
  description Include JSON and assign to window.
  extends abstractScrollParser
  atoms cueAtom urlAtom
@@ -2857,7 +2857,7 @@ jsonScriptParser
   }
 scrollLeftRightButtonsParser
  popularity 0.006342
- crux leftRightButtons
+ cue leftRightButtons
  description Previous and next nav buttons.
  extends abstractScrollParser
  javascript
@@ -2875,7 +2875,7 @@ keyboardNavParser
  popularity 0.007476
  description Make left and right navigate files.
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  catchAllAtomType urlAtom
  javascript
   compileEmbeddedVersion() {
@@ -2898,10 +2898,10 @@ keyboardNavParser
   }
 printUsageStatsParser
  popularity 0.000096
- // todo: if we include the atom "Parser" in a crux, bad things seem to happen.
+ // todo: if we include the atom "Parser" in a cue, bad things seem to happen.
  description Parser usage stats for folder.
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  javascript
   get stats() {
    const input = this.root.file.allScrollFiles.map(file => file.parserIds.join("\n")).join("\n")
@@ -2934,7 +2934,7 @@ printScrollLeetSheetParser
  popularity 0.000024
  description Print Scroll parser leet sheet.
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  javascript
   get parsersToDocument() {
     const clone = this.root.clone()
@@ -2956,12 +2956,12 @@ printScrollLeetSheetParser
         return null
       const category = this.getCategory(tags)
       const note = this.getNote(category)
-      return {id: definition.cruxIfAny || id, description, isPopular, examples, note, popularity: Math.ceil(parseFloat(popularity) * 100000)}
+      return {id: definition.cueIfAny || id, description, isPopular, examples, note, popularity: Math.ceil(parseFloat(popularity) * 100000)}
      }).filter(i => i).sort((a, b) => a.id.localeCompare(b.id))
   }
-  makeLink(examples, crux) {
-    // if (!examples.length) console.log(crux) // find particles that need docs
-    const example = examples.length ? examples[0].subparticlesToString() : crux
+  makeLink(examples, cue) {
+    // if (!examples.length) console.log(cue) // find particles that need docs
+    const example = examples.length ? examples[0].subparticlesToString() : cue
     const base = `https://try.scroll.pub/`
     const particle = new Particle()
     particle.appendLineAndSubparticles("scroll", "theme gazette\n" + example)
@@ -3040,7 +3040,7 @@ printparsersLeetSheetParser
   }
 abstractMeasureParser
  atoms measureNameAtom
- cruxFromId
+ cueFromId
  boolean isMeasure true
  float sortIndex 1.9
  boolean isComputed false
@@ -3075,7 +3075,7 @@ abstractStringMeasureParser
  catchAllAtomType stringAtom
  extends abstractMeasureParser
 abstractIdParser
- crux id
+ cue id
  description What is the ID of this concept?
  extends abstractStringMeasureParser
  float sortIndex 1
@@ -3139,7 +3139,7 @@ abstractBooleanMeasureParser
   }
 metaTagsParser
  popularity 0.007693
- cruxFromId
+ cueFromId
  extends abstractScrollParser
  description Print meta tags including title.
  javascript
@@ -3185,7 +3185,7 @@ scrollParserDefinitionParser
   }
 quoteParser
  popularity 0.001471
- cruxFromId
+ cueFromId
  description A quote.
  catchAllParser quoteLineParser
  extends abstractScrollParser
@@ -3201,7 +3201,7 @@ redirectToParser
  description HTML redirect tag.
  extends abstractScrollParser
  atoms cueAtom urlAtom
- cruxFromId
+ cueFromId
  example
   redirectTo https://scroll.pub/releaseNotes.html
  javascript
@@ -3212,7 +3212,7 @@ abstractVariableParser
  extends abstractScrollParser
  catchAllAtomType stringAtom
  atoms preBuildCommandAtom
- cruxFromId
+ cueFromId
  javascript
   isTopMatter = true
   compile() {
@@ -3243,7 +3243,7 @@ replaceNodejsParser
 scriptParser
  extends abstractScrollParser
  description Print script tag.
- cruxFromId
+ cueFromId
  catchAllParser scriptLineParser
  catchAllAtomType scriptAnyAtom
  javascript
@@ -3260,7 +3260,7 @@ endSnippetParser
  popularity 0.004293
  description Cut for snippet here.
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  javascript
   compile() {
    return ""
@@ -3281,7 +3281,7 @@ stampParser
     nested/
      hello.js
       console.log("Hello world")
- cruxFromId
+ cueFromId
  atoms preBuildCommandAtom
  javascript
   build() {
@@ -3289,7 +3289,7 @@ stampParser
     this.forEach(particle => particle.build(dir))
   }
 stumpParser
- cruxFromId
+ cueFromId
  extends abstractScrollParser
  description Compile Stump to HTML.
  catchAllParser stumpContentParser
@@ -3303,7 +3303,7 @@ stumpNoSnippetParser
  // todo: make noSnippets an aftertext directive?
  extends stumpParser
  description Compile Stump unless snippet.
- cruxFromId
+ cueFromId
  javascript
   compileEmbeddedVersion() {
    return ""
@@ -3311,7 +3311,7 @@ stumpNoSnippetParser
 assertHtmlEqualsParser
  description Test above particle's output.
  extends abstractScrollParser
- cruxFromId
+ cueFromId
  baseParser blobParser
  javascript
   compile() {
@@ -3327,7 +3327,7 @@ assertHtmlEqualsParser
  catchAllParser htmlLineParser
 plainTextParser
  description Plain text oneliner or block.
- cruxFromId
+ cueFromId
  extends abstractScrollParser
  catchAllParser plainTextLineParser
  catchAllAtomType stringAtom
@@ -3349,7 +3349,7 @@ plainTextOnlyParser
 scrollThemeParser
  popularity 0.007524
  boolean isPopular true
- crux theme
+ cue theme
  extends abstractScrollParser
  catchAllAtomType scrollThemeAtom
  description A collection of simple themes.
@@ -3377,20 +3377,20 @@ abstractAftertextAttributeParser
   }
 aftertextIdParser
  popularity 0.000145
- crux id
+ cue id
  description Provide an ID to be output in the generated HTML tag.
  extends abstractAftertextAttributeParser
  atoms cueAtom htmlIdAtom
  single
 aftertextStyleParser
  popularity 0.000217
- crux style
+ cue style
  description Provide code for the generated HTML tag's "style" attribute.
  extends abstractAftertextAttributeParser
  atoms cueAtom
  catchAllAtomType cssAnyAtom
 aftertextHiddenParser
- crux hidden
+ cue hidden
  atoms cueAtom
  description Do not compile this particle to HTML.
  extends abstractAftertextAttributeParser
@@ -3398,7 +3398,7 @@ aftertextHiddenParser
 aftertextTagParser
  atoms cueAtom htmlTagAtom
  description Override the HTML tag that the compiled particle will use.
- crux tag
+ cue tag
  javascript
   compile() {
    return ""
@@ -3477,14 +3477,14 @@ abstractMarkupParser
   patternStartsAtAtom = 1
 boldParser
  popularity 0.000096
- cruxFromId
+ cueFromId
  description Bold matching text.
  extends abstractMarkupParser
  javascript
   tag = "b"
 italicsParser
  popularity 0.000241
- cruxFromId
+ cueFromId
  description Italicize matching text.
  extends abstractMarkupParser
  javascript
@@ -3492,28 +3492,28 @@ italicsParser
 underlineParser
  popularity 0.000024
  description Underline matching text.
- cruxFromId
+ cueFromId
  extends abstractMarkupParser
  javascript
   tag = "u"
 afterTextCenterParser
  popularity 0.000193
  description Center paragraph.
- crux center
+ cue center
  extends abstractMarkupParser
  javascript
   tag = "center"
 aftertextCodeParser
  popularity 0.000145
  description Wrap matching text in code span.
- crux code
+ cue code
  extends abstractMarkupParser
  javascript
   tag = "code"
 aftertextStrikeParser
  popularity 0.000048
  description Wrap matching text in s span.
- crux strike
+ cue strike
  extends abstractMarkupParser
  javascript
   tag = "s"
@@ -3522,7 +3522,7 @@ classMarkupParser
  description Add a custom class to the parent element instead. If matching text provided, a span with the class will be added around the matching text.
  extends abstractMarkupParser
  atoms cueAtom classNameAtom
- crux class
+ cue class
  javascript
   tag = "span"
   get applyToParentElement() {
@@ -3547,7 +3547,7 @@ classMarkupParser
   }
 classesMarkupParser
  extends classMarkupParser
- crux classes
+ cue classes
  javascript
   applyToParentElement = true
   get className() {
@@ -3556,7 +3556,7 @@ classesMarkupParser
 hoverNoteParser
  popularity 0.000265
  description Add a caveat viewable on hover on matching text. When you want to be sure you've thoroughly addressed obvious concerns but ones that don't warrant to distract from the main argument of the text.
- cruxFromId
+ cueFromId
  extends classMarkupParser
  catchAllParser lineOfTextParser
  atoms cueAtom
@@ -3578,14 +3578,14 @@ linkParser
  inScope linkTitleParser linkTargetParser commentParser
  programParser
   description Anything here will be URI encoded and then appended to the link.
-  cruxFromId
+  cueFromId
   atoms cueAtom
   catchAllParser programLinkParser
   javascript
    get encoded() {
     return encodeURIComponent(this.subparticlesToString())
    }
- cruxFromId
+ cueFromId
  javascript
   tag = "a"
   compileTxt() {
@@ -3617,7 +3617,7 @@ linkParser
 emailLinkParser
  popularity 0.000048
  description A mailto link
- crux email
+ cue email
  extends linkParser
  javascript
   get attributes() {
@@ -3647,7 +3647,7 @@ quickRelativeLinkParser
   patternStartsAtAtom = 1
 datelineParser
  popularity 0.006005
- cruxFromId
+ cueFromId
  description Gives your paragraph a dateline like "December 15, 2021 — The..."
  extends abstractAftertextDirectiveParser
  javascript
@@ -3670,7 +3670,7 @@ datelineParser
   }
 dayjsParser
  description Advanced directive that evals some Javascript code in an environment including "dayjs".
- cruxFromId
+ cueFromId
  extends abstractAftertextDirectiveParser
  javascript
   getInserts() {
@@ -3681,7 +3681,7 @@ dayjsParser
   }
 inlineMarkupsOnParser
  popularity 0.000024
- cruxFromId
+ cueFromId
  description Enable these inline markups only.
  example
   Hello *world*!
@@ -3743,7 +3743,7 @@ inlineMarkupsOnParser
   }
 inlineMarkupParser
  popularity 0.000169
- cruxFromId
+ cueFromId
  atoms cueAtom delimiterAtom tagOrUrlAtom
  catchAllAtomType htmlAttributesAtom
  extends inlineMarkupsOnParser
@@ -3767,11 +3767,11 @@ inlineMarkupParser
 linkifyParser
  description Use this to disable linkify on the text.
  extends abstractAftertextDirectiveParser
- cruxFromId
+ cueFromId
  atoms cueAtom booleanAtom
 abstractMarkupParameterParser
  atoms cueAtom
- cruxFromId
+ cueFromId
 matchAllParser
  popularity 0.000024
  description Use this to match all occurrences of the text.
@@ -3799,7 +3799,7 @@ linkTargetParser
  popularity 0.000024
  extends abstractHtmlAttributeParser
  description If you want to set the target of the link. To "_blank", for example.
- crux target
+ cue target
  atoms cueAtom anyAtom
 blankLineParser
  popularity 0.308149
@@ -3857,7 +3857,7 @@ scrollGroupByParser
   tables posts.csv
    groupBy year
     printTable
- crux groupBy
+ cue groupBy
  javascript
   get coreTable() {
     if (this._coreTable) return this._coreTable
@@ -3964,7 +3964,7 @@ scrollGroupByParser
 scrollWhereParser
  extends abstractTableTransformParser
  description Filter rows by condition.
- crux where
+ cue where
  atoms cueAtom columnNameAtom comparisonAtom atomAtom
  example
   table iris.csv
@@ -4006,7 +4006,7 @@ scrollSelectParser
     about,2023,4
    select name year
     printTable
- crux select
+ cue select
  javascript
   get coreTable() {
    const {coreTable} = this.parent
@@ -4020,7 +4020,7 @@ scrollSelectParser
 scrollReverseParser
  extends abstractTableTransformParser
  description Reverse rows.
- crux reverse
+ cue reverse
  javascript
   get coreTable() {
    return this.parent.coreTable.slice().reverse()
@@ -4029,7 +4029,7 @@ scrollComposeParser
  extends abstractTableTransformParser
  description Add column using format string.
  catchAllAtomType stringAtom
- crux compose
+ cue compose
  example
   table
    compose My name is {name}
@@ -4057,7 +4057,7 @@ scrollComputeParser
  extends scrollComposeParser
  description Add column by evaling format string.
  catchAllAtomType stringAtom
- crux compute
+ cue compute
  javascript
   evaluate(str) {
     return parseFloat(eval(str))
@@ -4066,13 +4066,13 @@ scrollRankParser
  extends scrollComposeParser
  description Add rank column.
  string newColumnName rank
- crux rank
+ cue rank
  javascript
   evaluate(str, index) { return index + 1 }
 scrollLinksParser
  extends abstractTableTransformParser
  description Add column with links.
- crux links
+ cue links
  catchAllAtomType columnNameAtom
  javascript
   get coreTable() {
@@ -4102,7 +4102,7 @@ scrollLinksParser
 scrollLimitParser
  extends abstractTableTransformParser
  description Select a subset.
- crux limit
+ cue limit
  atoms cueAtom integerAtom integerAtom
  javascript
   get coreTable() {
@@ -4113,7 +4113,7 @@ scrollLimitParser
 scrollTransposeParser
  extends abstractTableTransformParser
  description Tranpose table.
- crux transpose
+ cue transpose
  javascript
   get coreTable() {
    // todo: we need to switch to column based coreTable, instead of row based
@@ -4124,7 +4124,7 @@ scrollImputeParser
  extends abstractTableTransformParser
  description Impute missing values of a columm.
  atoms cueAtom columnNameAtom
- crux impute
+ cue impute
  javascript
   get coreTable() {
    const {lodash, columnName} = this
@@ -4157,7 +4157,7 @@ scrollOrderByParser
  extends abstractTableTransformParser
  description Sort rows by column(s).
  catchAllAtomType columnNameAtom
- crux orderBy
+ cue orderBy
  javascript
   get coreTable() {
     const makeLodashOrderByParams = str => {
@@ -4184,7 +4184,7 @@ scrollRenameParser
     index,2022,2
    rename name Name year Year
     printTable
- crux rename
+ cue rename
  javascript
   get coreTable() {
    const {coreTable} = this.parent
@@ -4234,12 +4234,12 @@ htmlLineParser
 openGraphParser
  // todo: fix Parsers scope issue so we can move this parser def under scrollImageParser
  description Add this line to make this the open graph image.
- cruxFromId
+ cueFromId
  atoms cueAtom
 linkTitleParser
  popularity 0.000048
  description If you want to set the title of the link.
- crux title
+ cue title
  atoms cueAtom
  catchAllAtomType anyAtom
  example
@@ -4251,12 +4251,12 @@ programLinkParser
  catchAllAtomType codeAtom
 abstractLoopConfigParser
  atoms cueAtom
- cruxFromId
+ cueFromId
  catchAllAtomType stringAtom
 abstractItemsProviderParser
  atoms cueAtom
 loopLinesParser
- crux lines
+ cue lines
  extends abstractItemsProviderParser
  description Iterate over the provided lines.
  catchAllParser loopLineParser
@@ -4268,7 +4268,7 @@ loopLinesParser
   }
 loopAtomsParser
  popularity 0.000024
- crux atoms
+ cue atoms
  extends abstractItemsProviderParser
  catchAllAtomType stringAtom
  description Iterate over the provided atoms.
@@ -4277,7 +4277,7 @@ loopAtomsParser
    return this.getAtomsFrom(1)
   }
 loopTagsParser
- crux tags
+ cue tags
  extends abstractItemsProviderParser
  catchAllAtomType tagWithOptionalFolderAtom
  description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[tag]
@@ -4287,10 +4287,10 @@ loopTagsParser
   }
 scrollMediaLoopParser
  popularity 0.000048
- crux loop
+ cue loop
  atoms cueAtom
 scrollAutoplayParser
- crux autoplay
+ cue autoplay
  atoms cueAtom
 abstractColumnNameParser
  atoms cueAtom columnNameAtom
@@ -4301,22 +4301,22 @@ abstractColumnNameParser
    return super.getRunTimeEnumOptions(atom)
   }
 scrollRadiusParser
- crux radius
+ cue radius
  extends abstractColumnNameParser
 scrollSymbolParser
- crux symbol
+ cue symbol
  extends abstractColumnNameParser
 scrollFillParser
- crux fill
+ cue fill
  extends abstractColumnNameParser
 scrollLabelParser
- crux label
+ cue label
  extends abstractColumnNameParser
 scrollXParser
- crux x
+ cue x
  extends abstractColumnNameParser
 scrollYParser
- crux y
+ cue y
  extends abstractColumnNameParser
 quoteLineParser
  popularity 0.004172
@@ -4475,14 +4475,14 @@ stumpContentParser
  catchAllAtomType anyAtom
 scrollTableDataParser
  popularity 0.001061
- crux data
+ cue data
  description Table from inline delimited data.
  catchAllAtomType anyAtom
  baseParser blobParser
 scrollTableDelimiterParser
  popularity 0.001037
  description Set the delimiter.
- crux delimiter
+ cue delimiter
  atoms cueAtom stringAtom
  javascript
   compile() {
