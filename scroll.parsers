@@ -2519,7 +2519,7 @@ scrollTagsParser
 testStrictParser
  description Make catchAllParagraphParser = error.
  extends abstractTopLevelSingleMetaParser
-pageTitleParser
+scrollTitleParser
  popularity 0.007524
  catchAllAtomType personNameAtom
  cue title
@@ -3264,6 +3264,56 @@ endSnippetParser
  javascript
   compile() {
    return ""
+  }
+toStampParser
+ description Print a directory to stamp.
+ extends abstractScrollParser
+ catchAllAtomType filePathAtom
+ cueFromId
+ javascript
+  compileTxt() {
+    return this.makeStamp(this.root.makeFullPath(this.content))
+  }
+  compileHtml() {
+    return `<pre>${this.compileTxt()}</pre>`
+  }
+  makeStamp(dir) {
+  const fs = require('fs');
+  const path = require('path');
+  const { execSync } = require('child_process');
+  let stamp = 'stamp\n';
+  const handleFile = (indentation, relativePath, itemPath, ) => {
+      stamp += `${indentation}${relativePath}\n`;
+      const content = fs.readFileSync(itemPath, 'utf8');
+      stamp += `${indentation} ${content.replace(/\n/g, `\n${indentation} `)}\n`;
+  }
+  let gitTrackedFiles
+  function processDirectory(currentPath, depth) {
+    const items = fs.readdirSync(currentPath);
+    items.forEach(item => {
+      const itemPath = path.join(currentPath, item);
+      const relativePath = path.relative(dir, itemPath);
+      if (!gitTrackedFiles.has(item)) return
+      const stats = fs.statSync(itemPath);
+      const indentation = ' '.repeat(depth);
+      if (stats.isDirectory()) {
+        stamp += `${indentation}${relativePath}/\n`;
+        processDirectory(itemPath, depth + 1);
+      } else if (stats.isFile())
+        handleFile(indentation, relativePath, itemPath)
+    });
+  }
+  const stats = fs.statSync(dir);
+  if (stats.isDirectory()) {
+     // Get list of git-tracked files
+    gitTrackedFiles = new Set(execSync('git ls-files', { cwd: dir, encoding: 'utf-8' })
+    .split('\n')
+    .filter(Boolean))
+    processDirectory(dir, 1)
+  }
+  else
+    handleFile(" ", dir, dir)
+  return stamp.trim();
   }
 stampParser
  description Expand project template to disk.
@@ -4423,8 +4473,21 @@ scrollParser
     await Promise.all(this.filter(particle => particle.build).map(async particle => particle.build()))
   }
   file = {}
+  getFromParserId(parserId) {
+    return this.parserIdIndex[parserId]?.[0].content
+  }
+  get filename() {
+    return this.file.filename || ""
+  }
+  get filenameNoExtension() {
+    return this.filename.replace(".scroll", "")
+  }
+  get titleFromFilename() {
+    const unCamelCase = str => str.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, match => match.toUpperCase())
+    return unCamelCase(this.filenameNoExtension)
+  }
   get title() {
-    return this.file.title || this.get("title")
+    return this.getFromParserId("scrollTitleParser") || this.titleFromFilename
   }
   get permalink() {
    return this.get("permalink") || this.file.permalink || ""
