@@ -2156,12 +2156,13 @@ slideshowParser
 tableSearchParser
  popularity 0.000072
  extends abstractScrollWithRequirementsParser
- string copyFromExternal jquery-3.7.1.min.js datatables.css datatables.js tableSearch.js
+ string copyFromExternal jquery-3.7.1.min.js datatables.css dayjs.min.js datatables.js tableSearch.js
  string requireOnce
   <script defer src="jquery-3.7.1.min.js"></script>
   <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
   <link rel="stylesheet" href="datatables.css">
   <script defer src="datatables.js"></script>
+  <script defer src="dayjs.min.js"></script>
   <script defer src="tableSearch.js"></script>
  // adds to all tables on page
  description Table search and sort widget.
@@ -4730,7 +4731,11 @@ scrollParser
     return this.dayjs(this.date).format(`YYYY`)
   }
   get dayjs() {
-    return this.isNodeJs() ? require("dayjs") : dayjs
+    if (!this.isNodeJs()) return dayjs
+    const lib = require("dayjs")
+    const relativeTime = require("dayjs/plugin/relativeTime")
+    lib.extend(relativeTime)
+    return lib
   }
   toRss() {
     const { title, canonicalUrl } = this
