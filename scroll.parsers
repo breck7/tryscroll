@@ -1118,6 +1118,18 @@ printSnippetsParser
     return `${title}\n${ruler}\n${date}\n${absoluteLink}`
    }).join("\n\n")
   }
+scrollNavParser
+ popularity 0.000048
+ extends printSnippetsParser
+ cue nav
+ description Titles and links in group(s).
+ javascript
+  compile() {
+    return `<nav class="scrollNavParser">` + this.root.getFilesByTags(this.content).map(file => {
+        const { linkTitle, permalink } = file.file.scrollProgram
+        return `<a href="${permalink}">${linkTitle}</a>` 
+    }).join(this.get("join") || " ") + `</nav>`
+  }
 printFullSnippetsParser
  popularity 0.000048
  extends printSnippetsParser
@@ -2540,7 +2552,7 @@ testStrictParser
  extends abstractTopLevelSingleMetaParser
 scrollTitleParser
  popularity 0.007524
- catchAllAtomType personNameAtom
+ catchAllAtomType anyAtom
  cue title
  description Set title.
  example
@@ -2548,6 +2560,15 @@ scrollTitleParser
   printTitle
  extends abstractTopLevelSingleMetaParser
  boolean isPopular true
+scrollLinkTitleParser
+ popularity 0.007524
+ catchAllAtomType anyAtom
+ cue linkTitle
+ description Text for links.
+ example
+  title My blog - Eureka
+  linkTitle Eureka
+ extends abstractTopLevelSingleMetaParser
 belowAsCodeParser
  popularity 0.000651
  description Print code below.
@@ -4650,6 +4671,9 @@ scrollParser
   }
   get title() {
     return this.getFromParserId("scrollTitleParser") || this.titleFromFilename
+  }
+  get linkTitle() {
+    return this.getFromParserId("scrollLinkTitleParser") || this.title
   }
   get permalink() {
    return this.get("permalink") || (this.filename ? this.filenameNoExtension + ".html" : "")
