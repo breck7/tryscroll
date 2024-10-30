@@ -85,11 +85,11 @@ buildCommandAtom
  description Give build command atoms their own color.
  paint constant
 cssAnyAtom
- extends anyAtom
+ extends codeAtom
 cssLengthAtom
  extends anyAtom
 htmlAnyAtom
- extends stringAtom
+ extends codeAtom
 inlineMarkupNameAtom
  description Options to turn on some inline markups.
  enum bold italics code katex none
@@ -109,7 +109,7 @@ metaCommandAtom
    We need a better design to replace this "paint" concept
    https://github.com/breck7/scrollsdk/issues/186
 scriptAnyAtom
- extends anyAtom
+ extends codeAtom
 tagAtom
  extends permalinkAtom
 tagWithOptionalFolderAtom
@@ -897,7 +897,7 @@ classicFormParser
  popularity 0.006391
  description Generate input form for ScrollSet.
  extends abstractAftertextParser
- atoms cueAtom emailAddressAtom
+ atoms cueAtom
  catchAllAtomType stringAtom
  string script
   <script>
@@ -956,7 +956,7 @@ classicFormParser
     return this.formDestination.includes("@")
   }
   get formDestination() {
-    return this.getAtom(1)
+    return this.getAtom(1) || ""
   }
   get subject() {
     return this.getAtomsFrom(2)?.join(" ") || ""
@@ -1298,6 +1298,10 @@ buildCssParser
 buildCsvParser
  popularity 0.000096
  description Compile to CSV file.
+ extends abstractBuildCommandParser
+buildParsersParser
+ popularity 0.000096
+ description Compile to Parsers file.
  extends abstractBuildCommandParser
 fetchParser
  description Download URL to disk.
@@ -2569,6 +2573,29 @@ scrollLinkTitleParser
   title My blog - Eureka
   linkTitle Eureka
  extends abstractTopLevelSingleMetaParser
+scrollDefParser
+ popularity 0.004244
+ description Parser short form.
+ pattern ^[a-zA-Z0-9_]+Def
+ extends abstractScrollParser
+ catchAllAtomType stringAtom
+ example
+  urlDef What is the URL?
+ javascript
+  compileParsers(index) {
+   const idStuff = index ? "" : `boolean isMeasure true
+   boolean isMeasureRequired true
+   boolean isConceptDelimiter true`
+    const description = this.content
+    const cue = this.cue.replace("Def", "")
+    const sortIndex = 1 + index/10
+    return `${cue}DefParser
+   cue ${cue}
+   extends abstractStringMeasureParser
+   description ${description}
+   float sortIndex ${sortIndex}
+   ${idStuff}`.trim()
+  }
 belowAsCodeParser
  popularity 0.000651
  description Print code below.
@@ -2590,7 +2617,10 @@ belowAsCodeParser
     howMany--
    }
    if (this.reverse) particles.reverse()
-   return particles.map(particle => particle.asString).join("\n")
+   return particles.map(particle => this.mapFn(particle)).join("\n")
+  }
+  mapFn(particle) {
+    return particle.asString
   }
   reverse = false
   compile() {
@@ -2628,6 +2658,19 @@ aboveAsCodeParser
   counter 1 second
   aboveAsCode
  extends belowAsCodeParser
+ javascript
+  method = "previous"
+  reverse = true
+inspectBelowParser
+ description Inspect particle below.
+ extends belowAsCodeParser
+ javascript
+  mapFn(particle) {
+    return particle.toString() + "\n" + [particle.constructor.name, particle.lineAtomTypes].join("\n")
+  }
+inspectAboveParser
+ description Inspect particle above.
+ extends inspectBelowParser
  javascript
   method = "previous"
   reverse = true
@@ -4711,6 +4754,13 @@ scrollParser
       .filter(particle => particle.compileCss)
       .map(particle => particle.compileCss())
       .join("\n")
+      .trim()
+  }
+  get asParsers() {
+    return this.topDownArray
+      .filter(particle => particle.compileParsers)
+      .map((particle, index) => particle.compileParsers(index))
+      .join("\n\n")
       .trim()
   }
   get asCsv() {
