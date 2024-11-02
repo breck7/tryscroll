@@ -1010,6 +1010,7 @@ scrollFormParser
     return this.getHtmlRequirements(compileSettings) + super.compile()
   }
 scrollLoopParser
+ // Todo: deprecate loops in favor of tables.
  popularity 0.000024
  extends abstractAftertextParser
  atoms cueAtom
@@ -1500,6 +1501,15 @@ clocParser
   get command(){
    return `cloc --vcs git . --csv --read-lang-def=clocLangs.txt ${this.content || ""}`
   }
+scrollDependenciesParser
+ extends scrollTableParser
+ description Get files this file depends on.
+ cue dependencies
+ javascript
+  delimiter = ","
+  get delimitedData() {
+   return `file\n` + this.root.dependencies.join("\n")
+  }
 scrollDiskParser
  extends scrollTableParser
  description Output file into as table.
@@ -1537,6 +1547,8 @@ quickTableParser
  atoms urlAtom
  pattern ^[^\s]+\.(tsv|csv|ssv|psv|json)
  int atomIndex 0
+ javascript
+  get dependencies() { return [this.cue]}
 codeParser
  popularity 0.001929
  description A code block.
@@ -2039,10 +2051,13 @@ printColumnParser
  catchAllAtomType columnNameAtom
  javascript
   compile() {
-   return this.columnValues.join("\n")
+   return this.columnValues.join(this.join)
   }
   compileTxt() {
-    return this.columnValues.join("\n")
+    return this.columnValues.join(this.join)
+  }
+  get join() {
+    return this.get("join") || "\n"
   }
   get columnName() {
     return this.atoms[1]
@@ -2271,6 +2286,7 @@ abstractQuickIncludeParser
  extends abstractScrollParser
  atoms urlAtom
  javascript
+  get dependencies() { return [this.filename]}
   get filename() {
     return this.getAtom(0)
   }
@@ -2846,6 +2862,7 @@ scrollImageParser
   get filename() {
     return this.getAtom(this.atomIndex)
   }
+  get dependencies() { return [this.filename]}
   getFigureContent(compileSettings) {
    const linkRelativeToCompileTarget = (compileSettings ? (compileSettings.relativePath ?? "") : "") + this.filename
    const {width, height} = this.dimensions
@@ -3465,17 +3482,21 @@ abstractAssertionParser
  description Test above particle's output.
  extends abstractScrollParser
  cueFromId
- baseParser blobParser
  javascript
   compile() {
    return ``
   }
+  get particleToTest() {
+    // If the previous particle is also an assertion particle, use the one before that.
+    return this.previous.particleToTest ? this.previous.particleToTest : this.previous
+  }
   getErrors() {
-    const actual = this._getClosestOlderSibling().compile()
+    const actual = this.particleToTest.compile()
     const expected = this.subparticlesToString()
+    const errors = super.getErrors()
     if (this.areEqual(actual, expected))
-      return []
-    return [this.makeError(`'${actual}' did not ${this.kind} '${expected}'`)]
+      return errors
+    return errors.concat(this.makeError(`'${actual}' did not ${this.kind} '${expected}'`))
   }
  catchAllParser htmlLineParser
 assertHtmlEqualsParser
@@ -4768,6 +4789,11 @@ scrollParser
       .map((particle, index) => particle.compileParsers(index))
       .join("\n\n")
       .trim()
+  }
+  get dependencies() {
+      const dependencies = this.file.dependencies?.slice() || []
+      const files = this.topDownArray.filter(particle => particle.dependencies).map(particle => particle.dependencies).flat()
+      return dependencies.concat(files)
   }
   get asCsv() {
     return this.topDownArray
