@@ -1196,6 +1196,52 @@ printSourceStackParser
   compileTxt() {
    return this.sources.map((pass, index) => `Pass ${index + 1} - ${pass.name}\n========\n${pass.code}`).join("\n\n\n")
   }
+abstractAssertionParser
+ description Test above particle's output.
+ extends abstractScrollParser
+ cueFromId
+ javascript
+  compile() {
+   return ``
+  }
+  get particleToTest() {
+    // If the previous particle is also an assertion particle, use the one before that.
+    return this.previous.particleToTest ? this.previous.particleToTest : this.previous
+  }
+  getErrors() {
+    const actual = this.particleToTest.compile()
+    const expected = this.subparticlesToString()
+    const errors = super.getErrors()
+    if (this.areEqual(actual, expected))
+      return errors
+    return errors.concat(this.makeError(`'${actual}' did not ${this.kind} '${expected}'`))
+  }
+ catchAllParser htmlLineParser
+assertHtmlEqualsParser
+ extends abstractAssertionParser
+ string kind equal
+ javascript
+  areEqual(actual, expected) {
+    return actual === expected
+  }
+  // todo: why are we having to super here?
+  getErrors() { return super.getErrors()}
+assertHtmlIncludesParser
+ extends abstractAssertionParser
+ string kind include
+ javascript
+  areEqual(actual, expected) {
+    return actual.includes(expected)
+  }
+  getErrors() { return super.getErrors()}
+assertHtmlExcludesParser
+ extends abstractAssertionParser
+ string kind exclude
+ javascript
+  areEqual(actual, expected) {
+    return !actual.includes(expected)
+  }
+  getErrors() { return super.getErrors()}
 abstractPrintMetaParser
  extends abstractScrollParser
  cueFromId
@@ -1354,6 +1400,142 @@ buildTxtParser
  description Compile to TXT file.
  extends abstractBuildCommandParser
  boolean isPopular true
+abstractTopLevelSingleMetaParser
+ description Use these parsers once per file.
+ extends abstractScrollParser
+ inScope slashCommentParser
+ cueFromId
+ atoms metaCommandAtom
+ javascript
+  isTopMatter = true
+  isSetterParser = true
+  compile() {
+   return ""
+  }
+testStrictParser
+ description Make catchAllParagraphParser = error.
+ extends abstractTopLevelSingleMetaParser
+dateParser
+ popularity 0.006680
+ catchAllAtomType dateAtom
+ description Set published date.
+ extends abstractTopLevelSingleMetaParser
+ boolean isPopular true
+ example
+  date 1/11/2019
+  printDate
+  Hello world
+   dateline
+abstractUrlSettingParser
+ extends abstractTopLevelSingleMetaParser
+ atoms metaCommandAtom urlAtom
+ cueFromId
+editBaseUrlParser
+ popularity 0.007838
+ description Override edit link baseUrl.
+ extends abstractUrlSettingParser
+canonicalUrlParser
+ description Override canonical URL.
+ extends abstractUrlSettingParser
+openGraphImageParser
+ popularity 0.000796
+ // https://ogp.me/
+ // If not defined, Scroll will try to generate it's own using the first image tag on your page.
+ description Override Open Graph Image.
+ extends abstractUrlSettingParser
+baseUrlParser
+ popularity 0.009188
+ description Required for RSS and OpenGraph.
+ extends abstractUrlSettingParser
+rssFeedUrlParser
+ popularity 0.008850
+ description Set RSS feed URL.
+ extends abstractUrlSettingParser
+editUrlParser
+ catchAllAtomType urlAtom
+ description Override edit link.
+ extends abstractTopLevelSingleMetaParser
+siteOwnerEmailParser
+ popularity 0.001302
+ description Set email address for site contact.
+ extends abstractTopLevelSingleMetaParser
+ cue email
+ atoms metaCommandAtom emailAddressAtom
+faviconParser
+ popularity 0.001688
+ catchAllAtomType stringAtom
+ cue favicon
+ description Favicon file.
+ example
+  favicon logo.png
+  metatags
+  buildHtml
+ extends abstractTopLevelSingleMetaParser
+importOnlyParser
+ popularity 0.033569
+ // This line will be not be imported into the importing file.
+ description Don't build this file.
+ cueFromId
+ atoms preBuildCommandAtom
+ extends abstractTopLevelSingleMetaParser
+ javascript
+  compile() {
+   return ""
+  }
+inlineMarkupsParser
+ popularity 0.000024
+ description Set global inline markups.
+ extends abstractTopLevelSingleMetaParser
+ cueFromId
+ example
+  inlineMarkups
+   * 
+    // Disable * for bold
+   _ u
+    // Make _ underline
+htmlLangParser
+ atoms metaCommandAtom stringAtom
+ // for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
+ description Override HTML lang attribute.
+ extends abstractTopLevelSingleMetaParser
+openGraphDescriptionParser
+ popularity 0.001688
+ catchAllAtomType stringAtom
+ cue description
+ description Meta tag description.
+ extends abstractTopLevelSingleMetaParser
+permalinkParser
+ popularity 0.000265
+ description Override output filename.
+ extends abstractTopLevelSingleMetaParser
+ atoms metaCommandAtom permalinkAtom
+scrollTagsParser
+ popularity 0.006801
+ cue tags
+ description Set tags.
+ example
+  tags All
+ extends abstractTopLevelSingleMetaParser
+ catchAllAtomType tagAtom
+scrollTitleParser
+ popularity 0.007524
+ catchAllAtomType anyAtom
+ cue title
+ description Set title.
+ example
+  title Eureka
+  printTitle
+ extends abstractTopLevelSingleMetaParser
+ boolean isPopular true
+scrollLinkTitleParser
+ popularity 0.007524
+ catchAllAtomType anyAtom
+ cue linkTitle
+ description Text for links.
+ example
+  title My blog - Eureka
+  linkTitle Eureka
+ extends abstractTopLevelSingleMetaParser
 chatParser
  popularity 0.000362
  description A faux text chat conversation.
@@ -2216,16 +2398,16 @@ commentParser
  popularity 0.000193
  extends abstractCommentParser
  cueFromId
-slashCommentParser
- popularity 0.005643
- extends commentParser
- cue //
- boolean isPopular true
- description A comment. Prints nothing.
 counterpointParser
  description A counterpoint. Prints nothing.
  extends commentParser
  cue !
+slashCommentParser
+ popularity 0.005643
+ extends abstractCommentParser
+ cue //
+ boolean isPopular true
+ description A comment. Prints nothing.
 thanksToParser
  description Acknowledge reviewers. Prints nothing.
  extends abstractCommentParser
@@ -2453,142 +2635,6 @@ scrollDashboardParser
   compileTxt() {
     return this.subparticlesToString()
   }
-abstractTopLevelSingleMetaParser
- description Use these parsers once per file.
- extends abstractScrollParser
- inScope slashCommentParser
- cueFromId
- atoms metaCommandAtom
- javascript
-  isTopMatter = true
-  isSetterParser = true
-  compile() {
-   return ""
-  }
-dateParser
- popularity 0.006680
- catchAllAtomType dateAtom
- description Set published date.
- extends abstractTopLevelSingleMetaParser
- boolean isPopular true
- example
-  date 1/11/2019
-  printDate
-  Hello world
-   dateline
-abstractUrlSettingParser
- extends abstractTopLevelSingleMetaParser
- atoms metaCommandAtom urlAtom
- cueFromId
-editBaseUrlParser
- popularity 0.007838
- description Override edit link baseUrl.
- extends abstractUrlSettingParser
-canonicalUrlParser
- description Override canonical URL.
- extends abstractUrlSettingParser
-openGraphImageParser
- popularity 0.000796
- // https://ogp.me/
- // If not defined, Scroll will try to generate it's own using the first image tag on your page.
- description Override Open Graph Image.
- extends abstractUrlSettingParser
-baseUrlParser
- popularity 0.009188
- description Required for RSS and OpenGraph.
- extends abstractUrlSettingParser
-rssFeedUrlParser
- popularity 0.008850
- description Set RSS feed URL.
- extends abstractUrlSettingParser
-editUrlParser
- catchAllAtomType urlAtom
- description Override edit link.
- extends abstractTopLevelSingleMetaParser
-siteOwnerEmailParser
- popularity 0.001302
- description Set email address for site contact.
- extends abstractTopLevelSingleMetaParser
- cue email
- atoms metaCommandAtom emailAddressAtom
-faviconParser
- popularity 0.001688
- catchAllAtomType stringAtom
- cue favicon
- description Favicon file.
- example
-  favicon logo.png
-  metatags
-  buildHtml
- extends abstractTopLevelSingleMetaParser
-importOnlyParser
- popularity 0.033569
- // This line will be not be imported into the importing file.
- description Don't build this file.
- cueFromId
- atoms preBuildCommandAtom
- extends abstractTopLevelSingleMetaParser
- javascript
-  compile() {
-   return ""
-  }
-inlineMarkupsParser
- popularity 0.000024
- description Set global inline markups.
- extends abstractTopLevelSingleMetaParser
- cueFromId
- example
-  inlineMarkups
-   * 
-    // Disable * for bold
-   _ u
-    // Make _ underline
-htmlLangParser
- atoms metaCommandAtom stringAtom
- // for the <html lang=""> tag. If not specified will be "en". See https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang
- description Override HTML lang attribute.
- extends abstractTopLevelSingleMetaParser
-openGraphDescriptionParser
- popularity 0.001688
- catchAllAtomType stringAtom
- cue description
- description Meta tag description.
- extends abstractTopLevelSingleMetaParser
-permalinkParser
- popularity 0.000265
- description Override output filename.
- extends abstractTopLevelSingleMetaParser
- atoms metaCommandAtom permalinkAtom
-scrollTagsParser
- popularity 0.006801
- cue tags
- description Set tags.
- example
-  tags All
- extends abstractTopLevelSingleMetaParser
- catchAllAtomType tagAtom
-testStrictParser
- description Make catchAllParagraphParser = error.
- extends abstractTopLevelSingleMetaParser
-scrollTitleParser
- popularity 0.007524
- catchAllAtomType anyAtom
- cue title
- description Set title.
- example
-  title Eureka
-  printTitle
- extends abstractTopLevelSingleMetaParser
- boolean isPopular true
-scrollLinkTitleParser
- popularity 0.007524
- catchAllAtomType anyAtom
- cue linkTitle
- description Text for links.
- example
-  title My blog - Eureka
-  linkTitle Eureka
- extends abstractTopLevelSingleMetaParser
 scrollDefParser
  popularity 0.004244
  description Parser short form.
@@ -2933,6 +2979,22 @@ importParser
   }
  example
   import header.scroll
+importedParser
+ description Inserted at import pass.
+ boolean suggestInAutocomplete false
+ cueFromId
+ atoms preBuildCommandAtom
+ extends abstractScrollParser
+ catchAllAtomType filePathAtom
+ javascript
+  compile() {
+   return ""
+  }
+  getErrors() {
+    if (this.get("exists") === "false" && this.previous.getLine() !== "// optional")
+      return [this.makeError(`File '${this.atoms[1]}' does not exist.`)]
+    return []
+  }
 quickImportParser
  popularity 0.007524
  description Import a Scroll or Parsers file.
@@ -3478,52 +3540,6 @@ stumpNoSnippetParser
   compileEmbeddedVersion() {
    return ""
   }
-abstractAssertionParser
- description Test above particle's output.
- extends abstractScrollParser
- cueFromId
- javascript
-  compile() {
-   return ``
-  }
-  get particleToTest() {
-    // If the previous particle is also an assertion particle, use the one before that.
-    return this.previous.particleToTest ? this.previous.particleToTest : this.previous
-  }
-  getErrors() {
-    const actual = this.particleToTest.compile()
-    const expected = this.subparticlesToString()
-    const errors = super.getErrors()
-    if (this.areEqual(actual, expected))
-      return errors
-    return errors.concat(this.makeError(`'${actual}' did not ${this.kind} '${expected}'`))
-  }
- catchAllParser htmlLineParser
-assertHtmlEqualsParser
- extends abstractAssertionParser
- string kind equal
- javascript
-  areEqual(actual, expected) {
-    return actual === expected
-  }
-  // todo: why are we having to super here?
-  getErrors() { return super.getErrors()}
-assertHtmlIncludesParser
- extends abstractAssertionParser
- string kind include
- javascript
-  areEqual(actual, expected) {
-    return actual.includes(expected)
-  }
-  getErrors() { return super.getErrors()}
-assertHtmlExcludesParser
- extends abstractAssertionParser
- string kind exclude
- javascript
-  areEqual(actual, expected) {
-    return !actual.includes(expected)
-  }
-  getErrors() { return super.getErrors()}
 plainTextParser
  description Plain text oneliner or block.
  cueFromId
