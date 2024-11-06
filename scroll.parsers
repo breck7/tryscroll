@@ -2463,6 +2463,16 @@ inlineCssParser
   compileCss() {
     return this.css
   }
+scrollBackgroundColorParser
+ description Quickly set CSS background.
+ popularity 0.007211
+ extends abstractScrollParser
+ cue background
+ catchAllAtomType cssAnyAtom
+ javascript
+  compile() {
+   return `<style>html, body { background: ${this.content};}</style>`
+  }
 abstractQuickIncludeParser
  popularity 0.007524
  extends abstractScrollParser
