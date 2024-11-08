@@ -141,7 +141,7 @@ abstractScrollParser
 abstractAftertextParser
  description Text followed by markup commands.
  extends abstractScrollParser
- inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser aftertextTagParser commentParser
+ inScope abstractAftertextDirectiveParser abstractAftertextAttributeParser aftertextTagParser abstractCommentParser
  javascript
   get markupInserts() {
    const { originalTextPostLinkify } = this
@@ -2399,7 +2399,7 @@ commentParser
  extends abstractCommentParser
  cueFromId
 counterpointParser
- description A counterpoint. Prints nothing.
+ description Counterpoint comment. Prints nothing.
  extends commentParser
  cue !
 slashCommentParser
@@ -2409,7 +2409,7 @@ slashCommentParser
  boolean isPopular true
  description A comment. Prints nothing.
 thanksToParser
- description Acknowledge reviewers. Prints nothing.
+ description Acknowledgements comment. Prints nothing.
  extends abstractCommentParser
  cueFromId
 scrollContainerParser
@@ -3805,7 +3805,7 @@ linkParser
  extends abstractMarkupParser
  description Put the matching text in an <a> tag.
  atoms cueAtom urlAtom
- inScope linkTitleParser linkTargetParser commentParser
+ inScope linkTitleParser linkTargetParser abstractCommentParser
  programParser
   description Anything here will be URI encoded and then appended to the link.
   cueFromId
