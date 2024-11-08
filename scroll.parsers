@@ -93,6 +93,8 @@ htmlAnyAtom
 inlineMarkupNameAtom
  description Options to turn on some inline markups.
  enum bold italics code katex none
+scriptAnyAtom
+ extends codeAtom
 tileOptionAtom
  enum default light
 measureNameAtom
@@ -108,8 +110,6 @@ metaCommandAtom
  // Obviously this is not numeric. But I like the green color for now.
    We need a better design to replace this "paint" concept
    https://github.com/breck7/scrollsdk/issues/186
-scriptAnyAtom
- extends codeAtom
 tagAtom
  extends permalinkAtom
 tagWithOptionalFolderAtom
@@ -1376,6 +1376,9 @@ buildHtmlParser
  description Compile to HTML file.
  extends abstractBuildCommandParser
  boolean isPopular true
+buildJsParser
+ description Compile to JS file.
+ extends abstractBuildCommandParser
 buildMeasuresParser
  popularity 0.000024
  cueFromId
@@ -1391,9 +1394,6 @@ buildPdfParser
 buildRssParser
  popularity 0.000048
  description Write RSS file.
- extends abstractBuildCommandParser
-buildJsParser
- description Compile to JS file.
  extends abstractBuildCommandParser
 buildTxtParser
  popularity 0.007596
@@ -3031,6 +3031,25 @@ inlineJsParser
   get contents() {
     return this.atoms.slice(1).map(filename => this.root.readFile(filename)).join(";\n\n")
   }
+  compileJs() {
+    return this.contents
+  }
+scriptParser
+ extends abstractScrollParser
+ description Print script tag.
+ cueFromId
+ catchAllParser scriptLineParser
+ catchAllAtomType scriptAnyAtom
+ javascript
+  compile() {
+   return `<script>${this.scriptContent}</script>`
+  }
+  get scriptContent() {
+    return this.content ?? this.subparticlesToString()
+  }
+  compileJs() {
+    return this.scriptContent
+  }
 jsonScriptParser
  popularity 0.007524
  cueFromId
@@ -3433,22 +3452,6 @@ replaceNodejsParser
   replaceNodejs
    module.exports = {SCORE : 1 + 2}
   * The score is SCORE
-scriptParser
- extends abstractScrollParser
- description Print script tag.
- cueFromId
- catchAllParser scriptLineParser
- catchAllAtomType scriptAnyAtom
- javascript
-  compile() {
-   return `<script>${this.scriptContent}</script>`
-  }
-  get scriptContent() {
-    return this.content ?? this.subparticlesToString()
-  }
-  compileJs() {
-    return this.scriptContent
-  }
 endSnippetParser
  popularity 0.004293
  description Cut for snippet here.
@@ -4470,6 +4473,9 @@ openGraphParser
  description Add this line to make this the open graph image.
  cueFromId
  atoms cueAtom
+scriptLineParser
+ catchAllAtomType scriptAnyAtom
+ catchAllParser scriptLineParser
 linkTitleParser
  popularity 0.000048
  description If you want to set the title of the link.
@@ -4885,9 +4891,6 @@ scrollParser
   code
    // You can add code as well.
    print("Hello world")
-scriptLineParser
- catchAllAtomType scriptAnyAtom
- catchAllParser scriptLineParser
 stampFileParser
  catchAllAtomType stringAtom
  description Create a file.
