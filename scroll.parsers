@@ -1009,49 +1009,6 @@ scrollFormParser
   compile(compileSettings) {
     return this.getHtmlRequirements(compileSettings) + super.compile()
   }
-scrollLoopParser
- // Todo: deprecate loops in favor of tables.
- popularity 0.000024
- extends abstractAftertextParser
- atoms cueAtom
- boolean isTableVisualization true
- description Iterate over files+ to make HTML.
- cue loop
- inScope abstractItemsProviderParser
- joinParser
-  extends abstractLoopConfigParser
-  description HTML to use to join the items.
- limitParser
-  extends abstractLoopConfigParser
-  description HTML to use to join the items.
- javascriptParser
-  extends abstractLoopConfigParser
-  description Javascript to execute for each file in the loop.
- javascript
-  compile() {
-   const code = this.get("javascript")
-   const joinWith = this.get("join") ?? ""
-   try {
-    const limit = this.get("limit")
-    let items = this.items
-    if (limit) items = items.slice(0, parseInt(limit))
-    return items.map((item, index) => eval(code)).join(joinWith)
-   } catch (err) {
-    console.error(err)
-    return ""
-   } finally {
-    this.teardown()
-   }
-  }
-  get items() {
-   const provider = this.getSubparticleInstancesOfParserId("abstractItemsProviderParser")[0]
-   if (provider)
-     return provider.items
-   if (this.parent.coreTable)
-     return this.parent.coreTable
-   return []
-  }
-  teardown() {}
 loremIpsumParser
  extends abstractAftertextParser
  cueFromId
@@ -1208,8 +1165,9 @@ abstractAssertionParser
     // If the previous particle is also an assertion particle, use the one before that.
     return this.previous.particleToTest ? this.previous.particleToTest : this.previous
   }
+  get actual() {return this.particleToTest.compile()}
   getErrors() {
-    const actual = this.particleToTest.compile()
+    const {actual} = this
     const expected = this.subparticlesToString()
     const errors = super.getErrors()
     if (this.areEqual(actual, expected))
@@ -1225,6 +1183,15 @@ assertHtmlEqualsParser
     return actual === expected
   }
   // todo: why are we having to super here?
+  getErrors() { return super.getErrors()}
+assertBuildIncludesParser
+ extends abstractAssertionParser
+ string kind include
+ javascript
+  areEqual(actual, expected) {
+    return actual.includes(expected)
+  }
+  get actual() { return this.particleToTest.buildOutput()}
   getErrors() { return super.getErrors()}
 assertHtmlIncludesParser
  extends abstractAssertionParser
@@ -1310,6 +1277,11 @@ abstractBuildCommandParser
   compile() {
    return ""
   }
+  buildOutput() {
+    // todo: move build steps into root.parsers
+    const extension = this.cue.replace("build", "")
+    return this.root.compileTo(extension)
+  }
 loadConceptsParser
  // todo: clean this up. just add smarter imports with globs?
  // this currently removes any "import" statements.
@@ -1342,13 +1314,17 @@ buildCssParser
  popularity 0.000048
  description Compile to CSS file.
  extends abstractBuildCommandParser
+buildParsersParser
+ popularity 0.000096
+ description Compile to Parsers file.
+ extends abstractBuildCommandParser
 buildCsvParser
  popularity 0.000096
  description Compile to CSV file.
  extends abstractBuildCommandParser
-buildParsersParser
+buildTsvParser
  popularity 0.000096
- description Compile to Parsers file.
+ description Compile to TSV file.
  extends abstractBuildCommandParser
 fetchParser
  description Download URL to disk.
@@ -1378,6 +1354,10 @@ buildHtmlParser
  boolean isPopular true
 buildJsParser
  description Compile to JS file.
+ extends abstractBuildCommandParser
+buildJsonParser
+ popularity 0.000096
+ description Compile to JSON file.
  extends abstractBuildCommandParser
 buildMeasuresParser
  popularity 0.000024
@@ -1556,7 +1536,7 @@ chatParser
 abstractDatatableProviderParser
  description A datatable.
  extends abstractScrollParser
- inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser htmlInlineParser scrollBrParser
+ inScope scrollTableDataParser scrollTableDelimiterParser abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser htmlInlineParser scrollBrParser
  javascript
   get visualizations() {
     return this.topDownArray.filter(particle => particle.isTableVisualization || particle.isHeader || particle.isHtml)
@@ -1743,6 +1723,113 @@ scrollIrisParser
     y SepalWidth
  javascript
   delimitedData = this.constructor.iris
+abstractPostsParser
+ description Load posts as table.
+ extends abstractDatatableProviderParser
+ cueFromId
+ atoms cueAtom
+ catchAllAtomType tagWithOptionalFolderAtom
+ javascript
+  get files() {
+   return this.root.getFilesByTags(this.content)
+  }
+  get coreTable() {
+    if (this._coreTable) return this._coreTable
+    this._coreTable = this.files.map(file => this.postToRow(file))
+    return this._coreTable
+  }
+  postToRow(file) {
+    const {relativePath} = file
+    const {scrollProgram} = file.file
+    const {title, permalink, asTxt, date, wordCount, minutes} = scrollProgram
+    const text = asTxt.replace(/(\t|\n)/g, " ").replace(/</g, "&lt;")
+    return {
+      title, titleLink: relativePath + permalink, text, date, wordCount, minutes
+    }
+  }
+  columnNames = "title titleLink text date wordCount minutes".split(" ")
+scrollPostsParser
+ popularity 0.000024
+ cue posts
+ description Posts as table.
+ extends abstractPostsParser
+ example
+  // Print a search table:
+  posts
+   printTable
+  tableSearch
+  // Dump a CSV of blog:
+  buildHtml
+  buildCsv
+  buildJson
+scrollPostsMetaParser
+ popularity 0.000024
+ cue postsMeta
+ description Post meta as table.
+ extends abstractPostsParser
+ javascript
+  columnNames = ["date", "year", "title", "permalink", "authors", "tags", "wordCount", "minutes"]
+  postToRow(file) {
+    const {date, year, title, permalink, authors, tags, wordCount, minutes} = file.file.scrollProgram
+    return {
+      date, year, title, permalink, authors, tags, wordCount, minutes
+    }
+  }
+printFeedParser
+ popularity 0.000048
+ description Print group to RSS.
+ extends abstractPostsParser
+ example
+  printFeed index
+  printFeed cars/index
+  buildRss
+ javascript
+  compileRss() {
+   const {dayjs} = this.root
+   const scrollPrograms = this.files.map(file => file.file.scrollProgram)
+   const { title, baseUrl, description } = this.root
+   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
+  <rss version="2.0">
+  <channel>
+   <title>${title}</title>
+   <link>${baseUrl}</link>
+   <description>${description}</description>
+   <lastBuildDate>${dayjs().format("ddd, DD MMM YYYY HH:mm:ss ZZ")}</lastBuildDate>
+   <language>en-us</language>
+  ${scrollPrograms.map(program => program.toRss()).join("\n")}
+  </channel>
+  </rss>`
+  }
+  compileTxt() {
+    return this.compileRss()
+  }
+printSourceParser
+ popularity 0.000024
+ description Print source for files in group(s).
+ extends printFeedParser
+ example
+  printSource index
+  buildTxt source.txt
+ javascript
+  compile() {
+   const files = this.root.getFilesByTags(this.content).map(file => file.file)
+   return `${files.map(file => file.filePath + "\n " + file.codeAtStart.replace(/\n/g, "\n ") ).join("\n")}`
+  }
+printSiteMapParser
+ popularity 0.000072
+ extends abstractPostsParser
+ description Print text sitemap.
+ example
+  baseUrl http://test.com
+  printSiteMap
+ javascript
+  compile() {
+   const { baseUrl } = this.root
+   return this.files.map(file => baseUrl + file.relativePath + file.file.scrollProgram.permalink).join("\n")
+  }
+  compileTxt() {
+    return this.compile()
+  }
 codeParser
  popularity 0.001929
  description A code block.
@@ -2278,6 +2365,15 @@ printTableParser
   get columnNames() {
    return this.parent.columnNames
   }
+  compileJson() {
+    return JSON.stringify(this.coreTable, undefined, 2)
+  }
+  compileCsv() {
+     return new Particle(this.coreTable).asCsv
+  }
+  compileTsv() {
+     return new Particle(this.coreTable).asTsv
+  }
   get columns() {
    const {columnNames} = this
    return columnNames.map((name, index) => {
@@ -2313,8 +2409,11 @@ printTableParser
    }
    return str
   }
+  get coreTable() {
+    return this.parent.coreTable
+  }
   get tableBody() {
-   return this.parent.coreTable
+   return this.coreTable
     .map(row => `<tr>${this.toRow(row)}</tr>`)
     .join("\n")
   }
@@ -2325,7 +2424,7 @@ printTableParser
    </table>`
   }
   compileTxt() {
-    return this.parent.delimitedData || new Particle(this.parent.coreTable).asCsv
+    return this.parent.delimitedData || new Particle(this.coreTable).asCsv
   }
 katexParser
  popularity 0.001592
@@ -2530,110 +2629,6 @@ quickScriptParser
  javascript
   compile() {
    return `<script src="${this.filename}"></script>`
-  }
-abstractPostLoopParser
- description Do something with all posts. Takes an optional list of folder/group names.
- extends abstractScrollParser
- cueFromId
- atoms cueAtom
- catchAllAtomType tagWithOptionalFolderAtom
- javascript
-  get files() {
-   return this.root.getFilesByTags(this.content)
-  }
-printFeedParser
- popularity 0.000048
- description Print group to RSS.
- extends abstractPostLoopParser
- example
-  printFeed index
-  printFeed cars/index
-  buildRss feed.xml
- javascript
-  compile() {
-   const {dayjs} = this.root
-   const scrollPrograms = this.files.map(file => file.file.scrollProgram)
-   const { title, baseUrl, description } = this.root
-   return `<?xml version="1.0" encoding="ISO-8859-1" ?>
-  <rss version="2.0">
-  <channel>
-   <title>${title}</title>
-   <link>${baseUrl}</link>
-   <description>${description}</description>
-   <lastBuildDate>${dayjs().format("ddd, DD MMM YYYY HH:mm:ss ZZ")}</lastBuildDate>
-   <language>en-us</language>
-  ${scrollPrograms.map(program => program.toRss()).join("\n")}
-  </channel>
-  </rss>`
-  }
-  compileTxt() {
-    return this.compile()
-  }
-printCsvParser
- popularity 0.000024
- description Print group metadata to CSV.
- extends printFeedParser
- example
-  printCsv index
-  buildTxt posts.csv
- javascript
-  compile() {
-   const escapeCommas = str => (typeof str === "string" && str.includes(",") ? `"${str}"` : str)
-   const scrollPrograms = this.root.getFilesByTags(this.content).map(file => file.file.scrollProgram)
-   const CSV_FIELDS = ["date", "year", "title", "permalink", "authors", "tags", "wordCount", "minutes"]
-   const header = CSV_FIELDS
-   return `${header.join(",")}\n${scrollPrograms.map(program => CSV_FIELDS.map(field => escapeCommas(program[field]))).join("\n")}`
-  }
-  compileCsv() {
-    return this.compile()
-  }
-printSourceParser
- popularity 0.000024
- description Print source for files in group(s).
- extends printFeedParser
- example
-  printSource index
-  buildTxt source.txt
- javascript
-  compile() {
-   const files = this.root.getFilesByTags(this.content).map(file => file.file)
-   return `${files.map(file => file.filePath + "\n " + file.codeAtStart.replace(/\n/g, "\n ") ).join("\n")}`
-  }
-printSearchTableParser
- popularity 0.000024
- description Prints files to HTML table.
- extends abstractPostLoopParser
- example
-  printSearchTable
-  tableSearch
- javascript
-  compile() {
-   const files = this.files
-   const data = files.map(file => file.file.scrollProgram.toSearchTsvRow(file.relativePath)).join("\n")
-   // A hacky but simple way to do this for now.
-     const particle = this.appendSibling("table")
-    particle.appendLine("delimiter 	")
-    particle.appendLine("printTable")
-    const dataParticle = particle.appendLine("data")
-    dataParticle.setSubparticles("title titleLink text date wordCount minutes".replace(/ /g, "\t") + "\n" + data)
-   const html = particle.compile()
-   particle.destroy()
-   return html
-  }
-printSiteMapParser
- popularity 0.000072
- extends abstractPostLoopParser
- description Print text sitemap.
- example
-  baseUrl http://test.com
-  printSiteMap
- javascript
-  compile() {
-   const { baseUrl } = this.root
-   return this.files.map(file => baseUrl + file.relativePath + file.file.scrollProgram.permalink).join("\n")
-  }
-  compileTxt() {
-    return this.compile()
   }
 scrollDashboardParser
  popularity 0.000145
@@ -4121,7 +4116,7 @@ errorParser
  baseParser errorParser
 abstractTableTransformParser
  atoms cueAtom
- inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser scrollLoopParser htmlInlineParser scrollBrParser
+ inScope abstractTableVisualizationParser abstractTableTransformParser h1Parser h2Parser scrollQuestionParser htmlInlineParser scrollBrParser
  javascript
   get coreTable() {
     return this.parent.coreTable
@@ -4407,8 +4402,12 @@ scrollLimitParser
  atoms cueAtom integerAtom integerAtom
  javascript
   get coreTable() {
-   const start = this.getAtom(1)
-   const end = this.getAtom(2)
+   let start = this.getAtom(1)
+   let end = this.getAtom(2)
+   if (end === undefined) {
+     end = start
+     start = 0
+   }
    return this.parent.coreTable.slice(parseInt(start), parseInt(end))
   }
 scrollShuffleParser
@@ -4572,42 +4571,6 @@ linkTitleParser
 programLinkParser
  popularity 0.000531
  catchAllAtomType codeAtom
-abstractLoopConfigParser
- atoms cueAtom
- cueFromId
- catchAllAtomType stringAtom
-abstractItemsProviderParser
- atoms cueAtom
-loopLinesParser
- cue lines
- extends abstractItemsProviderParser
- description Iterate over the provided lines.
- catchAllParser loopLineParser
- loopLineParser
-  catchAllAtomType stringAtom
- javascript
-  get items() {
-   return this.map(particle => particle.asString)
-  }
-loopAtomsParser
- popularity 0.000024
- cue atoms
- extends abstractItemsProviderParser
- catchAllAtomType stringAtom
- description Iterate over the provided atoms.
- javascript
-  get items() {
-   return this.getAtomsFrom(1)
-  }
-loopTagsParser
- cue tags
- extends abstractItemsProviderParser
- catchAllAtomType tagWithOptionalFolderAtom
- description Set this to iterate over scroll files in a folder. Provide both the folder and group name like this: [folder]/[tag]
- javascript
-  get items() {
-   return this.root.getFilesByTags(this.content)
-  }
 scrollMediaLoopParser
  popularity 0.000048
  cue loop
@@ -4866,6 +4829,18 @@ scrollParser
   get permalink() {
    return this.get("permalink") || (this.filename ? this.filenameNoExtension + ".html" : "")
   }
+  compileTo(extensionCapitalized) {
+    if (extensionCapitalized === "Txt")
+      return this.asTxt
+    if (extensionCapitalized === "Html")
+      return this.asHtml
+    const methodName = "compile" + extensionCapitalized
+    return this.topDownArray
+      .filter(particle => particle[methodName])
+      .map((particle, index) => particle[methodName](index))
+      .join("\n")
+      .trim()
+  }
   get asTxt() {
     return (
       this.map(particle => {
@@ -4880,45 +4855,10 @@ scrollParser
         .trim() + "\n" // Always end in a newline, Posix style
     )
   }
-  toSearchTsvRow(relativePath = "") {
-    const text = this.asTxt.replace(/(\t|\n)/g, " ").replace(/</g, "&lt;")
-    return [this.title, relativePath + this.permalink, text, this.date, this.wordCount, this.minutes].join("\t")
-  }
-  get asJs() {
-    return this.topDownArray
-      .filter(particle => particle.compileJs)
-      .map(particle => particle.compileJs())
-      .join("\n")
-      .trim()
-  }
-  get asRss() {
-    return this.compile().trim()
-  }
-  get asCss() {
-    return this.topDownArray
-      .filter(particle => particle.compileCss)
-      .map(particle => particle.compileCss())
-      .join("\n")
-      .trim()
-  }
-  get asParsers() {
-    return this.topDownArray
-      .filter(particle => particle.compileParsers)
-      .map((particle, index) => particle.compileParsers(index))
-      .join("\n\n")
-      .trim()
-  }
   get dependencies() {
       const dependencies = this.file.dependencies?.slice() || []
       const files = this.topDownArray.filter(particle => particle.dependencies).map(particle => particle.dependencies).flat()
       return dependencies.concat(files)
-  }
-  get asCsv() {
-    return this.topDownArray
-      .filter(particle => particle.compileCsv)
-      .map(particle => particle.compileCsv())
-      .join("\n")
-      .trim()
   }
   get buildsHtml() {
     const { permalink } = this
@@ -4945,14 +4885,14 @@ scrollParser
     return this.asTxt.match(/\b\w+\b/g)?.length || 0
   }
   get minutes() {
-    return (this.wordCount / 200).toFixed(1)
+    return parseFloat((this.wordCount / 200).toFixed(1))
   }
   get date() {
     const date = this.get("date") || (this.file.timestamp ? this.file.timestamp * 1000 : 0) || 0
     return this.dayjs(date).format(`MM/DD/YYYY`)
   }
   get year() {
-    return this.dayjs(this.date).format(`YYYY`)
+    return parseInt(this.dayjs(this.date).format(`YYYY`))
   }
   get dayjs() {
     if (!this.isNodeJs()) return dayjs
