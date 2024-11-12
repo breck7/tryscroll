@@ -252,6 +252,10 @@ class EditorApp extends AbstractParticleComponentParser {
     this.loadNewDoc(scrollCode)
   }
 
+  formatScrollCommand() {
+    this.editor.setCodeMirrorValue(this.mainDocument.getFormatted())
+  }
+
   updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
@@ -337,7 +341,7 @@ SIZES.RIGHT_BAR_WIDTH = 30
 EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
-      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
+      ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
       : SIZES.EDITOR_WIDTH
   const startState = new Particle(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
@@ -370,15 +374,26 @@ class EditorHandleComponent extends AbstractParticleComponentParser {
     if (this.isNodeJs()) return
 
     const root = this.root
-    jQuery(this.getStumpParticle().getShadow().element).draggable({
+    const handle = this.getStumpParticle().getShadow().element
+    jQuery(handle).draggable({
       axis: "x",
       drag: function (event, ui) {
         if ("ontouchend" in document) return // do not update live on a touch device. otherwise buggy.
         root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
+        jQuery(".EditorHandleComponent").addClass("rightBorder")
+      },
+      start: function (event, ui) {
+        jQuery(".EditorHandleComponent").addClass("rightBorder")
       },
       stop: function (event, ui) {
         root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
+        window.location = window.location
+        jQuery(".EditorHandleComponent").removeClass("rightBorder")
       },
+    })
+    jQuery(this.getStumpParticle().getShadow().element).on("dblclick", () => {
+      root.resizeEditorCommand()
+      window.location = window.location
     })
   }
 
@@ -416,6 +431,9 @@ class ExportComponent extends AbstractParticleComponentParser {
  a Download HTML
   clickCommand downloadHtmlCommand
  span  | 
+ a Format
+  clickCommand formatScrollCommand
+ span  | 
  a Tutorial
   target _blank
   href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
@@ -423,6 +441,10 @@ class ExportComponent extends AbstractParticleComponentParser {
 
   copyHtmlToClipboardCommand() {
     this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
+  }
+
+  formatScrollCommand() {
+    this.root.formatScrollCommand()
   }
 
   downloadHtmlCommand() {

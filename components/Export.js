@@ -10,6 +10,9 @@ class ExportComponent extends AbstractParticleComponentParser {
  a Download HTML
   clickCommand downloadHtmlCommand
  span  | 
+ a Format
+  clickCommand formatScrollCommand
+ span  | 
  a Tutorial
   target _blank
   href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
@@ -17,6 +20,10 @@ class ExportComponent extends AbstractParticleComponentParser {
 
   copyHtmlToClipboardCommand() {
     this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
+  }
+
+  formatScrollCommand() {
+    this.root.formatScrollCommand()
   }
 
   downloadHtmlCommand() {

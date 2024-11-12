@@ -95,6 +95,10 @@ class EditorApp extends AbstractParticleComponentParser {
     this.loadNewDoc(scrollCode)
   }
 
+  formatScrollCommand() {
+    this.editor.setCodeMirrorValue(this.mainDocument.getFormatted())
+  }
+
   updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
@@ -180,7 +184,7 @@ SIZES.RIGHT_BAR_WIDTH = 30
 EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
-      ? localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH
+      ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
       : SIZES.EDITOR_WIDTH
   const startState = new Particle(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
