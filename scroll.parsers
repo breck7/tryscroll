@@ -1081,6 +1081,11 @@ scrollNavParser
  extends printSnippetsParser
  cue nav
  description Titles and links in group(s).
+ joinParser
+  boolean allowTrailingWhitespace true
+  cueFromId
+  atoms cueAtom
+  catchAllAtomType stringAtom
  javascript
   compile() {
     return `<nav class="scrollNavParser">` + this.root.getFilesByTags(this.content).map(file => {
@@ -1156,6 +1161,7 @@ printSourceStackParser
 abstractAssertionParser
  description Test above particle's output.
  extends abstractScrollParser
+ string bindTo previous
  cueFromId
  javascript
   compile() {
@@ -2354,6 +2360,11 @@ printColumnParser
  example
   printColumn tags
  catchAllAtomType columnNameAtom
+ joinParser
+  boolean allowTrailingWhitespace true
+  cueFromId
+  atoms cueAtom
+  catchAllAtomType stringAtom
  javascript
   compile() {
    return this.columnValues.join(this.join)
@@ -2524,6 +2535,7 @@ abstractCommentParser
  atoms commentAtom
  extends abstractScrollParser
  baseParser blobParser
+ string bindTo next
  javascript
   compile() {
    return ``
@@ -2702,6 +2714,7 @@ scrollDefParser
 belowAsCodeParser
  popularity 0.000651
  description Print code below.
+ string bindTo next
  extends abstractScrollParser
  catchAllAtomType integerAtom
  cueFromId
@@ -2755,6 +2768,7 @@ belowAsCodeUntilParser
   }
 aboveAsCodeParser
  popularity 0.000482
+ string bindTo previous
  description Print code above.
  example
   counter 1 second
@@ -2780,6 +2794,7 @@ inspectBelowParser
 inspectAboveParser
  description Inspect particle above.
  extends inspectBelowParser
+ string bindTo previous
  javascript
   method = "previous"
   reverse = true
