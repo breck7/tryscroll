@@ -96,7 +96,9 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   formatScrollCommand() {
-    this.editor.setCodeMirrorValue(this.mainDocument.getFormatted())
+    const scrollCode = this.mainDocument.getFormatted()
+    this.editor.setCodeMirrorValue(scrollCode)
+    this.loadNewDoc(scrollCode)
   }
 
   updateLocalStorage(scrollCode) {
