@@ -13,8 +13,6 @@ window.BottomBarComponent = BottomBarComponent
 
 
 
-// prettier-ignore
-
 class CodeMirrorShim {
   setSize() {}
   setValue(value) {
@@ -56,6 +54,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this._code = code
     const root = this.root
     // this._updateLocalStorage()
+    const { scrollParser } = root
 
     this.program = new scrollParser(code)
     const errs = this.program.getAllErrors()
@@ -80,7 +79,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
             this._onCodeKeyUp()
           })
           this.codeWidgets.push(
-            this.codeMirrorInstance.addLineWidget(err.lineNumber - 1, el, { coverGutter: false, noHScroll: false })
+            this.codeMirrorInstance.addLineWidget(err.lineNumber - 1, el, { coverGutter: false, noHScroll: false }),
           )
         })
       const info = this.codeMirrorInstance.getScrollInfo()
@@ -126,7 +125,15 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
+    const { root } = this
+    this.codeMirrorInstance = new ParsersCodeMirrorMode(
+      "custom",
+      () => {
+        return root.scrollParser
+      },
+      undefined,
+      CodeMirror,
+    )
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
@@ -266,11 +273,47 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   dumpErrorsCommand() {
-    const errs = new scrollParser(this.scrollCode).getAllErrors()
+    const { scrollParser, scrollCode } = this
+    const errs = new scrollParser(scrollCode).getAllErrors()
     console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
+  get scrollParser() {
+    const { parserCode } = this
+    if (parserCode) {
+      try {
+        this.cachedParser = new HandParsersProgram(
+          this.defaultParsersCode + "\n" + parserCode,
+        ).compileAndReturnRootParser()
+        return this.cachedParser
+      } catch (err) {
+        // console.error(err)
+      }
+    }
+    return this.defaultScrollParser
+  }
+
+  get parserCode() {
+    const { scrollCode } = this
+    if (!scrollCode) return ""
+    const parserDefinitionRegex = /^[a-zA-Z0-9_]+Parser$/
+    const atomDefinitionRegex = /^[a-zA-Z0-9_]+Atom/
+    return new Particle(scrollCode)
+      .filter(
+        (particle) => particle.getLine().match(parserDefinitionRegex) || particle.getLine().match(atomDefinitionRegex),
+      )
+      .map((particle) => particle.asString)
+      .join("\n")
+      .trim()
+  }
+
+  setParsersCode(parsersCode) {
+    this.defaultParsersCode = parsersCode
+    this.defaultScrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
+  }
+
   async buildMainDocument() {
+    const { scrollParser } = this
     this._mainDocument = new scrollParser(this.scrollCode)
     await this._mainDocument.build()
   }
@@ -340,7 +383,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = (scrollCode, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
@@ -352,11 +395,12 @@ ${TopBarComponent.name}
 ${BottomBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
-  ${simojiCode.replace(/\n/g, "\n  ")}
+  ${scrollCode.replace(/\n/g, "\n  ")}
 ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
+  app.setParsersCode(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app
@@ -653,10 +697,9 @@ class BrowserGlue extends AbstractParticleComponentParser {
   }
 
   async init(parsersCode) {
-    window.scrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
     const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)
+    window.app = EditorApp.setupApp(scrollCode, parsersCode, window.innerWidth, window.innerHeight)
     window.app.start()
     return window.app
   }

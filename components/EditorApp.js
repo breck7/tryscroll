@@ -12,7 +12,7 @@ const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
 
 // prettier-ignore
-/*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollParser)
+/*NODE_JS_ONLY*/ const defaultScrollParser = new (require("scroll-cli").DefaultScrollParser)
 
 class githubTriangleComponent extends AbstractParticleComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
@@ -109,11 +109,47 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   dumpErrorsCommand() {
-    const errs = new scrollParser(this.scrollCode).getAllErrors()
+    const { scrollParser, scrollCode } = this
+    const errs = new scrollParser(scrollCode).getAllErrors()
     console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
+  get scrollParser() {
+    const { parserCode } = this
+    if (parserCode) {
+      try {
+        this.cachedParser = new HandParsersProgram(
+          this.defaultParsersCode + "\n" + parserCode,
+        ).compileAndReturnRootParser()
+        return this.cachedParser
+      } catch (err) {
+        // console.error(err)
+      }
+    }
+    return this.defaultScrollParser
+  }
+
+  get parserCode() {
+    const { scrollCode } = this
+    if (!scrollCode) return ""
+    const parserDefinitionRegex = /^[a-zA-Z0-9_]+Parser$/
+    const atomDefinitionRegex = /^[a-zA-Z0-9_]+Atom/
+    return new Particle(scrollCode)
+      .filter(
+        (particle) => particle.getLine().match(parserDefinitionRegex) || particle.getLine().match(atomDefinitionRegex),
+      )
+      .map((particle) => particle.asString)
+      .join("\n")
+      .trim()
+  }
+
+  setParsersCode(parsersCode) {
+    this.defaultParsersCode = parsersCode
+    this.defaultScrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
+  }
+
   async buildMainDocument() {
+    const { scrollParser } = this
     this._mainDocument = new scrollParser(this.scrollCode)
     await this._mainDocument.build()
   }
@@ -183,7 +219,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (simojiCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = (scrollCode, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
@@ -195,11 +231,12 @@ ${TopBarComponent.name}
 ${BottomBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
-  ${simojiCode.replace(/\n/g, "\n  ")}
+  ${scrollCode.replace(/\n/g, "\n  ")}
 ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
+  app.setParsersCode(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app

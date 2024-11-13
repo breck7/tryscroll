@@ -1,9 +1,6 @@
 const { Particle } = require("scrollsdk/products/Particle.js")
 const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
-// prettier-ignore
-/*NODE_JS_ONLY*/ const scrollParser = new (require("scroll-cli").DefaultScrollParser)
-
 class CodeMirrorShim {
   setSize() {}
   setValue(value) {
@@ -45,6 +42,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this._code = code
     const root = this.root
     // this._updateLocalStorage()
+    const { scrollParser } = root
 
     this.program = new scrollParser(code)
     const errs = this.program.getAllErrors()
@@ -69,7 +67,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
             this._onCodeKeyUp()
           })
           this.codeWidgets.push(
-            this.codeMirrorInstance.addLineWidget(err.lineNumber - 1, el, { coverGutter: false, noHScroll: false })
+            this.codeMirrorInstance.addLineWidget(err.lineNumber - 1, el, { coverGutter: false, noHScroll: false }),
           )
         })
       const info = this.codeMirrorInstance.getScrollInfo()
@@ -115,7 +113,15 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => scrollParser, undefined, CodeMirror)
+    const { root } = this
+    this.codeMirrorInstance = new ParsersCodeMirrorMode(
+      "custom",
+      () => {
+        return root.scrollParser
+      },
+      undefined,
+      CodeMirror,
+    )
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,

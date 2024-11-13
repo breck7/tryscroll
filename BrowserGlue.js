@@ -92,10 +92,9 @@ class BrowserGlue extends AbstractParticleComponentParser {
   }
 
   async init(parsersCode) {
-    window.scrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
     const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(scrollCode, window.innerWidth, window.innerHeight)
+    window.app = EditorApp.setupApp(scrollCode, parsersCode, window.innerWidth, window.innerHeight)
     window.app.start()
     return window.app
   }
