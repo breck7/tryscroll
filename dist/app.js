@@ -278,18 +278,27 @@ class EditorApp extends AbstractParticleComponentParser {
     console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
+  clearCachedParser() {
+    this._currentParserCode = undefined
+    this.cachedParser = undefined
+  }
+
+  _currentParserCode
   get scrollParser() {
     const { parserCode } = this
     if (parserCode) {
+      if (parserCode === this._currentParserCode) return this.cachedParser
       try {
         this.cachedParser = new HandParsersProgram(
           this.defaultParsersCode + "\n" + parserCode,
         ).compileAndReturnRootParser()
+        this._currentParserCode = parserCode
         return this.cachedParser
       } catch (err) {
         // console.error(err)
       }
     }
+    this.clearCachedParser()
     return this.defaultScrollParser
   }
 
@@ -313,8 +322,9 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   async buildMainDocument() {
-    const { scrollParser } = this
-    this._mainDocument = new scrollParser(this.scrollCode)
+    const { scrollParser, defaultScrollParser, scrollCode } = this
+    const afterMacros = new defaultScrollParser().evalMacros(scrollCode)
+    this._mainDocument = new scrollParser(afterMacros)
     await this._mainDocument.build()
   }
 
