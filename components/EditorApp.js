@@ -95,10 +95,12 @@ class EditorApp extends AbstractParticleComponentParser {
     this.loadNewDoc(scrollCode)
   }
 
-  formatScrollCommand() {
-    const scrollCode = this.mainDocument.getFormatted()
+  async formatScrollCommand() {
+    const mainDoc = await this.buildMainDocument(false)
+    const scrollCode = mainDoc.getFormatted()
     this.editor.setCodeMirrorValue(scrollCode)
     this.loadNewDoc(scrollCode)
+    await this.buildMainDocument()
   }
 
   updateLocalStorage(scrollCode) {
@@ -157,11 +159,12 @@ class EditorApp extends AbstractParticleComponentParser {
     this.defaultScrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
   }
 
-  async buildMainDocument() {
+  async buildMainDocument(macrosOn = true) {
     const { scrollParser, defaultScrollParser, scrollCode } = this
-    const afterMacros = new defaultScrollParser().evalMacros(scrollCode)
+    const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
     this._mainDocument = new scrollParser(afterMacros)
     await this._mainDocument.build()
+    return this._mainDocument
   }
 
   get mainDocument() {
