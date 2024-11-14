@@ -4,34 +4,34 @@ class ExportComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ExportComponent
- a Copy HTML
-  clickCommand copyHtmlToClipboardCommand
- span  | 
- a Download HTML
-  clickCommand downloadHtmlCommand
- span  | 
  a Format
   clickCommand formatScrollCommand
  span  | 
  a Tutorial
   target _blank
-  href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}`
+  href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}
+ span  | 
+ a Copy Output
+  clickCommand copyOutputToClipboardCommand
+ span  | 
+ a Download Output
+  clickCommand downloadOutputCommand`
   }
 
-  copyHtmlToClipboardCommand() {
-    this.root.willowBrowser.copyTextToClipboard(this.root.completeHtml)
+  copyOutputToClipboardCommand() {
+    this.root.willowBrowser.copyTextToClipboard(this.root.mainOutput.content)
   }
 
   formatScrollCommand() {
     this.root.formatScrollCommand()
   }
 
-  downloadHtmlCommand() {
-    // todo: figure this out. use the browsers filename? tile title? id?
-    let extension = "html"
-    let type = "text/html"
-    let str = this.root.completeHtml
-    this.root.willowBrowser.downloadFile(str, "scrollOutput.html", type)
+  downloadOutputCommand() {
+    const program = this.root.mainParticle
+    let mainOutput = this.root.mainOutput
+    const filename = program.permalink
+    let type = "text/" + mainOutput.type
+    this.root.willowBrowser.downloadFile(mainOutput.content, filename, type)
   }
 
   get app() {

@@ -1,13 +1,15 @@
 const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 
 class ShowcaseComponent extends AbstractParticleComponentParser {
-  get html() {
-    return this.root.completeHtml
-  }
-
   async refresh() {
-    this.root.mainDocument.build()
-    document.getElementById("theIframe").srcdoc = this.html
+    this.root.mainParticle.build()
+    const { mainOutput } = this.root
+    let content = mainOutput.content
+    if (mainOutput.type !== "html") {
+      content = `<pre>${content}</pre>`
+    }
+
+    document.getElementById("theIframe").srcdoc = content
     jQuery("#theIframe")
       .contents()
       .find("a")

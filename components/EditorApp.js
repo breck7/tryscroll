@@ -65,10 +65,6 @@ class EditorApp extends AbstractParticleComponentParser {
     })
   }
 
-  get completeHtml() {
-    return this.mainDocument.compile()
-  }
-
   verbose = true
 
   get leftStartPosition() {
@@ -162,14 +158,32 @@ class EditorApp extends AbstractParticleComponentParser {
   async buildMainDocument(macrosOn = true) {
     const { scrollParser, defaultScrollParser, scrollCode } = this
     const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
-    this._mainDocument = new scrollParser(afterMacros)
-    await this._mainDocument.build()
-    return this._mainDocument
+    this._mainParticle = new scrollParser(afterMacros)
+    await this._mainParticle.build()
+    return this._mainParticle
   }
 
-  get mainDocument() {
-    if (!this._mainDocument) this.buildMainDocument()
-    return this._mainDocument
+  get mainParticle() {
+    if (!this._mainParticle) this.buildMainDocument()
+    return this._mainParticle
+  }
+
+  get mainOutput() {
+    const particle = this.buildParticles[0]
+    if (!particle)
+      return {
+        type: "html",
+        content: this.mainParticle.compile(),
+      }
+    return {
+      type: particle.extension.toLowerCase(),
+      content: particle.buildOutput(),
+    }
+  }
+
+  get buildParticles() {
+    const { mainParticle } = this
+    return mainParticle.filter((particle) => particle.buildOutput)
   }
 
   refreshHtml() {
