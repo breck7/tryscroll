@@ -337,7 +337,7 @@ class EditorApp extends AbstractParticleComponentParser {
     if (!particle)
       return {
         type: "html",
-        content: this.mainParticle.compile(),
+        content: this.mainParticle.buildHtml(),
       }
     return {
       type: particle.extension.toLowerCase(),
