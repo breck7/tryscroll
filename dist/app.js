@@ -293,7 +293,7 @@ class EditorApp extends AbstractParticleComponentParser {
         this._currentParserCode = parserCode
         return this.cachedParser
       } catch (err) {
-        // console.error(err)
+        console.error(err)
       }
     }
     this.clearCachedParser()
