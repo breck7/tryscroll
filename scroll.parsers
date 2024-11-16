@@ -2778,6 +2778,19 @@ scrollContainerParser
     this.parent.bodyStack.push("</div>")
    return `<div style="width: 100%; box-sizing: border-box; max-width: ${this.maxWidth}; margin: 0 auto;" class="scrollContainerParser">`
   }
+scrollClearStackParser
+ popularity 0.000096
+ cue clearStack
+ description Clear body stack.
+ extends abstractScrollParser
+ boolean isHtml true
+ javascript
+  buildHtmlSnippet() {
+   return ""
+  }
+  buildHtml() {
+    return this.root.clearBodyStack().trim()
+  }
 cssParser
  popularity 0.007211
  extends abstractScrollParser
@@ -3021,15 +3034,6 @@ inspectAboveParser
  javascript
   method = "previous"
   reverse = true
-scrollFooterParser
- extends abstractScrollParser
- description Move section to file footer.
- atoms preBuildCommandAtom
- cue footer
- javascript
-  buildHtml() {
-   return ""
-  }
 hakonParser
  cueFromId
  extends abstractScrollParser
@@ -4815,6 +4819,10 @@ openGraphParser
  description Add this line to make this the open graph image.
  cueFromId
  atoms cueAtom
+scrollFooterParser
+ description Import to bottom of file.
+ atoms preBuildCommandAtom
+ cue footer
 scriptLineParser
  catchAllAtomType scriptAnyAtom
  catchAllParser scriptLineParser
