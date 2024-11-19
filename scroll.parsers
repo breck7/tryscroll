@@ -4915,21 +4915,6 @@ parsersStringParser
 abstractParserRuleParser
  single
  atoms cueAtom
-parsersCompilesToParser
- cue compilesTo
- atoms cueAtom fileExtensionAtom
- extends abstractParserRuleParser
- description File extension for simple compilers.
- // todo: deprecate?
- // Optionally specify a file extension that will be used when compiling your language to a file. Generally used on parsers marked root.
- tags experimental
-parsersExtensionsParser
- extends abstractParserRuleParser
- catchAllAtomType fileExtensionAtom
- description File extension for your dialect.
- // File extensions of your language. Generally used for parsers marked "root". Sometimes your language might have multiple extensions. If you don't add this, the root particle's parserId will be used as the default file extension.
- cue extensions
- tags deprecate
 abstractNonTerminalParserRuleParser
  extends abstractParserRuleParser
 parsersBaseParserParser
@@ -4968,11 +4953,12 @@ parsersAtomsParser
  tags analyzePhase
 parsersCompilerParser
  // todo Remove this and its subparticles?
- description For simple compilers.
+ description Deprecated. For simple compilers.
  inScope stringTemplateParser catchAllAtomDelimiterParser openSubparticlesParser closeSubparticlesParser indentCharacterParser joinSubparticlesWithParser
  extends abstractParserRuleParser
  cue compiler
- tags experimental
+ tags deprecate
+ boolean suggestInAutocomplete false
 parserDescriptionParser
  description Parser description.
  catchAllAtomType stringAtom
@@ -5089,6 +5075,7 @@ contentKeyParser
  cueFromId
  catchAllAtomType stringAtom
  tags deprecate
+ boolean suggestInAutocomplete false
 subparticlesKeyParser
  // todo: deprecate?
  description Deprecated. For to/from JSON.
@@ -5097,6 +5084,7 @@ subparticlesKeyParser
  cueFromId
  catchAllAtomType stringAtom
  tags deprecate
+ boolean suggestInAutocomplete false
 parsersTagsParser
  catchAllAtomType stringAtom
  extends abstractParserRuleParser
@@ -5229,12 +5217,10 @@ quoteLineParser
  catchAllAtomType anyAtom
  catchAllParser quoteLineParser
 scrollParser
- extensions scroll
  description Scroll is a language for scientists of all ages. Refine, share and collaborate on ideas.
  root
  inScope abstractScrollParser blankLineParser atomTypeDefinitionParser parserDefinitionParser
  catchAllParser catchAllParagraphParser
- compilesTo html
  javascript
   setFile(file) {
    this.file = file
