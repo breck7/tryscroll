@@ -57,7 +57,7 @@ buildCommandAtom
 cssAnyAtom
  extends codeAtom
 cssLengthAtom
- extends anyAtom
+ extends codeAtom
 htmlAnyAtom
  extends codeAtom
 inlineMarkupNameAtom
@@ -280,7 +280,11 @@ abstractAftertextParser
    if (tag === "none") // Allow no tag for aftertext in tables
      return this.text
    const id = this.has("id") ? "" : `id="${this.htmlId}" ` // always add an html id
-   return this.getHtmlRequirements(buildSettings) + `<${tag} ${id}${this.htmlAttributes}${classAttr}${styles}>${this.text}</${tag}>`
+   return this.getHtmlRequirements(buildSettings) + `<${tag} ${id}${this.htmlAttributes}${classAttr}${styles}>${this.text}${this.closingTag}`
+  }
+  get closingTag() {
+    const tag = this.get("tag") || this.tag
+    return `</${tag}>`
   }
   get htmlAttributes() {
    const attrs = this.filter(particle => particle.isAttribute)
@@ -827,6 +831,28 @@ endColumnsParser
   buildHtmlSnippet() {
    return ""
   }
+scrollContainerParser
+ popularity 0.000096
+ cue container
+ description A centered HTML div.
+ catchAllAtomType cssLengthAtom
+ extends abstractAftertextParser
+ boolean isHtml true
+ javascript
+  get maxWidth() {
+    return this.atoms[1] || "1200px"
+  }
+  buildHtmlSnippet() {
+   return ""
+  }
+  tag = "div"
+  defaultClassName = "scrollContainerParser"
+  buildHtml() {
+   this.parent.bodyStack.push("</div>")
+   return `<style>.scrollContainerParser{width: 100%; box-sizing: border-box; max-width: ${this.maxWidth}; margin: 0 auto;}</style>` + super.buildHtml()
+  }
+  get text() { return ""}
+  get closingTag() { return ""}
 abstractDinkusParser
  extends abstractAftertextParser
  boolean isDinkus true
@@ -2760,24 +2786,6 @@ thanksToParser
  description Acknowledgements comment. Prints nothing.
  extends abstractCommentParser
  cueFromId
-scrollContainerParser
- popularity 0.000096
- cue container
- description A centered HTML div.
- catchAllAtomType cssLengthAtom
- extends abstractScrollParser
- boolean isHtml true
- javascript
-  get maxWidth() {
-    return this.atoms[1] || "1200px"
-  }
-  buildHtmlSnippet() {
-   return ""
-  }
-  buildHtml() {
-    this.parent.bodyStack.push("</div>")
-   return `<div style="width: 100%; box-sizing: border-box; max-width: ${this.maxWidth}; margin: 0 auto;" class="scrollContainerParser">`
-  }
 scrollClearStackParser
  popularity 0.000096
  cue clearStack
