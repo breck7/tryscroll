@@ -114,14 +114,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
     const { root } = this
-    this.codeMirrorInstance = new ParsersCodeMirrorMode(
-      "custom",
-      () => {
-        return root.parser
-      },
-      undefined,
-      CodeMirror,
-    )
+    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => root.parser, undefined, CodeMirror)
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
