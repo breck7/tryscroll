@@ -16,6 +16,7 @@ class ParserEditor {
     if (customParserCode) {
       if (customParserCode === this._customParserCode) return this._cachedCustomParser
       try {
+        // todo: eval imports
         this._cachedCustomParser = new HandParsersProgram(
           this.defaultParserCode + "\n" + customParserCode,
         ).compileAndReturnRootParser()
