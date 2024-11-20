@@ -54,9 +54,9 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this._code = code
     const root = this.root
     // this._updateLocalStorage()
-    const { possiblyExtendedScrollParser } = root
+    const { parser } = root
 
-    this.program = new possiblyExtendedScrollParser(code)
+    this.program = new parser(code)
     const errs = this.program.getAllErrors()
 
     const errMessage = errs.length ? `${errs.length} errors` : "&nbsp;"
@@ -129,7 +129,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this.codeMirrorInstance = new ParsersCodeMirrorMode(
       "custom",
       () => {
-        return root.possiblyExtendedScrollParser
+        return root.parser
       },
       undefined,
       CodeMirror,
@@ -216,6 +216,87 @@ const newSeed = () => {
   return _defaultSeed
 }
 
+class ParserEditor {
+  // parent needs a getter "bufferValue"
+  constructor(defaultParserCode, parent) {
+    this.defaultParserCode = defaultParserCode
+    this.defaultScrollParser = new HandParsersProgram(defaultParserCode).compileAndReturnRootParser()
+    this.parent = parent
+  }
+  _clearCustomParser() {
+    this._customParserCode = undefined
+    this._cachedCustomParser = undefined
+  }
+
+  _customParserCode
+  get possiblyExtendedScrollParser() {
+    const { customParserCode } = this
+    if (customParserCode) {
+      if (customParserCode === this._customParserCode) return this._cachedCustomParser
+      try {
+        this._cachedCustomParser = new HandParsersProgram(
+          this.defaultParserCode + "\n" + customParserCode,
+        ).compileAndReturnRootParser()
+        this._customParserCode = customParserCode
+        return this._cachedCustomParser
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    this._clearCustomParser()
+    return this.defaultScrollParser
+  }
+  get customParserCode() {
+    const { scrollCode } = this
+    if (!scrollCode) return ""
+    const parserDefinitionRegex = /^[a-zA-Z0-9_]+Parser$/m
+    const atomDefinitionRegex = /^[a-zA-Z0-9_]+Atom/
+    if (!parserDefinitionRegex.test(scrollCode)) return "" // skip next if not needed.
+    return new Particle(scrollCode)
+      .filter(
+        (particle) => particle.getLine().match(parserDefinitionRegex) || particle.getLine().match(atomDefinitionRegex),
+      )
+      .map((particle) => particle.asString)
+      .join("\n")
+      .trim()
+  }
+  get scrollCode() {
+    return this.parent.bufferValue
+  }
+  get parser() {
+    return this.possiblyExtendedScrollParser
+  }
+  get errors() {
+    const { parser, scrollCode } = this
+    const errs = new parser(scrollCode).getAllErrors()
+    return new Particle(errs.map((err) => err.toObject())).toFormattedTable(200)
+  }
+  async buildMainProgram(macrosOn = true) {
+    const { parser, defaultScrollParser, scrollCode } = this
+    const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
+    this._mainProgram = new parser(afterMacros)
+    await this._mainProgram.build()
+    return this._mainProgram
+  }
+  get mainProgram() {
+    if (!this._mainProgram) this.buildMainProgram()
+    return this._mainProgram
+  }
+  get mainOutput() {
+    const { mainProgram } = this
+    const particle = mainProgram.filter((particle) => particle.buildOutput)[0]
+    if (!particle)
+      return {
+        type: "html",
+        content: mainProgram.buildHtml(),
+      }
+    return {
+      type: particle.extension.toLowerCase(),
+      content: particle.buildOutput(),
+    }
+  }
+}
+
 class EditorApp extends AbstractParticleComponentParser {
   createParserCombinator() {
     return new Particle.ParserCombinator(ErrorParticle, {
@@ -233,6 +314,14 @@ class EditorApp extends AbstractParticleComponentParser {
 
   get leftStartPosition() {
     return this.editor.width
+  }
+
+  get mainOutput() {
+    return this.parserEditor.mainOutput
+  }
+
+  get mainProgram() {
+    return this.parserEditor.mainProgram
   }
 
   get editor() {
@@ -256,94 +345,34 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   async formatScrollCommand() {
-    const mainDoc = await this.buildMainProgram(false)
+    const mainDoc = await this.parserEditor.buildMainProgram(false)
     const scrollCode = mainDoc.getFormatted()
     this.editor.setCodeMirrorValue(scrollCode)
     this.loadNewDoc(scrollCode)
-    await this.buildMainProgram()
+    await this.parserEditor.buildMainProgram()
   }
 
   updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
-    this.buildMainProgram()
+    this.parserEditor.buildMainProgram()
     console.log("Local storage updated...")
   }
 
   dumpErrorsCommand() {
-    const { possiblyExtendedScrollParser, scrollCode } = this
-    const errs = new possiblyExtendedScrollParser(scrollCode).getAllErrors()
-    console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
+    console.log(this.parserEditor.errors)
   }
 
-  clearCustomParser() {
-    this._customParserCode = undefined
-    this.cachedCustomParser = undefined
+  get parser() {
+    return this.parserEditor.parser
   }
 
-  _customParserCode
-  get possiblyExtendedScrollParser() {
-    const { customParserCode } = this
-    if (customParserCode) {
-      if (customParserCode === this._customParserCode) return this.cachedCustomParser
-      try {
-        this.cachedCustomParser = new HandParsersProgram(
-          this.defaultParsersCode + "\n" + customParserCode,
-        ).compileAndReturnRootParser()
-        this._customParserCode = customParserCode
-        return this.cachedCustomParser
-      } catch (err) {
-        console.error(err)
-      }
-    }
-    this.clearCustomParser()
-    return this.defaultScrollParser
+  get bufferValue() {
+    return this.scrollCode
   }
 
-  get customParserCode() {
-    const { scrollCode } = this
-    if (!scrollCode) return ""
-    const parserDefinitionRegex = /^[a-zA-Z0-9_]+Parser$/
-    const atomDefinitionRegex = /^[a-zA-Z0-9_]+Atom/
-    return new Particle(scrollCode)
-      .filter(
-        (particle) => particle.getLine().match(parserDefinitionRegex) || particle.getLine().match(atomDefinitionRegex),
-      )
-      .map((particle) => particle.asString)
-      .join("\n")
-      .trim()
-  }
-
-  setDefaultParsersCode(parsersCode) {
-    this.defaultParsersCode = parsersCode
-    this.defaultScrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
-  }
-
-  async buildMainProgram(macrosOn = true) {
-    const { possiblyExtendedScrollParser, defaultScrollParser, scrollCode } = this
-    const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
-    this._mainProgram = new possiblyExtendedScrollParser(afterMacros)
-    await this._mainProgram.build()
-    return this._mainProgram
-  }
-
-  get mainProgram() {
-    if (!this._mainProgram) this.buildMainProgram()
-    return this._mainProgram
-  }
-
-  get mainOutput() {
-    const { mainProgram } = this
-    const particle = mainProgram.filter((particle) => particle.buildOutput)[0]
-    if (!particle)
-      return {
-        type: "html",
-        content: mainProgram.buildHtml(),
-      }
-    return {
-      type: particle.extension.toLowerCase(),
-      content: particle.buildOutput(),
-    }
+  initParserEditor(parsersCode) {
+    this.parserEditor = new ParserEditor(parsersCode, this)
   }
 
   refreshHtml() {
@@ -423,7 +452,7 @@ ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.setDefaultParsersCode(parsersCode)
+  app.initParserEditor(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app
