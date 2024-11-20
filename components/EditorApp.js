@@ -92,51 +92,51 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   async formatScrollCommand() {
-    const mainDoc = await this.buildMainDocument(false)
+    const mainDoc = await this.buildMainProgram(false)
     const scrollCode = mainDoc.getFormatted()
     this.editor.setCodeMirrorValue(scrollCode)
     this.loadNewDoc(scrollCode)
-    await this.buildMainDocument()
+    await this.buildMainProgram()
   }
 
   updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
-    this.buildMainDocument()
+    this.buildMainProgram()
     console.log("Local storage updated...")
   }
 
   dumpErrorsCommand() {
-    const { scrollParser, scrollCode } = this
-    const errs = new scrollParser(scrollCode).getAllErrors()
+    const { possiblyExtendedScrollParser, scrollCode } = this
+    const errs = new possiblyExtendedScrollParser(scrollCode).getAllErrors()
     console.log(new Particle(errs.map((err) => err.toObject())).toFormattedTable(200))
   }
 
-  clearCachedParser() {
-    this._currentParserCode = undefined
-    this.cachedParser = undefined
+  clearCustomParser() {
+    this._customParserCode = undefined
+    this.cachedCustomParser = undefined
   }
 
-  _currentParserCode
-  get scrollParser() {
-    const { parserCode } = this
-    if (parserCode) {
-      if (parserCode === this._currentParserCode) return this.cachedParser
+  _customParserCode
+  get possiblyExtendedScrollParser() {
+    const { customParserCode } = this
+    if (customParserCode) {
+      if (customParserCode === this._customParserCode) return this.cachedCustomParser
       try {
-        this.cachedParser = new HandParsersProgram(
-          this.defaultParsersCode + "\n" + parserCode,
+        this.cachedCustomParser = new HandParsersProgram(
+          this.defaultParsersCode + "\n" + customParserCode,
         ).compileAndReturnRootParser()
-        this._currentParserCode = parserCode
-        return this.cachedParser
+        this._customParserCode = customParserCode
+        return this.cachedCustomParser
       } catch (err) {
         console.error(err)
       }
     }
-    this.clearCachedParser()
+    this.clearCustomParser()
     return this.defaultScrollParser
   }
 
-  get parserCode() {
+  get customParserCode() {
     const { scrollCode } = this
     if (!scrollCode) return ""
     const parserDefinitionRegex = /^[a-zA-Z0-9_]+Parser$/
@@ -150,40 +150,36 @@ class EditorApp extends AbstractParticleComponentParser {
       .trim()
   }
 
-  setParsersCode(parsersCode) {
+  setDefaultParsersCode(parsersCode) {
     this.defaultParsersCode = parsersCode
     this.defaultScrollParser = new HandParsersProgram(parsersCode).compileAndReturnRootParser()
   }
 
-  async buildMainDocument(macrosOn = true) {
-    const { scrollParser, defaultScrollParser, scrollCode } = this
+  async buildMainProgram(macrosOn = true) {
+    const { possiblyExtendedScrollParser, defaultScrollParser, scrollCode } = this
     const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
-    this._mainParticle = new scrollParser(afterMacros)
-    await this._mainParticle.build()
-    return this._mainParticle
+    this._mainProgram = new possiblyExtendedScrollParser(afterMacros)
+    await this._mainProgram.build()
+    return this._mainProgram
   }
 
-  get mainParticle() {
-    if (!this._mainParticle) this.buildMainDocument()
-    return this._mainParticle
+  get mainProgram() {
+    if (!this._mainProgram) this.buildMainProgram()
+    return this._mainProgram
   }
 
   get mainOutput() {
-    const particle = this.buildParticles[0]
+    const { mainProgram } = this
+    const particle = mainProgram.filter((particle) => particle.buildOutput)[0]
     if (!particle)
       return {
         type: "html",
-        content: this.mainParticle.buildHtml(),
+        content: mainProgram.buildHtml(),
       }
     return {
       type: particle.extension.toLowerCase(),
       content: particle.buildOutput(),
     }
-  }
-
-  get buildParticles() {
-    const { mainParticle } = this
-    return mainParticle.filter((particle) => particle.buildOutput)
   }
 
   refreshHtml() {
@@ -263,7 +259,7 @@ ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.setParsersCode(parsersCode)
+  app.setDefaultParsersCode(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app

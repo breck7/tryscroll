@@ -42,9 +42,9 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this._code = code
     const root = this.root
     // this._updateLocalStorage()
-    const { scrollParser } = root
+    const { possiblyExtendedScrollParser } = root
 
-    this.program = new scrollParser(code)
+    this.program = new possiblyExtendedScrollParser(code)
     const errs = this.program.getAllErrors()
 
     const errMessage = errs.length ? `${errs.length} errors` : "&nbsp;"
@@ -117,7 +117,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this.codeMirrorInstance = new ParsersCodeMirrorMode(
       "custom",
       () => {
-        return root.scrollParser
+        return root.possiblyExtendedScrollParser
       },
       undefined,
       CodeMirror,

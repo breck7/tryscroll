@@ -27,7 +27,7 @@ class ExportComponent extends AbstractParticleComponentParser {
   }
 
   downloadOutputCommand() {
-    const program = this.root.mainParticle
+    const program = this.root.mainProgram
     let mainOutput = this.root.mainOutput
     const filename = program.permalink
     let type = "text/" + mainOutput.type

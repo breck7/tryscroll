@@ -11,7 +11,7 @@ class ShareComponent extends AbstractParticleComponentParser {
   }
 
   getDependencies() {
-    return [this.root.mainParticle]
+    return [this.root.mainProgram]
   }
 
   get link() {
