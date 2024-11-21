@@ -41,7 +41,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     if (this._code === code) return
     this._code = code
     const root = this.root
-    // this._updateLocalStorage()
+    root.updateLocalStorage(code)
     const { parser } = root
 
     this.program = new parser(code)

@@ -91,6 +91,7 @@ class EditorApp extends AbstractParticleComponentParser {
   loadNewDoc(scrollCode) {
     this.renderAndGetRenderReport()
     this.updateLocalStorage(scrollCode)
+    this.parserEditor.buildMainProgram()
     this.refreshHtml()
   }
 
@@ -111,7 +112,6 @@ class EditorApp extends AbstractParticleComponentParser {
   updateLocalStorage(scrollCode) {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
-    this.parserEditor.buildMainProgram()
     console.log("Local storage updated...")
   }
 

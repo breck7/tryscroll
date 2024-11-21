@@ -745,6 +745,13 @@ quickVideoParser
  atoms urlAtom
  pattern ^[^\s]+\.(mp4|webm|avi|mov)
  int atomIndex 0
+ widthParser
+  // todo: fix inheritance bug
+  cueFromId
+  atoms cueAtom
+ heightParser
+  cueFromId
+  atoms cueAtom
 quickParagraphParser
  popularity 0.001881
  cue *
@@ -5228,7 +5235,7 @@ scrollParser
   }
   buildHtml(buildSettings) {
     this.sectionStack = []
-    return this.map(subparticle => subparticle.buildHtml(buildSettings)).filter(i => i).join("\n") + this.clearSectionStack()
+    return this.filter(subparticle => subparticle.buildHtml).map(subparticle => subparticle.buildHtml(buildSettings)).filter(i => i).join("\n") + this.clearSectionStack()
   }
   sectionStack = []
   clearSectionStack() {
