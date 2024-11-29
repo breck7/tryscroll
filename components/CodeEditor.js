@@ -85,7 +85,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this.root.loadNewDoc(this._code)
   }
 
-  get scrollCode() {
+  get bufferValue() {
     return this.codeMirrorInstance ? this.codeMirrorValue : this.getParticle("value").subparticlesToString()
   }
 

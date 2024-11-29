@@ -7,7 +7,7 @@ const { CodeEditorComponent } = require("./CodeEditor.js")
 const { BottomBarComponent } = require("./BottomBar.js")
 const { ShareComponent } = require("./Share.js")
 const { ExportComponent } = require("./Export.js")
-const { ParserEditor } = require("./ParserEditor.js")
+const { FusionEditor } = require("./FusionEditor.js")
 const { EditorHandleComponent } = require("./EditorHandle.js")
 const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
@@ -73,62 +73,62 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   get mainOutput() {
-    return this.parserEditor.mainOutput
+    return this.fusionEditor.mainOutput
   }
 
   get mainProgram() {
-    return this.parserEditor.mainProgram
+    return this.fusionEditor.mainProgram
   }
 
   get editor() {
     return this.getParticle(CodeEditorComponent.name)
   }
 
-  get scrollCode() {
-    return this.editor.scrollCode
+  get bufferValue() {
+    return this.editor.bufferValue
   }
 
-  loadNewDoc(scrollCode) {
+  loadNewDoc(bufferValue) {
     this.renderAndGetRenderReport()
-    this.updateLocalStorage(scrollCode)
-    this.parserEditor.buildMainProgram()
+    this.updateLocalStorage(bufferValue)
+    this.fusionEditor.buildMainProgram()
     this.refreshHtml()
   }
 
+  async buildMainProgram() {
+    await this.fusionEditor.buildMainProgram()
+  }
+
   // todo: cleanup
-  pasteCodeCommand(scrollCode) {
-    this.editor.setCodeMirrorValue(scrollCode)
-    this.loadNewDoc(scrollCode)
+  pasteCodeCommand(bufferValue) {
+    this.editor.setCodeMirrorValue(bufferValue)
+    this.loadNewDoc(bufferValue)
   }
 
   async formatScrollCommand() {
-    const mainDoc = await this.parserEditor.buildMainProgram(false)
-    const scrollCode = mainDoc.getFormatted()
-    this.editor.setCodeMirrorValue(scrollCode)
-    this.loadNewDoc(scrollCode)
-    await this.parserEditor.buildMainProgram()
+    const mainDoc = await this.fusionEditor.buildMainProgram(false)
+    const bufferValue = mainDoc.getFormatted()
+    this.editor.setCodeMirrorValue(bufferValue)
+    this.loadNewDoc(bufferValue)
+    await this.fusionEditor.buildMainProgram()
   }
 
-  updateLocalStorage(scrollCode) {
+  updateLocalStorage(bufferValue) {
     if (this.isNodeJs()) return // todo: tcf should shim this
-    localStorage.setItem(LocalStorageKeys.scroll, scrollCode)
+    localStorage.setItem(LocalStorageKeys.scroll, bufferValue)
     console.log("Local storage updated...")
   }
 
   dumpErrorsCommand() {
-    console.log(this.parserEditor.errors)
+    console.log(this.fusionEditor.errors)
   }
 
   get parser() {
-    return this.parserEditor.parser
+    return this.fusionEditor.parser
   }
 
-  get bufferValue() {
-    return this.scrollCode
-  }
-
-  initParserEditor(parsersCode) {
-    this.parserEditor = new ParserEditor(parsersCode, this)
+  initFusionEditor(parsersCode) {
+    this.fusionEditor = new FusionEditor(parsersCode, this)
   }
 
   refreshHtml() {
@@ -161,7 +161,7 @@ class EditorApp extends AbstractParticleComponentParser {
 
   get urlHash() {
     const particle = new Particle()
-    particle.appendLineAndSubparticles(UrlKeys.scroll, this.scrollCode ?? "")
+    particle.appendLineAndSubparticles(UrlKeys.scroll, this.bufferValue ?? "")
     return "#" + encodeURIComponent(particle.asString)
   }
 
@@ -191,7 +191,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (scrollCode, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = (bufferValue, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
@@ -203,12 +203,12 @@ ${TopBarComponent.name}
 ${BottomBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
-  ${scrollCode.replace(/\n/g, "\n  ")}
+  ${bufferValue.replace(/\n/g, "\n  ")}
 ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.initParserEditor(parsersCode)
+  app.initFusionEditor(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app
