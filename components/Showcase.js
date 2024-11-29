@@ -2,7 +2,7 @@ const { AbstractParticleComponentParser } = require("scrollsdk/products/Particle
 
 class ShowcaseComponent extends AbstractParticleComponentParser {
   async refresh() {
-    this.root.mainProgram.build()
+    await this.root.mainProgram.load()
     const { mainOutput } = this.root
     let content = mainOutput.content
     if (mainOutput.type !== "html") {

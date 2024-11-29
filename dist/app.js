@@ -90,7 +90,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     clearTimeout(this._timeout)
     this._timeout = setTimeout(() => {
       this.loadFromEditor()
-    }, 200)
+    }, 50)
   }
 
   loadFromEditor() {
@@ -534,7 +534,7 @@ class ParserEditor {
     const { parser, defaultScrollParser, scrollCode } = this
     const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
     this._mainProgram = new parser(afterMacros)
-    await this._mainProgram.build()
+    await this._mainProgram.load()
     return this._mainProgram
   }
   get mainProgram() {
@@ -589,7 +589,7 @@ window.ShareComponent = ShareComponent
 
 class ShowcaseComponent extends AbstractParticleComponentParser {
   async refresh() {
-    this.root.mainProgram.build()
+    await this.root.mainProgram.load()
     const { mainOutput } = this.root
     let content = mainOutput.content
     if (mainOutput.type !== "html") {

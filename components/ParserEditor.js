@@ -58,7 +58,7 @@ class ParserEditor {
     const { parser, defaultScrollParser, scrollCode } = this
     const afterMacros = macrosOn ? new defaultScrollParser().evalMacros(scrollCode) : scrollCode
     this._mainProgram = new parser(afterMacros)
-    await this._mainProgram.build()
+    await this._mainProgram.load()
     return this._mainProgram
   }
   get mainProgram() {

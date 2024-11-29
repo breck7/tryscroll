@@ -78,7 +78,7 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     clearTimeout(this._timeout)
     this._timeout = setTimeout(() => {
       this.loadFromEditor()
-    }, 200)
+    }, 50)
   }
 
   loadFromEditor() {
