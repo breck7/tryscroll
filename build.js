@@ -19,9 +19,9 @@ lib/jquery.ui.touch-punch.min.js
 ../sdk/products/Utils.browser.js
 ../sdk/products/Path.js
 ../sdk/products/Particle.browser.js
-../sdk/products/Fusion.browser.js
 ../sdk/products/Parsers.ts.browser.js
 ../sdk/products/ParsersCodeMirrorMode.browser.js
+../sdk/products/Fusion.browser.js
 ../sdk/products/stump.browser.js
 ../sdk/products/hakon.browser.js
 ../sdk/products/ParticleComponentFramework.browser.js`.split("\n")

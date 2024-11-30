@@ -480,6 +480,7 @@ class FusionEditor {
     this.parent = parent
     const parser = new HandParsersProgram(defaultParserCode).compileAndReturnRootParser()
     this.customParser = parser
+    // todo: cleanup
     class ScrollFile extends FusionFile {
       EXTERNALS_PATH = ""
       defaultParserCode = defaultParserCode
