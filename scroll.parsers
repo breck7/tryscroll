@@ -3893,8 +3893,8 @@ stampParser
     const dir = this.root.folderPath
     this.forEach(particle => particle.execute(dir))
   }
-stumpParser
- cueFromId
+scrollStumpParser
+ cue stump
  extends abstractScrollParser
  description Compile Stump to HTML.
  catchAllParser stumpContentParser
@@ -3909,7 +3909,7 @@ stumpParser
 stumpNoSnippetParser
  popularity 0.010177
  // todo: make noSnippets an aftertext directive?
- extends stumpParser
+ extends scrollStumpParser
  description Compile Stump unless snippet.
  cueFromId
  javascript
