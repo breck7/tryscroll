@@ -20,6 +20,7 @@ lib/jquery.ui.touch-punch.min.js
 ../sdk/products/Path.js
 ../sdk/products/Particle.browser.js
 ../sdk/products/Parsers.ts.browser.js
+../sdk/products/parsers.browser.js
 ../sdk/products/ParsersCodeMirrorMode.browser.js
 ../sdk/products/Fusion.browser.js
 ../sdk/products/stump.browser.js
