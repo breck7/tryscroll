@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "scroll-cli": "^159.1.0",
+    "scroll-cli": "file:../scroll",
     "scrollsdk": "^98.0.0"
   },
   "devDependencies": {

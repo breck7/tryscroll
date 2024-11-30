@@ -18,8 +18,8 @@ lib/jquery.ui.touch-punch.min.js
 ../sdk/sandbox/lib/placeholder.js
 ../sdk/products/Utils.browser.js
 ../sdk/products/Path.js
-../sdk/products/Fusion.browser.js
 ../sdk/products/Particle.browser.js
+../sdk/products/Fusion.browser.js
 ../sdk/products/Parsers.ts.browser.js
 ../sdk/products/ParsersCodeMirrorMode.browser.js
 ../sdk/products/stump.browser.js
