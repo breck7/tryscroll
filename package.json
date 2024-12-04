@@ -10,7 +10,7 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "scroll-cli": "^161.1.0",
-    "scrollsdk": "^99.0.0"
+    "scrollsdk": "^99.2.0"
   },
   "devDependencies": {
     "tap": "^18.7.2"
