@@ -35,18 +35,9 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
 
   rehighlight() {
     if (this._parser === this.root.parser) return
-    console.log("rehighlighting")
+    console.log("rehighlighting needed")
     this._parser = this.root.parser
-
-    const editor = this.codeMirrorInstance
-    const originalContent = editor.getValue()
-    const cursorPosition = editor.getCursor()
-    editor.setValue("//\n" + originalContent)
-    // Restore the original content
-    setTimeout(() => {
-      editor.setValue(originalContent)
-      editor.setCursor(cursorPosition) // Restore the cursor position
-    }, 0) // Use a timeout to ensure rendering happens
+    // todo: figure this out. codemirror seems to not want to repaint.
   }
 
   codeWidgets = []
