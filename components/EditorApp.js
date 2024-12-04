@@ -133,6 +133,7 @@ class EditorApp extends AbstractParticleComponentParser {
 
   refreshHtml() {
     this.getParticle(`${ShowcaseComponent.name}`).refresh()
+    this.editor.rehighlight()
   }
 
   async start() {
@@ -153,6 +154,9 @@ class EditorApp extends AbstractParticleComponentParser {
     this.willowBrowser.setResizeEndHandler(() => {
       this.editor.setSize()
     })
+
+    await this.buildMainProgram()
+    this.editor.rehighlight()
   }
 
   log(message) {

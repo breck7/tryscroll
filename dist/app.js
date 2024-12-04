@@ -45,6 +45,22 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     return this.codeMirrorInstance.getValue()
   }
 
+  rehighlight() {
+    if (this._parser === this.root.parser) return
+    console.log("rehighlighting")
+    this._parser = this.root.parser
+
+    const editor = this.codeMirrorInstance
+    const originalContent = editor.getValue()
+    const cursorPosition = editor.getCursor()
+    editor.setValue("//\n" + originalContent)
+    // Restore the original content
+    setTimeout(() => {
+      editor.setValue(originalContent)
+      editor.setCursor(cursorPosition) // Restore the cursor position
+    }, 0) // Use a timeout to ensure rendering happens
+  }
+
   codeWidgets = []
 
   _onCodeKeyUp() {
@@ -290,6 +306,7 @@ class EditorApp extends AbstractParticleComponentParser {
 
   refreshHtml() {
     this.getParticle(`${ShowcaseComponent.name}`).refresh()
+    this.editor.rehighlight()
   }
 
   async start() {
@@ -310,6 +327,9 @@ class EditorApp extends AbstractParticleComponentParser {
     this.willowBrowser.setResizeEndHandler(() => {
       this.editor.setSize()
     })
+
+    await this.buildMainProgram()
+    this.editor.rehighlight()
   }
 
   log(message) {
