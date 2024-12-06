@@ -11,7 +11,7 @@ const { DefaultScrollParser } = require("scroll-cli")
 const libPaths = `../sdk/particleComponentFramework/sweepercraft/lib/mousetrap.min.js
 node_modules/jquery/dist/jquery.min.js
 lib/jquery-ui.min.js
-node_modules/scroll-cli/external/dayjs.min.js
+node_modules/scroll-cli/external/.dayjs.min.js
 lib/jquery.ui.touch-punch.min.js
 ../sdk/sandbox/lib/codemirror.js
 ../sdk/sandbox/lib/show-hint.js

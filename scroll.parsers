@@ -1092,11 +1092,11 @@ scrollFormParser
   cueFromId
   single
  description Generate a Scroll Form.
- string copyFromExternal codeMirror.css scrollLibs.js constants.js
+ string copyFromExternal .codeMirror.css .scrollLibs.js .constants.js
  string requireOnce
-  <link rel="stylesheet" href="codeMirror.css">
-  <script src="scrollLibs.js"></script>
-  <script src="constants.js"></script>
+  <link rel="stylesheet" href=".codeMirror.css">
+  <script src=".scrollLibs.js"></script>
+  <script src=".constants.js"></script>
  javascript
   get placeholder() {
     return this.getParticle("placeholder")?.subparticlesToString() || ""
@@ -1918,7 +1918,7 @@ clocParser
  extends scrollTableParser
  description Output results of cloc as table.
  cue cloc
- string copyFromExternal clocLangs.txt
+ string copyFromExternal .clocLangs.txt
  javascript
   delimiter = ","
   get delimitedData() {
@@ -1928,7 +1928,7 @@ clocParser
    return csv
   }
   get command(){
-   return `cloc --vcs git . --csv --read-lang-def=clocLangs.txt ${this.content || ""}`
+   return `cloc --vcs git . --csv --read-lang-def=.clocLangs.txt ${this.content || ""}`
   }
 scrollDependenciesParser
  extends scrollTableParser
@@ -2483,11 +2483,11 @@ mapParser
   single
  extends abstractTableVisualizationParser
  description Map widget.
- string copyFromExternal leaflet.css leaflet.js scrollLibs.js
+ string copyFromExternal .leaflet.css .leaflet.js .scrollLibs.js
  string requireOnce
-  <link rel="stylesheet" href="leaflet.css">
-  <script src="leaflet.js"></script>
-  <script src="scrollLibs.js"></script>
+  <link rel="stylesheet" href=".leaflet.css">
+  <script src=".leaflet.js"></script>
+  <script src=".scrollLibs.js"></script>
  javascript
   buildInstance() {
    const height = this.get("height") || 500
@@ -2556,10 +2556,10 @@ mapParser
 abstractPlotParser
  // Observablehq
  extends abstractTableVisualizationParser
- string copyFromExternal d3.js plot.js
+ string copyFromExternal .d3.js .plot.js
  string requireOnce
-  <script src="d3.js"></script>
-  <script src="plot.js"></script>
+  <script src=".d3.js"></script>
+  <script src=".plot.js"></script>
  example
   plot
  inScope abstractColumnNameParser
@@ -2600,7 +2600,7 @@ scatterplotParser
  extends abstractPlotParser
  description Scatterplot Widget.
  // todo: make copyFromExternal work with inheritance
- string copyFromExternal d3.js plot.js
+ string copyFromExternal .d3.js .plot.js
  javascript
   get marks() {
     const x = this.get("x")
@@ -2620,8 +2620,8 @@ sparklineParser
  extends abstractTableVisualizationParser
  example
   sparkline 1 2 3 4 5
- string copyFromExternal sparkline.js
- string requireOnce <script src="sparkline.js"></script>
+ string copyFromExternal .sparkline.js
+ string requireOnce <script src=".sparkline.js"></script>
  catchAllAtomType numberAtom
  // we need pattern matching
  inScope scrollYParser
@@ -2754,10 +2754,10 @@ katexParser
   katex
    \text{E} = \text{T} / \text{A}!
  description KaTex widget for typeset math.
- string copyFromExternal katex.min.css katex.min.js
+ string copyFromExternal .katex.min.css .katex.min.js
  string requireOnce
-  <link rel="stylesheet" href="katex.min.css">
-  <script defer src="katex.min.js"></script>
+  <link rel="stylesheet" href=".katex.min.css">
+  <script defer src=".katex.min.js"></script>
   <script>
   document.addEventListener("DOMContentLoaded", () => document.querySelectorAll(".scrollKatex").forEach(el =>
    {
@@ -2780,17 +2780,17 @@ helpfulNotFoundParser
  popularity 0.000048
  extends abstractScrollWithRequirementsParser
  catchAllAtomType filePathAtom
- string copyFromExternal helpfulNotFound.js
+ string copyFromExternal .helpfulNotFound.js
  description Helpful not found widget.
  javascript
   buildInstance() {
-   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1><script defer src="/helpfulNotFound.js"></script><script>document.addEventListener("DOMContentLoaded", () => new NotFoundApp('${this.content}'))</script>`
+   return `<style>#helpfulNotFound{margin: 100px 0;}</style><h1 id="helpfulNotFound"></h1><script defer src="/.helpfulNotFound.js"></script><script>document.addEventListener("DOMContentLoaded", () => new NotFoundApp('${this.content}'))</script>`
   }
 slideshowParser
  // Left and right arrows navigate.
  description Slideshow widget. *** delimits slides.
  extends abstractScrollWithRequirementsParser
- string copyFromExternal jquery-3.7.1.min.js slideshow.js
+ string copyFromExternal .jquery-3.7.1.min.js .slideshow.js
  example
   slideshow
   Why did the cow cross the road?
@@ -2801,19 +2801,19 @@ slideshowParser
   ****
  javascript
   buildHtml() {
-   return `<style>html {font-size: var(--scrollBaseFontSize, 28px);} body {margin: auto; width: 500px;}.slideshowNav{text-align: center; margin-bottom:20px; font-size: 24px;color: rgba(204,204,204,.8);} a{text-decoration: none; color: rgba(204,204,204,.8);}</style><script defer src="jquery-3.7.1.min.js"></script><div class="slideshowNav"></div><script defer src="slideshow.js"></script>`
+   return `<style>html {font-size: var(--scrollBaseFontSize, 28px);} body {margin: auto; width: 500px;}.slideshowNav{text-align: center; margin-bottom:20px; font-size: 24px;color: rgba(204,204,204,.8);} a{text-decoration: none; color: rgba(204,204,204,.8);}</style><script defer src=".jquery-3.7.1.min.js"></script><div class="slideshowNav"></div><script defer src=".slideshow.js"></script>`
   }
 tableSearchParser
  popularity 0.000072
  extends abstractScrollWithRequirementsParser
- string copyFromExternal jquery-3.7.1.min.js datatables.css dayjs.min.js datatables.js tableSearch.js
+ string copyFromExternal .jquery-3.7.1.min.js .datatables.css .dayjs.min.js .datatables.js .tableSearch.js
  string requireOnce
-  <script defer src="jquery-3.7.1.min.js"></script>
+  <script defer src=".jquery-3.7.1.min.js"></script>
   <style>.dt-search{font-family: "SF Pro", "Helvetica Neue", "Segoe UI", "Arial";}</style>
-  <link rel="stylesheet" href="datatables.css">
-  <script defer src="datatables.js"></script>
-  <script defer src="dayjs.min.js"></script>
-  <script defer src="tableSearch.js"></script>
+  <link rel="stylesheet" href=".datatables.css">
+  <script defer src=".datatables.js"></script>
+  <script defer src=".dayjs.min.js"></script>
+  <script defer src=".tableSearch.js"></script>
  // adds to all tables on page
  description Table search and sort widget.
  javascript
@@ -3088,7 +3088,7 @@ aboveAsCodeParser
 inspectBelowParser
  description Inspect particle below.
  extends belowAsCodeParser
- string copyFromExternal inspector.css
+ string copyFromExternal .inspector.css
  javascript
   get code() {
     const mapFn = particle => {
@@ -3097,7 +3097,7 @@ inspectBelowParser
    return this.selectedParticles.map(mapFn).join("<br>")
   }
   buildHtml() {
-   return `<link rel="stylesheet" href="inspector.css">` + this.code
+   return `<link rel="stylesheet" href=".inspector.css">` + this.code
   }
 inspectAboveParser
  description Inspect particle above.
@@ -3297,7 +3297,7 @@ qrcodeParser
     if (isNode) {
       const {externalsPath} = this.root
       const path = require("path")
-      const {qrcodegen, toSvgString} = require(path.join(externalsPath, "qrcodegen.js"))
+      const {qrcodegen, toSvgString} = require(path.join(externalsPath, ".qrcodegen.js"))
       const QRC = qrcodegen.QrCode;
       const qr0 = QRC.encodeText(url, QRC.Ecc.MEDIUM);
       const svg = toSvgString(qr0, 4);  // See qrcodegen-input-demo
@@ -3958,14 +3958,14 @@ scrollThemeParser
  extends abstractScrollParser
  catchAllAtomType scrollThemeAtom
  description A collection of simple themes.
- string copyFromExternal gazette.css
+ string copyFromExternal .gazette.css
   // Note this will be replaced at runtime
  javascript
   get copyFromExternal() {
    return this.files.join(" ")
   }
   get files() {
-    return this.atoms.slice(1).map(name => `${name}.css`)
+    return this.atoms.slice(1).map(name => `.${name}.css`)
   }
   buildHtml() {
    return this.files.map(name => `<link rel="stylesheet" type="text/css" href="${name}">`).join("\n")
@@ -5647,7 +5647,7 @@ scrollParser
   }
   get scrollVersion() {
     // currently manually updated
-    return "161.3.0"
+    return "162.0.0"
   }
   // Use the first paragraph for the description
   // todo: add a particle method version of get that gets you the first particle. (actulaly make get return array?)
