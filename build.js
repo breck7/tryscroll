@@ -4,7 +4,6 @@ const { Disk } = require("scrollsdk/products/Disk.node.js")
 const { Particle } = require("scrollsdk/products/Particle.js")
 const path = require("path")
 const { TypeScriptRewriter } = require("/Users/breck/sdk/products/TypeScriptRewriter.js") // todo: fix
-const { DefaultScrollParser } = require("scroll-cli")
 
 // Libs
 // todo: fix path
@@ -45,16 +44,7 @@ const appCode = ourPaths
   .join("\n\n")
 Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 
-// Scroll code
-let parsers = new DefaultScrollParser().definition.asString
-const particle = new Particle(parsers)
-// Remove comments
-particle.filter((line) => line.getLine().startsWith("//")).forEach((particle) => particle.destroy())
-// Remove blank lines
-parsers = particle.toString().replace(/^\n/gm, "")
-
 const AppConstants = {
-  parsers,
+  parsers: Disk.read("/Users/breck/scroll/scroll.parsers"),
 }
-Disk.write(path.join(__dirname, "scroll.parsers"), parsers) // Compile parsers to one file for use in Designer.
 Disk.write(path.join(__dirname, "dist", "constants.js"), `const AppConstants = ` + JSON.stringify(AppConstants))
