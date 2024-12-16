@@ -119,10 +119,6 @@ class EditorApp extends AbstractParticleComponentParser {
     console.log("Local storage updated...")
   }
 
-  dumpErrorsCommand() {
-    console.log(this.fusionEditor.errors)
-  }
-
   get parser() {
     return this.fusionEditor.parser
   }

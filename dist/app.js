@@ -31,7 +31,6 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
  textarea
   id EditorTextarea
  div &nbsp;
-  clickCommand dumpErrorsCommand
   id codeErrorsConsole`
   }
 
@@ -66,7 +65,15 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this.program = new parser(code)
     const errs = this.program.getAllErrors()
 
-    const errMessage = errs.length ? `${errs.length} errors` : "&nbsp;"
+    let errMessage = "&nbsp;"
+    const errorCount = errs.length
+
+    if (errorCount) {
+      const plural = errorCount > 1 ? "s" : ""
+      errMessage = `<div style="color:red;">${errorCount} error${plural}:</div>
+${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
+    }
+
     willowBrowser.setHtmlOfElementWithIdHack("codeErrorsConsole", errMessage)
 
     const cursor = this.codeMirrorInstance.getCursor()
@@ -281,10 +288,6 @@ class EditorApp extends AbstractParticleComponentParser {
     if (this.isNodeJs()) return // todo: tcf should shim this
     localStorage.setItem(LocalStorageKeys.scroll, bufferValue)
     console.log("Local storage updated...")
-  }
-
-  dumpErrorsCommand() {
-    console.log(this.fusionEditor.errors)
   }
 
   get parser() {
