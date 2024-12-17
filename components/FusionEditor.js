@@ -55,7 +55,7 @@ class FusionEditor {
     const errs = new parser(bufferValue).getAllErrors()
     return new Particle(errs.map((err) => err.toObject())).toFormattedTable(200)
   }
-  async buildMainProgram(macrosOn = true) {
+  async buildMainProgram() {
     const fusedFile = await this.getFusedFile()
     const fusedCode = fusedFile.fusedCode
     this._mainProgram = fusedFile.scrollProgram
