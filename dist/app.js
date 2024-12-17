@@ -488,8 +488,21 @@ class ExportComponent extends AbstractParticleComponentParser {
 window.ExportComponent = ExportComponent
 
 
+class UrlWriter extends MemoryWriter {
+  async read(fileName) {
+    if (this.inMemoryFiles[fileName]) return this.inMemoryFiles[fileName]
+    if (!isUrl(fileName)) fileName = this.getBaseUrl() + fileName
+    return await super.read(fileName)
+  }
+  async exists(fileName) {
+    if (this.inMemoryFiles[fileName]) return true
+    if (!isUrl(fileName)) fileName = this.getBaseUrl() + fileName
+    return await super.exists(fileName)
+  }
+}
+
 class FusionEditor {
-  // parent needs a getter "bufferValue"
+  // parent needs a getter "bufferValue" and "rootUrl" and "fileName"
   constructor(defaultParserCode, parent) {
     this.parent = parent
     const parser = new HandParsersProgram(defaultParserCode).compileAndReturnRootParser()
@@ -501,14 +514,15 @@ class FusionEditor {
       defaultParser = parser
     }
     this.ScrollFile = ScrollFile
+    this.fakeFs = {}
+    this.fs = new Fusion(this.fakeFs)
+    const urlWriter = new UrlWriter(this.fakeFs)
+    urlWriter.getBaseUrl = () => parent.rootUrl || ""
+    this.fs._storage = urlWriter
   }
-  fakeFs = {}
-  fs = new Fusion(this.fakeFs)
-  version = 1
   async getFusedFile() {
     const { bufferValue, ScrollFile } = this
-    this.version++
-    const filename = "/" + this.version
+    const filename = "/" + this.parent.fileName
     this.fakeFs[filename] = bufferValue
     const file = new ScrollFile(bufferValue, filename, this.fs)
     await file.fuse()
@@ -556,7 +570,6 @@ class FusionEditor {
     }
   }
 }
-
 window.FusionEditor = FusionEditor
 
 
