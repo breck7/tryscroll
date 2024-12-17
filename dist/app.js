@@ -278,7 +278,7 @@ class EditorApp extends AbstractParticleComponentParser {
 
   async formatScrollCommand() {
     const mainDoc = await this.fusionEditor.buildMainProgram(false)
-    const bufferValue = mainDoc.getFormatted()
+    const bufferValue = mainDoc.formatted
     this.editor.setCodeMirrorValue(bufferValue)
     this.loadNewDoc(bufferValue)
     await this.fusionEditor.buildMainProgram()
