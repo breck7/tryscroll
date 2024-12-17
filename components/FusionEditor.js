@@ -62,6 +62,10 @@ class FusionEditor {
     await this._mainProgram.load()
     return this._mainProgram
   }
+  async getFormatted() {
+    const mainDoc = await this.buildMainProgram(false)
+    return mainDoc.formatted
+  }
   get mainProgram() {
     if (!this._mainProgram) this.buildMainProgram()
     return this._mainProgram
@@ -80,4 +84,4 @@ class FusionEditor {
     }
   }
 }
-module.exports = { FusionEditor }
+if (typeof module !== "undefined" && module.exports) module.exports = { FusionEditor }

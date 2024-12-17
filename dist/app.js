@@ -277,8 +277,7 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   async formatScrollCommand() {
-    const mainDoc = await this.fusionEditor.buildMainProgram(false)
-    const bufferValue = mainDoc.formatted
+    const bufferValue = await this.fusionEditor.getFormatted()
     this.editor.setCodeMirrorValue(bufferValue)
     this.loadNewDoc(bufferValue)
     await this.fusionEditor.buildMainProgram()
@@ -545,12 +544,16 @@ class FusionEditor {
     const errs = new parser(bufferValue).getAllErrors()
     return new Particle(errs.map((err) => err.toObject())).toFormattedTable(200)
   }
-  async buildMainProgram(macrosOn = true) {
+  async buildMainProgram() {
     const fusedFile = await this.getFusedFile()
     const fusedCode = fusedFile.fusedCode
     this._mainProgram = fusedFile.scrollProgram
     await this._mainProgram.load()
     return this._mainProgram
+  }
+  async getFormatted() {
+    const mainDoc = await this.buildMainProgram(false)
+    return mainDoc.formatted
   }
   get mainProgram() {
     if (!this._mainProgram) this.buildMainProgram()
@@ -570,7 +573,7 @@ class FusionEditor {
     }
   }
 }
-window.FusionEditor = FusionEditor
+if (typeof module !== "undefined" && module.exports) module.exports = { FusionEditor }
 
 
 
