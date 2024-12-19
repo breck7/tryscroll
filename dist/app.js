@@ -605,13 +605,23 @@ window.ShareComponent = ShareComponent
 
 
 class ShowcaseComponent extends AbstractParticleComponentParser {
-  async refresh() {
-    // Store the current scroll position of the iframe
-    const iframe = document.getElementById("theIframe")
-    const scrollTop = iframe.contentWindow ? iframe.contentWindow.scrollY : 0
-    const scrollLeft = iframe.contentWindow ? iframe.contentWindow.scrollX : 0
+  // Track which iframe is currently visible
+  activeIframeId = "theIframe1"
 
-    // Perform the refresh
+  async refresh() {
+    // Get both iframes
+    const iframe1 = document.getElementById("theIframe1")
+    const iframe2 = document.getElementById("theIframe2")
+
+    // Determine active and buffer iframes
+    const activeIframe = document.getElementById(this.activeIframeId)
+    const bufferIframe = this.activeIframeId === "theIframe1" ? iframe2 : iframe1
+
+    // Store scroll position from active iframe
+    const scrollTop = activeIframe.contentWindow ? activeIframe.contentWindow.scrollY : 0
+    const scrollLeft = activeIframe.contentWindow ? activeIframe.contentWindow.scrollX : 0
+
+    // Prepare content
     await this.root.buildMainProgram()
     const { mainOutput } = this.root
     let content = mainOutput.content
@@ -619,26 +629,43 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
       content = `<pre>${content}</pre>`
     }
 
-    // Add script to restore scroll position after load
+    // Add scroll restoration script
     const scrollScript = `
       <script>
         window.addEventListener('load', function() {
           window.scrollTo(${scrollLeft}, ${scrollTop});
+          window.parent.postMessage('iframeReady', '*');
         });
       </script>
     `
 
-    // Inject the content with the scroll restoration script
-    document.getElementById("theIframe").srcdoc = content + scrollScript
+    // Update the hidden buffer iframe
+    bufferIframe.srcdoc = content + scrollScript
 
-    // Set up link click prevention
-    jQuery("#theIframe")
-      .contents()
-      .find("a")
-      .on("click", function (event) {
-        event.preventDefault()
-        return false
-      })
+    // Set up message listener for one-time swap
+    const swapHandler = (event) => {
+      if (event.data === "iframeReady") {
+        // Swap visibility
+        activeIframe.style.display = "none"
+        bufferIframe.style.display = "block"
+
+        // Update active iframe tracking
+        this.activeIframeId = bufferIframe.id
+
+        // Set up click prevention on new active iframe
+        jQuery(bufferIframe)
+          .contents()
+          .find("a")
+          .on("click", function (event) {
+            event.preventDefault()
+            return false
+          })
+
+        // Remove the message listener
+        window.removeEventListener("message", swapHandler)
+      }
+    }
+    window.addEventListener("message", swapHandler)
   }
 
   particleComponentDidMount() {
@@ -650,7 +677,12 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
  class ${ShowcaseComponent.name}
  style left:${this.root.leftStartPosition + 10}px;
  iframe
-  id theIframe
+  id theIframe1
+  style display:block;width:100%;height:100%;border:none;
+  srcdoc
+ iframe
+  id theIframe2
+  style display:none;width:100%;height:100%;border:none;
   srcdoc`
   }
 }
