@@ -679,11 +679,11 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
  iframe
   id theIframe1
   style display:block;width:100%;height:100%;border:none;
-  srcdoc
+  srcdoc &nbsp;
  iframe
   id theIframe2
   style display:none;width:100%;height:100%;border:none;
-  srcdoc`
+  srcdoc &nbsp;`
   }
 }
 
