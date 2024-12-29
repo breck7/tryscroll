@@ -653,14 +653,9 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
         // Update active iframe tracking
         this.activeIframeId = bufferIframe.id
 
-        // Set up click prevention on new active iframe
-        jQuery(bufferIframe)
-          .contents()
-          .find("a")
-          .on("click", function (event) {
-            event.preventDefault()
-            return false
-          })
+        // Force all links to open in a new tab.
+        // todo: perhaps handle differently for # links?
+        jQuery(bufferIframe).contents().find("a:not([target])").attr("target", "_blank")
 
         // Remove the message listener
         window.removeEventListener("message", swapHandler)
