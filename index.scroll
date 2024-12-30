@@ -1,0 +1,17 @@
+buildHtml
+title Try Scroll - a language for scientists of all ages
+description Scroll is an extendible language for writing and thought.
+openGraphImage https://scroll.pub/public/screenshot.png
+metaTags
+
+inlineCss public/codeMirror.css public/app.css
+
+./dist/libs.js
+./.d3.js
+./lodash.min.js
+./dist/constants.js
+./dist/app.js
+
+script
+ const lodash = _;
+ document.addEventListener('DOMContentLoaded', () =>  new BrowserGlue().init(AppConstants.parsers))
