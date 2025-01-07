@@ -519,13 +519,26 @@ class FusionEditor {
     urlWriter.getBaseUrl = () => parent.rootUrl || ""
     this.fs._storage = urlWriter
   }
-  async getFusedFile() {
-    const { bufferValue, ScrollFile } = this
-    const filename = "/" + this.parent.fileName
-    this.fakeFs[filename] = bufferValue
-    delete this.fs._expandedImportCache[filename] // todo: cleanup
-    const file = new ScrollFile(bufferValue, filename, this.fs)
+  async scrollToHtml(scrollCode) {
+    const parsed = await this.parseScroll(scrollCode)
+    return parsed.asHtml
+  }
+  async parseScroll(scrollCode) {
+    const { ScrollFile } = this
+    const page = new ScrollFile(scrollCode)
+    await page.fuse()
+    return page.scrollProgram
+  }
+  async makeFusedFile(code, filename) {
+    const { ScrollFile, fs } = this
+    this.fakeFs[filename] = code
+    delete fs._expandedImportCache[filename] // todo: cleanup
+    const file = new ScrollFile(code, filename, fs)
     await file.fuse()
+    return file
+  }
+  async getFusedFile() {
+    const file = await this.makeFusedFile(this.bufferValue, "/" + this.parent.fileName)
     this.fusedFile = file
     this.customParser = file.parser
     return file
