@@ -73,7 +73,11 @@ class FusionEditor {
     const fusedFile = await this.getFusedFile()
     const fusedCode = fusedFile.fusedCode
     this._mainProgram = fusedFile.scrollProgram
-    await this._mainProgram.load()
+    try {
+      await this._mainProgram.load()
+    } catch (err) {
+      console.error(err)
+    }
     return this._mainProgram
   }
   async getFormatted() {
