@@ -11,11 +11,20 @@ class ExportComponent extends AbstractParticleComponentParser {
   target _blank
   href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}
  span  | 
+ a Reset
+  clickCommand resetCommand
+ span  | 
  a Copy Output
   clickCommand copyOutputToClipboardCommand
  span  | 
  a Download Output
   clickCommand downloadOutputCommand`
+  }
+
+  resetCommand() {
+    if (!confirm("Are you sure you want to reset?")) return
+    localStorage.clear()
+    window.location = ""
   }
 
   copyOutputToClipboardCommand() {
