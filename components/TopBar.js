@@ -4,8 +4,8 @@ const { ExportComponent } = require("./Export.js")
 const { Particle } = require("scrollsdk/products/Particle.js")
 
 class TopBarComponent extends AbstractParticleComponentParser {
-  createParserCombinator() {
-    return new Particle.ParserCombinator(undefined, {
+  createParserPool() {
+    return new Particle.ParserPool(undefined, {
       ShareComponent,
       ExportComponent,
     })

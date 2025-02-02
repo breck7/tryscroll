@@ -2,8 +2,8 @@ const { AbstractParticleComponentParser } = require("scrollsdk/products/Particle
 const { Particle } = require("scrollsdk/products/Particle.js")
 
 class BottomBarComponent extends AbstractParticleComponentParser {
-  createParserCombinator() {
-    return new Particle.ParserCombinator(undefined, {})
+  createParserPool() {
+    return new Particle.ParserPool(undefined, {})
   }
 }
 

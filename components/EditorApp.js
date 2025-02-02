@@ -54,8 +54,8 @@ const newSeed = () => {
 }
 
 class EditorApp extends AbstractParticleComponentParser {
-  createParserCombinator() {
-    return new Particle.ParserCombinator(ErrorParticle, {
+  createParserPool() {
+    return new Particle.ParserPool(ErrorParticle, {
       TopBarComponent,
       githubTriangleComponent,
       CodeEditorComponent,

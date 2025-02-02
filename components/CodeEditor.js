@@ -22,8 +22,8 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
   id codeErrorsConsole`
   }
 
-  createParserCombinator() {
-    return new Particle.ParserCombinator(undefined, {
+  createParserPool() {
+    return new Particle.ParserPool(undefined, {
       value: Particle,
     })
   }
@@ -92,7 +92,7 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
     clearTimeout(this._timeout)
     this._timeout = setTimeout(() => {
       this.loadFromEditor()
-    }, 50)
+    }, 20)
   }
 
   loadFromEditor() {
