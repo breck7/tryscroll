@@ -33,14 +33,14 @@ aboveAsCode
 - Designed to last.
 
 # Scroll supports tables
-table
+datatable
  printTable
  delimiter ,
  data
   Language,Types
   HTML,~142
   Markdown,~192
-  Scroll,~174 + yours
+  Scroll,~202 + yours
 
 # Images in Scroll
 // Just put the filename or URL:
