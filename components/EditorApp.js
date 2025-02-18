@@ -122,6 +122,10 @@ class EditorApp extends AbstractParticleComponentParser {
     return this.fusionEditor.parser
   }
 
+  get fileName() {
+    return "tryscroll.scroll"
+  }
+
   initFusionEditor(parsersCode) {
     this.fusionEditor = new FusionEditor(parsersCode, this)
   }

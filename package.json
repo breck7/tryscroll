@@ -9,14 +9,14 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "scroll-cli": "^170.4.1",
-    "scrollsdk": "^101.1.0"
+    "scroll-cli": "^170.5.0",
+    "scrollsdk": "^102.0.0"
   },
   "devDependencies": {
     "tap": "^18.7.2"
   },
   "scripts": {
-    "up": "npm remove scroll-cli;npm install scroll-cli;./build.js; scroll list | scroll build",
+    "up": "npm remove scroll-cli;npm install scroll-cli;npm install scrollsdk@latest;./build.js; scroll list | scroll build",
     "buildCoverageReport": "tap testAll.js",
     "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
     "open": "open index.html",
