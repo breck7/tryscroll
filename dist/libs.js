@@ -15100,6 +15100,14 @@ class AbstractParticleEvent {
     this.targetParticle = targetParticle
   }
 }
+function _getIndentCount(str, edgeSymbol) {
+  let level = 0
+  const edgeChar = edgeSymbol
+  while (str[level] === edgeChar) {
+    level++
+  }
+  return level
+}
 class ChildAddedParticleEvent extends AbstractParticleEvent {}
 class ChildRemovedParticleEvent extends AbstractParticleEvent {}
 class DescendantChangedParticleEvent extends AbstractParticleEvent {}
@@ -15177,15 +15185,24 @@ class ParserPool {
     const firstBreak = line.indexOf(atomBreakSymbol)
     return line.substr(0, firstBreak > -1 ? firstBreak : undefined)
   }
+  createParticle(parentParticle, line, index, subparticles) {
+    const parser = this._getMatchingParser(line, parentParticle, index)
+    return new parser(subparticles, line, parentParticle, index)
+  }
 }
 class Particle extends AbstractParticle {
-  constructor(subparticles, line, parent) {
+  constructor(subparticles, line, parent, index) {
     super()
     // BEGIN MUTABLE METHODS BELOw
     this._particleCreationTime = this._getProcessTimeInMilliseconds()
     this._parent = parent
     this._setLine(line)
     this._setSubparticles(subparticles)
+    if (index !== undefined) parent._getSubparticlesArray().splice(index, 0, this)
+    else if (parent) parent._getSubparticlesArray().push(this)
+  }
+  getParser() {
+    return this._parser
   }
   execute() {}
   async loadRequirements(context) {
@@ -16507,10 +16524,8 @@ class Particle extends AbstractParticle {
     this._insertLineAndSubparticles(line, subparticles)
   }
   _insertLineAndSubparticles(line, subparticles, index = this.length) {
-    const parser = this._getParserPool()._getMatchingParser(line, this, index)
-    const newParticle = new parser(subparticles, line, this)
     const adjustedIndex = index < 0 ? this.length + index : index
-    this._getSubparticlesArray().splice(adjustedIndex, 0, newParticle)
+    const newParticle = this._getParserPool().createParticle(this, line, index, subparticles)
     if (this._cueIndex) this._makeCueIndex(adjustedIndex)
     this.clearQuickCache()
     return newParticle
@@ -16529,12 +16544,13 @@ class Particle extends AbstractParticle {
     return this.parent._insertLines(lines, this.index + 1)
   }
   _appendSubparticlesFromString(str) {
-    const lines = str.split(this.particleBreakSymbolRegex)
+    const { edgeSymbol, particleBreakSymbolRegex } = this
+    const lines = str.split(particleBreakSymbolRegex)
     const parentStack = []
     let currentIndentCount = -1
     let lastParticle = this
     lines.forEach(line => {
-      const indentCount = this._getIndentCount(line)
+      const indentCount = _getIndentCount(line, edgeSymbol)
       if (indentCount > currentIndentCount) {
         currentIndentCount++
         parentStack.push(lastParticle)
@@ -16545,12 +16561,10 @@ class Particle extends AbstractParticle {
           currentIndentCount--
         }
       }
-      const lineContent = line.substr(currentIndentCount)
       const parent = parentStack[parentStack.length - 1]
-      const subparticles = parent._getSubparticlesArray()
-      const parser = parent._getParserPool()._getMatchingParser(lineContent, parent, subparticles.length)
-      lastParticle = new parser(undefined, lineContent, parent)
-      subparticles.push(lastParticle)
+      const index = parent._getSubparticlesArray().length
+      const lineContent = line.substr(currentIndentCount)
+      lastParticle = parent._getParserPool().createParticle(parent, lineContent, index)
     })
   }
   _getCueIndex() {
@@ -16606,14 +16620,6 @@ class Particle extends AbstractParticle {
   }
   _subparticlesToXml(indentCount) {
     return this.map(particle => particle._toXml(indentCount)).join("")
-  }
-  _getIndentCount(str) {
-    let level = 0
-    const edgeChar = this.edgeSymbol
-    while (str[level] === edgeChar) {
-      level++
-    }
-    return level
   }
   clone(subparticles = this.subparticlesToString(), line = this.getLine()) {
     return new this.constructor(subparticles, line)
