@@ -15186,6 +15186,8 @@ class ParserPool {
     return line.substr(0, firstBreak > -1 ? firstBreak : undefined)
   }
   createParticle(parentParticle, line, index, subparticles) {
+    const rootParticle = parentParticle.root
+    if (rootParticle.particleTransformers) [line, subparticles] = rootParticle._transformStrings(line, subparticles)
     const parser = this._getMatchingParser(line, parentParticle, index)
     return new parser(subparticles, line, parentParticle, index)
   }
@@ -15200,11 +15202,22 @@ class Particle extends AbstractParticle {
     this._setSubparticles(subparticles)
     if (index !== undefined) parent._getSubparticlesArray().splice(index, 0, this)
     else if (parent) parent._getSubparticlesArray().push(this)
+    this.wake()
   }
-  getParser() {
-    return this._parser
-  }
+  wake() {}
   execute() {}
+  // todo: perhaps if needed in the future we can add more contextual params here
+  _transformStrings(line, subparticles) {
+    this.particleTransformers.forEach(fn => {
+      ;[line, subparticles] = fn(line, subparticles)
+    })
+    return [line, subparticles]
+  }
+  addTransformer(fn) {
+    if (!this.particleTransformers) this.particleTransformers = []
+    this.particleTransformers.push(fn)
+    return this
+  }
   async loadRequirements(context) {
     // todo: remove
     await Promise.all(this.map(particle => particle.loadRequirements(context)))
@@ -16544,27 +16557,16 @@ class Particle extends AbstractParticle {
     return this.parent._insertLines(lines, this.index + 1)
   }
   _appendSubparticlesFromString(str) {
-    const { edgeSymbol, particleBreakSymbolRegex } = this
-    const lines = str.split(particleBreakSymbolRegex)
-    const parentStack = []
-    let currentIndentCount = -1
-    let lastParticle = this
-    lines.forEach(line => {
-      const indentCount = _getIndentCount(line, edgeSymbol)
-      if (indentCount > currentIndentCount) {
-        currentIndentCount++
-        parentStack.push(lastParticle)
-      } else if (indentCount < currentIndentCount) {
-        // pop things off stack
-        while (indentCount < currentIndentCount) {
-          parentStack.pop()
-          currentIndentCount--
-        }
-      }
-      const parent = parentStack[parentStack.length - 1]
-      const index = parent._getSubparticlesArray().length
-      const lineContent = line.substr(currentIndentCount)
-      lastParticle = parent._getParserPool().createParticle(parent, lineContent, index)
+    const { edgeSymbol, particleBreakSymbol } = this
+    const regex = new RegExp(`\\${particleBreakSymbol}(?!\\${edgeSymbol})`, "g")
+    const blocks = str.split(regex)
+    const parserPool = this._getParserPool()
+    const startIndex = this._getSubparticlesArray().length
+    blocks.forEach((block, index) => {
+      const lines = block.split(particleBreakSymbol)
+      const firstLine = lines.shift()
+      const subs = lines.map(line => line.substr(1)).join(particleBreakSymbol)
+      parserPool.createParticle(this, firstLine, startIndex + index, subs)
     })
   }
   _getCueIndex() {
@@ -17702,7 +17704,7 @@ Particle.iris = `sepal_length,sepal_width,petal_length,petal_width,species
 4.9,2.5,4.5,1.7,virginica
 5.1,3.5,1.4,0.2,setosa
 5,3.4,1.5,0.2,setosa`
-Particle.getVersion = () => "103.0.0"
+Particle.getVersion = () => "104.0.0"
 class AbstractExtendibleParticle extends Particle {
   _getFromExtended(cuePath) {
     const hit = this._getParticleFromExtended(cuePath)
@@ -21879,9 +21881,6 @@ class MemoryWriter {
   }
 }
 class EmptyScrollParser extends Particle {
-  evalMacros(fusionFile) {
-    return fusionFile.fusedCode
-  }
   setFile(fusionFile) {
     this.file = fusionFile
   }
@@ -21926,13 +21925,9 @@ class FusionFile {
       this.fusedFile = fusedFile
     }
     this.fusedCode = fusedCode
-    const tempProgram = new defaultParser()
-    // PASS 3: READ AND REPLACE MACROS. PARSE AND REMOVE MACROS DEFINITIONS THEN REPLACE REFERENCES.
-    const codeAfterMacroPass = tempProgram.evalMacros(this)
-    this.codeAfterMacroPass = codeAfterMacroPass
     this.parser = (fusedFile === null || fusedFile === void 0 ? void 0 : fusedFile.parser) || defaultParser
-    // PASS 4: PARSER WITH CUSTOM PARSER OR STANDARD SCROLL PARSER
-    this.scrollProgram = new this.parser(codeAfterMacroPass, filePath)
+    // PASS 3: PARSER WITH CUSTOM PARSER OR STANDARD SCROLL PARSER
+    this.scrollProgram = new this.parser(fusedCode, filePath)
     this.scrollProgram.setFile(this)
     return this
   }
