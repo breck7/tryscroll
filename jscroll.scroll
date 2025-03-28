@@ -11,12 +11,12 @@ inlineJs
  ../sdk/products/Parsers.ts.browser.js
  ../sdk/products/parsers.browser.js
  ../sdk/products/ParsersCodeMirrorMode.browser.js
- ../sdk/products/Fusion.browser.js
+ ../sdk/products/ScrollFileSystem.browser.js
  ../sdk/products/stump.browser.js
  ../sdk/products/hakon.browser.js
  ../sdk/products/ParticleComponentFramework.browser.js
- components/FusionEditor.js
+ components/ScrollFileEditor.js
  dist/constants.js
 
 script
- const jscroll = new FusionEditor(AppConstants.parsers)
+ const jscroll = new ScrollFileEditor(AppConstants.parsers)

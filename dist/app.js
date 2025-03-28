@@ -244,11 +244,11 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   get mainOutput() {
-    return this.fusionEditor.mainOutput
+    return this.scrollFileEditor.mainOutput
   }
 
   get mainProgram() {
-    return this.fusionEditor.mainProgram
+    return this.scrollFileEditor.mainProgram
   }
 
   get editor() {
@@ -262,12 +262,12 @@ class EditorApp extends AbstractParticleComponentParser {
   loadNewDoc(bufferValue) {
     this.renderAndGetRenderReport()
     this.updateLocalStorage(bufferValue)
-    this.fusionEditor.buildMainProgram()
+    this.scrollFileEditor.buildMainProgram()
     this.refreshHtml()
   }
 
   async buildMainProgram() {
-    await this.fusionEditor.buildMainProgram()
+    await this.scrollFileEditor.buildMainProgram()
   }
 
   // todo: cleanup
@@ -277,10 +277,10 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   async formatScrollCommand() {
-    const bufferValue = await this.fusionEditor.getFormatted()
+    const bufferValue = await this.scrollFileEditor.getFormatted()
     this.editor.setCodeMirrorValue(bufferValue)
     this.loadNewDoc(bufferValue)
-    await this.fusionEditor.buildMainProgram()
+    await this.scrollFileEditor.buildMainProgram()
   }
 
   updateLocalStorage(bufferValue) {
@@ -290,15 +290,15 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   get parser() {
-    return this.fusionEditor.parser
+    return this.scrollFileEditor.parser
   }
 
   get fileName() {
     return "tryscroll.scroll"
   }
 
-  initFusionEditor(parsersCode) {
-    this.fusionEditor = new FusionEditor(parsersCode, this)
+  initScrollFileEditor(parsersCode) {
+    this.scrollFileEditor = new ScrollFileEditor(parsersCode, this)
   }
 
   refreshHtml() {
@@ -382,7 +382,7 @@ ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.initFusionEditor(parsersCode)
+  app.initScrollFileEditor(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app
@@ -513,21 +513,19 @@ class UrlWriter extends MemoryWriter {
   }
 }
 
-class FusionEditor {
-  // parent needs a getter "bufferValue" and "rootUrl" and "fileName"
+/*
+interface EditorParent {
+  bufferValue: string
+  fileName: string
+  rootUrl: string
+}
+*/
+class ScrollFileEditor {
   constructor(defaultParserCode, parent) {
     this.parent = parent
-    const parser = new HandParsersProgram(defaultParserCode).compileAndReturnRootParser()
-    this.customParser = parser
-    // todo: cleanup
-    class ScrollFile extends FusionFile {
-      EXTERNALS_PATH = ""
-      defaultParserCode = defaultParserCode
-      defaultParser = parser
-    }
-    this.ScrollFile = ScrollFile
     this.fakeFs = {}
-    this.fs = new Fusion(this.fakeFs)
+    this.fs = new ScrollFileSystem(this.fakeFs)
+    this.fs._setDefaultParser("", ["scroll"], [defaultParserCode])
     const urlWriter = new UrlWriter(this.fakeFs)
     urlWriter.getBaseUrl = () => parent.rootUrl || ""
     this.fs._storage = urlWriter
@@ -537,24 +535,30 @@ class FusionEditor {
     return parsed.asHtml
   }
   async parseScroll(scrollCode) {
-    const { ScrollFile } = this
-    const page = new ScrollFile(scrollCode)
+    const { scrollFile } = this
+    const page = new scrollFile(scrollCode)
     await page.fuse()
     return page.scrollProgram
   }
+  get scrollFile() {
+    return this.fs.defaultFileClass
+  }
+  get parser() {
+    return this.fusedFile?.parser || this.fs.defaultParser.parser
+  }
+  _previousFileName
   async makeFusedFile(code, filename) {
-    const { ScrollFile, fs } = this
+    const { scrollFile, fs } = this
     this.fakeFs[filename] = code
-    delete fs._pendingFuseRequests[filename]
-    delete fs._parsersExpandersCache[filename] // todo: cleanup
-    const file = new ScrollFile(code, filename, fs)
+    if (this._previousFileName) fs.clearParserCache(this._previousFileName)
+    this._previousFileName = filename
+    const file = new scrollFile(code, filename, fs)
     await file.fuse()
     return file
   }
   async getFusedFile() {
     const file = await this.makeFusedFile(this.bufferValue, "/" + this.parent.fileName)
     this.fusedFile = file
-    this.customParser = file.parser
     return file
   }
   async getFusedCode() {
@@ -563,9 +567,6 @@ class FusionEditor {
   }
   get bufferValue() {
     return this.parent.bufferValue
-  }
-  get parser() {
-    return this.customParser
   }
   get errors() {
     const { parser, bufferValue } = this
@@ -605,7 +606,8 @@ class FusionEditor {
     }
   }
 }
-if (typeof module !== "undefined" && module.exports) module.exports = { FusionEditor }
+
+if (typeof module !== "undefined" && module.exports) module.exports = { ScrollFileEditor }
 
 
 

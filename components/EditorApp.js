@@ -7,7 +7,7 @@ const { CodeEditorComponent } = require("./CodeEditor.js")
 const { BottomBarComponent } = require("./BottomBar.js")
 const { ShareComponent } = require("./Share.js")
 const { ExportComponent } = require("./Export.js")
-const { FusionEditor } = require("./FusionEditor.js")
+const { ScrollFileEditor } = require("./ScrollFileEditor.js")
 const { EditorHandleComponent } = require("./EditorHandle.js")
 const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
@@ -73,11 +73,11 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   get mainOutput() {
-    return this.fusionEditor.mainOutput
+    return this.scrollFileEditor.mainOutput
   }
 
   get mainProgram() {
-    return this.fusionEditor.mainProgram
+    return this.scrollFileEditor.mainProgram
   }
 
   get editor() {
@@ -91,12 +91,12 @@ class EditorApp extends AbstractParticleComponentParser {
   loadNewDoc(bufferValue) {
     this.renderAndGetRenderReport()
     this.updateLocalStorage(bufferValue)
-    this.fusionEditor.buildMainProgram()
+    this.scrollFileEditor.buildMainProgram()
     this.refreshHtml()
   }
 
   async buildMainProgram() {
-    await this.fusionEditor.buildMainProgram()
+    await this.scrollFileEditor.buildMainProgram()
   }
 
   // todo: cleanup
@@ -106,10 +106,10 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   async formatScrollCommand() {
-    const bufferValue = await this.fusionEditor.getFormatted()
+    const bufferValue = await this.scrollFileEditor.getFormatted()
     this.editor.setCodeMirrorValue(bufferValue)
     this.loadNewDoc(bufferValue)
-    await this.fusionEditor.buildMainProgram()
+    await this.scrollFileEditor.buildMainProgram()
   }
 
   updateLocalStorage(bufferValue) {
@@ -119,15 +119,15 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   get parser() {
-    return this.fusionEditor.parser
+    return this.scrollFileEditor.parser
   }
 
   get fileName() {
     return "tryscroll.scroll"
   }
 
-  initFusionEditor(parsersCode) {
-    this.fusionEditor = new FusionEditor(parsersCode, this)
+  initScrollFileEditor(parsersCode) {
+    this.scrollFileEditor = new ScrollFileEditor(parsersCode, this)
   }
 
   refreshHtml() {
@@ -211,7 +211,7 @@ ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.initFusionEditor(parsersCode)
+  app.initScrollFileEditor(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app
