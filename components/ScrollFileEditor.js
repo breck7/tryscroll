@@ -23,7 +23,7 @@ class ScrollFileEditor {
     this.parent = parent
     this.fakeFs = {}
     this.fs = new ScrollFileSystem(this.fakeFs)
-    this.fs._setDefaultParser("", ["scroll"], [defaultParserCode])
+    this.fs.setDefaultParserFromString(defaultParserCode)
     const urlWriter = new UrlWriter(this.fakeFs)
     urlWriter.getBaseUrl = () => parent.rootUrl || ""
     this.fs._storage = urlWriter
