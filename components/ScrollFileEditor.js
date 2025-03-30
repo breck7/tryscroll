@@ -42,7 +42,7 @@ class ScrollFileEditor {
     return this.fs.defaultFileClass
   }
   get parser() {
-    return this.fusedFile?.parser || this.fs.defaultParser.parser
+    return this.fusedFile?.scrollProgram.constructor || this.fs.defaultParser.parser
   }
   _previousFileName
   async makeFusedFile(code, filename) {
