@@ -35,23 +35,20 @@ class ScrollFileEditor {
   async parseScroll(scrollCode) {
     const { scrollFile } = this
     const page = new scrollFile(scrollCode)
-    await page.fuse()
+    await page.singlePassFuse()
     return page.scrollProgram
   }
   get scrollFile() {
     return this.fs.defaultFileClass
   }
   get parser() {
-    return this.fusedFile?.scrollProgram.constructor || this.fs.defaultParser.parser
+    return this.fusedFile?.scrollProgram.constructor || this.fs.defaultParser
   }
-  _previousFileName
   async makeFusedFile(code, filename) {
     const { scrollFile, fs } = this
     this.fakeFs[filename] = code
-    if (this._previousFileName) fs.clearParserCache(this._previousFileName)
-    this._previousFileName = filename
     const file = new scrollFile(code, filename, fs)
-    await file.fuse()
+    await file.singlePassFuse()
     return file
   }
   async getFusedFile() {
@@ -61,7 +58,7 @@ class ScrollFileEditor {
   }
   async getFusedCode() {
     const fusedFile = await this.getFusedFile()
-    return fusedFile.fusedCode
+    return fusedFile.scrollProgram.toString()
   }
   get bufferValue() {
     return this.parent.bufferValue
@@ -73,7 +70,7 @@ class ScrollFileEditor {
   }
   async buildMainProgram() {
     const fusedFile = await this.getFusedFile()
-    const fusedCode = fusedFile.fusedCode
+    const fusedCode = await this.getFusedCode()
     this._mainProgram = fusedFile.scrollProgram
     try {
       await this._mainProgram.load()
