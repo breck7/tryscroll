@@ -33,21 +33,17 @@ class ScrollFileEditor {
     return parsed.asHtml
   }
   async parseScroll(scrollCode) {
-    const { scrollFile } = this
-    const page = new scrollFile(scrollCode)
-    await page.singlePassFuse()
-    return page.scrollProgram
-  }
-  get scrollFile() {
-    return this.fs.defaultFileClass
+    const file = this.fs.newFile(scrollCode)
+    await file.singlePassFuse()
+    return file.scrollProgram
   }
   get parser() {
     return this.fusedFile?.scrollProgram.constructor || this.fs.defaultParser
   }
   async makeFusedFile(code, filename) {
-    const { scrollFile, fs } = this
+    const { fs } = this
     this.fakeFs[filename] = code
-    const file = new scrollFile(code, filename, fs)
+    const file = this.fs.newFile(code, filename)
     await file.singlePassFuse()
     return file
   }
