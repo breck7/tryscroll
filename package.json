@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "scroll-cli": "^176.0.0",
-    "scrollsdk": "^106.0.0"
+    "scroll-cli": "^177.0.0",
+    "scrollsdk": "^107.0.0"
   },
   "devDependencies": {
     "tap": "^18.7.2"
@@ -21,7 +21,7 @@
     "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
     "open": "open index.html",
     "test": "node testAll.js",
-    "beta": "cd ~/scroll; scroll build; cd - ;npm install ~/scroll; node ./build.js; scroll list | scroll build"
+    "beta": "cd ~/scroll; scroll build; cd - ;npm install ~/scroll; npm install ~/sdk; node ./build.js; scroll list | scroll build"
   },
   "repository": {
     "type": "git",
