@@ -16,8 +16,8 @@ testParticles.parsers = (areEqual) => {
 	areEqual(errs.length, 0, "no parsers errors")
 }
 
-testParticles.EditorApp = (areEqual) => {
-	const app = EditorApp.setupApp("")
+testParticles.EditorApp = async (areEqual) => {
+	const app = await EditorApp.setupApp("")
 	areEqual(!!app, true)
 }
 

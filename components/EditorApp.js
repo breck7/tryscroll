@@ -88,10 +88,10 @@ class EditorApp extends AbstractParticleComponentParser {
     return this.editor.bufferValue
   }
 
-  loadNewDoc(bufferValue) {
+  async loadNewDoc(bufferValue) {
     this.renderAndGetRenderReport()
     this.updateLocalStorage(bufferValue)
-    this.scrollFileEditor.buildMainProgram()
+    await this.scrollFileEditor.buildMainProgram()
     this.refreshHtml()
   }
 
@@ -100,15 +100,15 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   // todo: cleanup
-  pasteCodeCommand(bufferValue) {
+  async pasteCodeCommand(bufferValue) {
     this.editor.setCodeMirrorValue(bufferValue)
-    this.loadNewDoc(bufferValue)
+    await this.loadNewDoc(bufferValue)
   }
 
   async formatScrollCommand() {
     const bufferValue = await this.scrollFileEditor.getFormatted()
     this.editor.setCodeMirrorValue(bufferValue)
-    this.loadNewDoc(bufferValue)
+    await this.loadNewDoc(bufferValue)
     await this.scrollFileEditor.buildMainProgram()
   }
 
@@ -118,21 +118,18 @@ class EditorApp extends AbstractParticleComponentParser {
     console.log("Local storage updated...")
   }
 
-  get parser() {
-    return this.scrollFileEditor.parser
-  }
-
   get fileName() {
     return "tryscroll.scroll"
   }
 
-  initScrollFileEditor(parsersCode) {
+  async initScrollFileEditor(parsersCode) {
     this.scrollFileEditor = new ScrollFileEditor(parsersCode, this)
+    await this.scrollFileEditor.init()
   }
 
   refreshHtml() {
     this.getParticle(`${ShowcaseComponent.name}`).refresh()
-    this.editor.rehighlight()
+    // todo: rehighlight?
   }
 
   async start() {
@@ -155,7 +152,7 @@ class EditorApp extends AbstractParticleComponentParser {
     })
 
     await this.buildMainProgram()
-    this.editor.rehighlight()
+    // todo: rehighlight?
   }
 
   log(message) {
@@ -194,7 +191,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (bufferValue, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = async (bufferValue, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
@@ -211,7 +208,7 @@ ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.initScrollFileEditor(parsersCode)
+  await app.initScrollFileEditor(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app

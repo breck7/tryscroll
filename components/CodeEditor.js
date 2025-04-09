@@ -32,13 +32,6 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     return this.codeMirrorInstance.getValue()
   }
 
-  rehighlight() {
-    if (this._parser === this.root.parser) return
-    console.log("rehighlighting needed")
-    this._parser = this.root.parser
-    // todo: figure this out. codemirror seems to not want to repaint.
-  }
-
   codeWidgets = []
 
   _onCodeKeyUp() {
@@ -48,10 +41,8 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this._code = code
     const root = this.root
     root.updateLocalStorage(code)
-    const { parser } = root
-
-    this.program = new parser(code)
-    const errs = this.program.getAllErrors()
+    root.buildMainProgram()
+    const errs = root.mainProgram.getAllErrors()
 
     let errMessage = "&nbsp;"
     const errorCount = errs.length
@@ -77,7 +68,7 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
         .slice(0, 1) // Only show 1 error at a time. Otherwise UX is not fun.
         .forEach((err) => {
           const el = err.getCodeMirrorLineWidgetElement(() => {
-            this.codeMirrorInstance.setValue(this.program.asString)
+            this.codeMirrorInstance.setValue(root.mainProgram.asString)
             this._onCodeKeyUp()
           })
           this.codeWidgets.push(
@@ -90,13 +81,9 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
     })
 
     clearTimeout(this._timeout)
-    this._timeout = setTimeout(() => {
-      this.loadFromEditor()
+    this._timeout = setTimeout(async () => {
+      await this.root.loadNewDoc(this._code)
     }, 20)
-  }
-
-  loadFromEditor() {
-    this.root.loadNewDoc(this._code)
   }
 
   get bufferValue() {
@@ -127,8 +114,11 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    const { root } = this
-    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => root.parser, undefined, CodeMirror)
+    this.codeMirrorInstance = new ParsersCodeMirrorMode(
+      "custom",
+      () => this.root.scrollFileEditor.getParsedProgramForCodeMirror(this.codeMirrorInstance.getValue()),
+      CodeMirror,
+    )
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,

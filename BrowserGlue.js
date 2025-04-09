@@ -94,7 +94,7 @@ class BrowserGlue extends AbstractParticleComponentParser {
   async init(parsersCode) {
     const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(scrollCode, parsersCode, window.innerWidth, window.innerHeight)
+    window.app = await EditorApp.setupApp(scrollCode, parsersCode, window.innerWidth, window.innerHeight)
     window.app.start()
     return window.app
   }

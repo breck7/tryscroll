@@ -44,13 +44,6 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     return this.codeMirrorInstance.getValue()
   }
 
-  rehighlight() {
-    if (this._parser === this.root.parser) return
-    console.log("rehighlighting needed")
-    this._parser = this.root.parser
-    // todo: figure this out. codemirror seems to not want to repaint.
-  }
-
   codeWidgets = []
 
   _onCodeKeyUp() {
@@ -60,10 +53,8 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
     this._code = code
     const root = this.root
     root.updateLocalStorage(code)
-    const { parser } = root
-
-    this.program = new parser(code)
-    const errs = this.program.getAllErrors()
+    root.buildMainProgram()
+    const errs = root.mainProgram.getAllErrors()
 
     let errMessage = "&nbsp;"
     const errorCount = errs.length
@@ -89,7 +80,7 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
         .slice(0, 1) // Only show 1 error at a time. Otherwise UX is not fun.
         .forEach((err) => {
           const el = err.getCodeMirrorLineWidgetElement(() => {
-            this.codeMirrorInstance.setValue(this.program.asString)
+            this.codeMirrorInstance.setValue(root.mainProgram.asString)
             this._onCodeKeyUp()
           })
           this.codeWidgets.push(
@@ -102,13 +93,9 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
     })
 
     clearTimeout(this._timeout)
-    this._timeout = setTimeout(() => {
-      this.loadFromEditor()
+    this._timeout = setTimeout(async () => {
+      await this.root.loadNewDoc(this._code)
     }, 20)
-  }
-
-  loadFromEditor() {
-    this.root.loadNewDoc(this._code)
   }
 
   get bufferValue() {
@@ -139,8 +126,11 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
 
   _initCodeMirror() {
     if (this.isNodeJs()) return (this.codeMirrorInstance = new CodeMirrorShim())
-    const { root } = this
-    this.codeMirrorInstance = new ParsersCodeMirrorMode("custom", () => root.parser, undefined, CodeMirror)
+    this.codeMirrorInstance = new ParsersCodeMirrorMode(
+      "custom",
+      () => this.root.scrollFileEditor.getParsedProgramForCodeMirror(this.codeMirrorInstance.getValue()),
+      CodeMirror,
+    )
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
         lineWrapping: false,
@@ -259,10 +249,10 @@ class EditorApp extends AbstractParticleComponentParser {
     return this.editor.bufferValue
   }
 
-  loadNewDoc(bufferValue) {
+  async loadNewDoc(bufferValue) {
     this.renderAndGetRenderReport()
     this.updateLocalStorage(bufferValue)
-    this.scrollFileEditor.buildMainProgram()
+    await this.scrollFileEditor.buildMainProgram()
     this.refreshHtml()
   }
 
@@ -271,15 +261,15 @@ class EditorApp extends AbstractParticleComponentParser {
   }
 
   // todo: cleanup
-  pasteCodeCommand(bufferValue) {
+  async pasteCodeCommand(bufferValue) {
     this.editor.setCodeMirrorValue(bufferValue)
-    this.loadNewDoc(bufferValue)
+    await this.loadNewDoc(bufferValue)
   }
 
   async formatScrollCommand() {
     const bufferValue = await this.scrollFileEditor.getFormatted()
     this.editor.setCodeMirrorValue(bufferValue)
-    this.loadNewDoc(bufferValue)
+    await this.loadNewDoc(bufferValue)
     await this.scrollFileEditor.buildMainProgram()
   }
 
@@ -289,21 +279,18 @@ class EditorApp extends AbstractParticleComponentParser {
     console.log("Local storage updated...")
   }
 
-  get parser() {
-    return this.scrollFileEditor.parser
-  }
-
   get fileName() {
     return "tryscroll.scroll"
   }
 
-  initScrollFileEditor(parsersCode) {
+  async initScrollFileEditor(parsersCode) {
     this.scrollFileEditor = new ScrollFileEditor(parsersCode, this)
+    await this.scrollFileEditor.init()
   }
 
   refreshHtml() {
     this.getParticle(`${ShowcaseComponent.name}`).refresh()
-    this.editor.rehighlight()
+    // todo: rehighlight?
   }
 
   async start() {
@@ -326,7 +313,7 @@ class EditorApp extends AbstractParticleComponentParser {
     })
 
     await this.buildMainProgram()
-    this.editor.rehighlight()
+    // todo: rehighlight?
   }
 
   log(message) {
@@ -365,7 +352,7 @@ SIZES.TITLE_HEIGHT = 20
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
-EditorApp.setupApp = (bufferValue, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
+EditorApp.setupApp = async (bufferValue, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
   const editorStartWidth =
     typeof localStorage !== "undefined"
       ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
@@ -382,7 +369,7 @@ ${EditorHandleComponent.name}
 ${ShowcaseComponent.name}`)
 
   const app = new EditorApp(startState.asString)
-  app.initScrollFileEditor(parsersCode)
+  await app.initScrollFileEditor(parsersCode)
   app.windowWidth = windowWidth
   app.windowHeight = windowHeight
   return app
@@ -530,17 +517,17 @@ class ScrollFileEditor {
     urlWriter.getBaseUrl = () => parent.rootUrl || ""
     this.fs._storage = urlWriter
   }
+  async init() {
+    await this.buildMainProgram()
+  }
   async scrollToHtml(scrollCode) {
-    const parsed = await this.parseScroll(scrollCode)
+    const parsed = await this._parseScroll(scrollCode)
     return parsed.asHtml
   }
-  async parseScroll(scrollCode) {
+  async _parseScroll(scrollCode) {
     const file = this.fs.newFile(scrollCode)
     await file.singlePassFuse()
     return file.scrollProgram
-  }
-  get parser() {
-    return this.fusedFile?.scrollProgram.constructor || this.fs.defaultParser
   }
   async makeFusedFile(code, filename) {
     const { fs } = this
@@ -562,28 +549,23 @@ class ScrollFileEditor {
     return this.parent.bufferValue
   }
   get errors() {
-    const { parser, bufferValue } = this
-    const errs = new parser(bufferValue, this.parent.fileName).getAllErrors()
+    const errs = this.mainProgram.getAllErrors()
     return new Particle(errs.map((err) => err.toObject())).toFormattedTable(200)
   }
   async buildMainProgram() {
     const fusedFile = await this.getFusedFile()
     const fusedCode = await this.getFusedCode()
-    this._mainProgram = fusedFile.scrollProgram
+    this.mainProgram = fusedFile.scrollProgram
     try {
-      await this._mainProgram.load()
+      await this.mainProgram.load()
     } catch (err) {
       console.error(err)
     }
-    return this._mainProgram
+    return this.mainProgram
   }
   async getFormatted() {
     const mainDoc = await this.buildMainProgram(false)
     return mainDoc.formatted
-  }
-  get mainProgram() {
-    if (!this._mainProgram) this.buildMainProgram()
-    return this._mainProgram
   }
   get mainOutput() {
     const { mainProgram } = this
@@ -597,6 +579,22 @@ class ScrollFileEditor {
       type: particle.extension.toLowerCase(),
       content: particle.buildOutput(),
     }
+  }
+  _cachedCode
+  _cachedProgram
+  getParsedProgramForCodeMirror(code) {
+    // Note: this uses the latest loaded constructor and does a SYNC parse.
+    // This allows us to use and loaded parsers, but gives sync, real time best
+    // answers for highlighting and autocomplete.
+    // It reparses the whole document. Actually seems to be fine for now.
+    // Ideally we could also just run off mainProgram and not reparse, but
+    // it gets tricky with the CodeMirror lib and async stuff. Maybe in the
+    // future we can clean this up.
+    if (code === this._cachedCode) return this._cachedProgram
+
+    this._cachedCode = code
+    this._cachedProgram = new this.mainProgram.latestConstructor(code)
+    return this._cachedProgram
   }
 }
 
@@ -840,7 +838,7 @@ class BrowserGlue extends AbstractParticleComponentParser {
   async init(parsersCode) {
     const scrollCode = await this.fetchCode()
 
-    window.app = EditorApp.setupApp(scrollCode, parsersCode, window.innerWidth, window.innerHeight)
+    window.app = await EditorApp.setupApp(scrollCode, parsersCode, window.innerWidth, window.innerHeight)
     window.app.start()
     return window.app
   }
