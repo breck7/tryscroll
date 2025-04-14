@@ -34,14 +34,14 @@ class CodeEditorComponent extends AbstractParticleComponentParser {
 
   codeWidgets = []
 
-  _onCodeKeyUp() {
+  async _onCodeKeyUp() {
     const { willowBrowser } = this
     const code = this.codeMirrorValue
     if (this._code === code) return
     this._code = code
     const root = this.root
     root.updateLocalStorage(code)
-    root.buildMainProgram()
+    await root.buildMainProgram()
     const errs = root.mainProgram.getAllErrors()
 
     let errMessage = "&nbsp;"
