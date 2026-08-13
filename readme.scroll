@@ -2,14 +2,14 @@ title TryScroll: Scroll Demo Page
 
 ? What is Scroll?
 Scroll is a language for scientists of all ages.
- https://scroll.pub/ Scroll
+ https://scroll.surf/ Scroll
 
 ? Can you show me a screenshot?
 public/screenshot.png
 
 ? What is this tool?
 This folder contains a simple web editor for trying Scroll. You can write Scroll and see the rendered HTML in realtime. You can try Scroll without downloading the Scroll command line app.
- https://scroll.pub Scroll command line app
+ https://scroll.surf Scroll command line app
  
 # Maintenance Notes
 

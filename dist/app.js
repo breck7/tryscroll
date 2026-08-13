@@ -445,7 +445,7 @@ class ExportComponent extends AbstractParticleComponentParser {
  span  | 
  a Tutorial
   target _blank
-  href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}
+  href index.html#${encodeURIComponent("url https://scroll.surf/tutorial.scroll")}
  span  | 
  a Reset
   clickCommand resetCommand
@@ -757,7 +757,7 @@ theme gazette
 ## Build html files, CSV files, text files, and more.
 
 ### Scroll is an extensible alternative to Markdown.
- https://scroll.pub Scroll
+ https://scroll.surf Scroll
 
 ***
 
@@ -766,7 +766,7 @@ thinColumns 2
 
 ## Links are different
 You put links _after_ the text, like this one. The code:
- https://scroll.pub one.
+ https://scroll.surf one.
 aboveAsCode
 
 ? What's the benefit for using today?
@@ -788,7 +788,7 @@ datatable
 
 # Images in Scroll
 // Just put the filename or URL:
-https://scroll.pub/blog/screenshot.png
+https://scroll.surf/blog/screenshot.png
  caption This is a screenshot of a blog
   https://breckyunits.com/ blog
 aboveAsCode

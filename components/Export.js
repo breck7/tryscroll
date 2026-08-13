@@ -9,7 +9,7 @@ class ExportComponent extends AbstractParticleComponentParser {
  span  | 
  a Tutorial
   target _blank
-  href index.html#${encodeURIComponent("url https://scroll.pub/tutorial.scroll")}
+  href index.html#${encodeURIComponent("url https://scroll.surf/tutorial.scroll")}
  span  | 
  a Reset
   clickCommand resetCommand
