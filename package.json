@@ -9,19 +9,22 @@
   },
   "dependencies": {
     "jquery": "^3.6.0",
-    "scroll-cli": "^178.2.2",
-    "scrollsdk": "^107.0.1"
+    "mousetrap": "^1.6.5",
+    "scroll-cli": "github:breck7/scroll",
+    "scrollsdk": "github:breck7/scrollsdk"
   },
   "devDependencies": {
     "tap": "^18.7.2"
   },
   "scripts": {
-    "up": "npm remove scroll-cli;npm install scroll-cli;npm install scrollsdk@latest;./build.js; scroll list | scroll build",
-    "buildCoverageReport": "tap testAll.js",
-    "buildCoverageHtmlReport": "tap testAll.js --coverage-report=lcov",
+    "up": "npm install github:breck7/scroll github:breck7/scrollsdk && npm run postinstall && npm run build",
+    "buildCoverageReport": "tap testAll.js --allow-incomplete-coverage",
+    "buildCoverageHtmlReport": "tap testAll.js --allow-incomplete-coverage --coverage-report=lcov",
     "open": "open index.html",
     "test": "node testAll.js",
-    "beta": "cd ~/scroll; scroll build; cd - ;npm install ~/scroll; npm install ~/sdk; node ./build.js; scroll list | scroll build"
+    "beta": "npm run up",
+    "postinstall": "node scripts/install-sdk.js",
+    "build": "node build.js && scroll build dist/libs.scroll && scroll build"
   },
   "repository": {
     "type": "git",
@@ -31,5 +34,8 @@
   "bugs": {
     "url": "https://github.com/breck7/tryscroll/issues"
   },
-  "homepage": "https://github.com/breck7/tryscroll"
+  "homepage": "https://github.com/breck7/tryscroll",
+  "engines": {
+    "node": ">=24.0.0"
+  }
 }

@@ -1,5 +1,5 @@
 const { Particle } = require("scrollsdk/products/Particle.js")
-const { HandParsersProgram } = require("scrollsdk/products/Parsers.ts.js")
+const { HandParsersProgram } = require("scrollsdk/products/Parsers.js")
 const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 

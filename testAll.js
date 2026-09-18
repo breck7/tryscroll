@@ -1,7 +1,7 @@
 const runTests = (testParticles) => {
 	const tap = require("tap")
 	Object.keys(testParticles).forEach((key) => {
-		testParticles[key](tap.equal)
+		tap.test(key, async t => testParticles[key](t.equal.bind(t)))
 	})
 }
 

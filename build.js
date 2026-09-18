@@ -2,7 +2,8 @@
 
 const { Disk } = require("scrollsdk/products/Disk.node.js")
 const path = require("path")
-const { TypeScriptRewriter } = require("/Users/breck/sdk/products/TypeScriptRewriter.js") // todo: fix
+const { TypeScriptRewriter } = require("scrollsdk/products/TypeScriptRewriter.js")
+const { ScrollFileSystem } = require("scrollsdk/products/ScrollFileSystem.js")
 
 // TryScroll Components
 const ourPaths = Disk.getFiles(path.join(__dirname, "components")).filter((path) => !path.includes(".test"))
@@ -21,6 +22,6 @@ const appCode = ourPaths
 Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 
 const AppConstants = {
-  parsers: Disk.read("/Users/breck/scroll/scroll.parsers"),
+  parsers: new ScrollFileSystem(undefined, path.join(path.dirname(require.resolve("scroll-cli")), "parsers")).defaultParserCode,
 }
 Disk.write(path.join(__dirname, "dist", "constants.js"), `const AppConstants = ` + JSON.stringify(AppConstants))

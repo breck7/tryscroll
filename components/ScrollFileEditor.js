@@ -1,3 +1,7 @@
+const { ScrollFileSystem } = require("scrollsdk/products/ScrollFileSystem.js")
+/*NODE_JS_ONLY*/ const MemoryWriter = new ScrollFileSystem({})._storage.constructor
+/*NODE_JS_ONLY*/ const isUrl = path => /^https?:\/\//i.test(path)
+
 class UrlWriter extends MemoryWriter {
   async read(fileName) {
     if (this.inMemoryFiles[fileName]) return this.inMemoryFiles[fileName]

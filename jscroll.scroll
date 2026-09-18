@@ -3,18 +3,18 @@ inlineJs
  .dayjs.min.js
  .d3.js
  lodash.min.js
- ../sdk/sandbox/lib/codemirror.js
- ../sdk/sandbox/lib/show-hint.js
- ../sdk/sandbox/lib/placeholder.js
- ../sdk/products/Utils.browser.js
- ../sdk/products/Particle.browser.js
- ../sdk/products/Parsers.ts.browser.js
- ../sdk/products/parsers.browser.js
- ../sdk/products/ParsersCodeMirrorMode.browser.js
- ../sdk/products/ScrollFileSystem.browser.js
- ../sdk/products/stump.browser.js
- ../sdk/products/hakon.browser.js
- ../sdk/products/ParticleComponentFramework.browser.js
+ node_modules/scrollsdk/sandbox/lib/codemirror.js
+ node_modules/scrollsdk/sandbox/lib/show-hint.js
+ node_modules/scrollsdk/sandbox/lib/placeholder.js
+ node_modules/scrollsdk/products/Utils.browser.js
+ node_modules/scrollsdk/products/Particle.browser.js
+ node_modules/scrollsdk/products/Parsers.ts.browser.js
+ node_modules/scrollsdk/products/parsers.browser.js
+ node_modules/scrollsdk/products/ParsersCodeMirrorMode.browser.js
+ node_modules/scrollsdk/products/ScrollFileSystem.browser.js
+ node_modules/scrollsdk/products/stump.browser.js
+ node_modules/scrollsdk/products/hakon.browser.js
+ node_modules/scrollsdk/products/ParticleComponentFramework.browser.js
  components/ScrollFileEditor.js
  dist/constants.js
 

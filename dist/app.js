@@ -174,8 +174,6 @@ window.CodeEditorComponent = CodeEditorComponent
 
 
 
-// prettier-ignore
-
 class githubTriangleComponent extends AbstractParticleComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
@@ -485,6 +483,8 @@ class ExportComponent extends AbstractParticleComponentParser {
 }
 
 window.ExportComponent = ExportComponent
+
+
 
 
 class UrlWriter extends MemoryWriter {

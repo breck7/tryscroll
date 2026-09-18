@@ -12,9 +12,6 @@ const { EditorHandleComponent } = require("./EditorHandle.js")
 const { ShowcaseComponent } = require("./Showcase.js")
 const { LocalStorageKeys, UrlKeys } = require("./Types.js")
 
-// prettier-ignore
-/*NODE_JS_ONLY*/ const defaultScrollParser = new (require("scroll-cli").DefaultScrollParser)
-
 class githubTriangleComponent extends AbstractParticleComponentParser {
   githubLink = `https://github.com/breck7/tryscroll`
   toHakonCode() {
