@@ -10,7 +10,7 @@
   "dependencies": {
     "jquery": "^3.6.0",
     "mousetrap": "^1.6.5",
-    "scroll-cli": "github:breck7/scroll",
+    "scroll": "github:breck7/scroll",
     "scrollsdk": "github:breck7/scrollsdk"
   },
   "devDependencies": {

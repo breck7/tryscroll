@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Try Scroll — a language for scientists of all ages">
+  <rect width="1200" height="630" fill="#f6f4ef"/>
+  <!-- faint paper edge, like the light app chrome -->
+  <rect x="0" y="0" width="1200" height="630" fill="none" stroke="#18181b" stroke-opacity="0.06" stroke-width="2"/>
+
+  <!-- ink stamp, matches the favicon -->
+  <rect x="96" y="198" width="88" height="88" rx="20" fill="#18181b"/>
+  <text x="140" y="262" text-anchor="middle" font-family="Georgia, 'Times New Roman', Times, serif" font-size="62" font-weight="700" fill="#f6f4ef">S</text>
+
+  <text x="212" y="258" font-family="Georgia, 'Times New Roman', Times, serif" font-size="82" font-weight="700" fill="#18181b">Try Scroll</text>
+
+  <line x1="96" y1="332" x2="560" y2="332" stroke="#18181b" stroke-opacity="0.18" stroke-width="1"/>
+
+  <text x="96" y="392" font-family="Georgia, 'Times New Roman', Times, serif" font-size="34" font-style="italic" fill="#3f3f46">A language for scientists of all ages</text>
+
+  <text x="96" y="548" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="22" font-weight="500" letter-spacing="0.04em" fill="#71717a">try.scroll.surf</text>
+</svg>

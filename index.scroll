@@ -1,7 +1,8 @@
 buildHtml
 title Try Scroll - a language for scientists of all ages
 description Scroll is an extendible language for writing and thought.
-openGraphImage https://scroll.surf/public/screenshot.png
+favicon favicon.svg
+openGraphImage https://try.scroll.surf/public/og.png
 metaTags
 
 inlineCss public/codeMirror.css public/app.css

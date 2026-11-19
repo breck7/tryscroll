@@ -5,7 +5,7 @@ const path = require("path")
 const { ScrollFileSystem } = require("scrollsdk/products/ScrollFileSystem.js")
 const parsersParser = require("scrollsdk/products/parsers.nodejs.js")
 const { EditorApp } = require("./EditorApp.js")
-const parsersCode = new ScrollFileSystem(undefined, path.join(path.dirname(require.resolve("scroll-cli")), "parsers")).defaultParserCode
+const parsersCode = new ScrollFileSystem(undefined, path.join(path.dirname(require.resolve("scroll/package.json")), "parsers")).defaultParserCode
 
 const testParticles = {}
 

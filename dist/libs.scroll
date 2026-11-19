@@ -3,7 +3,7 @@ inlineJs
  ../node_modules/mousetrap/mousetrap.min.js
  ../node_modules/jquery/dist/jquery.min.js
  ../lib/jquery-ui.min.js
- ../node_modules/scroll-cli/external/.dayjs.min.js
+ ../node_modules/scroll/external/.dayjs.min.js
  ../lib/jquery.ui.touch-punch.min.js
  ../node_modules/scrollsdk/sandbox/lib/codemirror.js
  ../node_modules/scrollsdk/sandbox/lib/show-hint.js

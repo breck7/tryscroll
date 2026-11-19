@@ -22,6 +22,6 @@ const appCode = ourPaths
 Disk.write(path.join(__dirname, "dist", "app.js"), appCode)
 
 const AppConstants = {
-  parsers: new ScrollFileSystem(undefined, path.join(path.dirname(require.resolve("scroll-cli")), "parsers")).defaultParserCode,
+  parsers: new ScrollFileSystem(undefined, path.join(path.dirname(require.resolve("scroll/package.json")), "parsers")).defaultParserCode,
 }
 Disk.write(path.join(__dirname, "dist", "constants.js"), `const AppConstants = ` + JSON.stringify(AppConstants))
