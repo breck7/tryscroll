@@ -3,58 +3,78 @@ const { HandParsersProgram } = require("scrollsdk/products/Parsers.js")
 const { AbstractParticleComponentParser } = require("scrollsdk/products/ParticleComponentFramework.node.js")
 const { LocalStorageKeys, UrlKeys } = require("./components/Types.js")
 
-const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
+const DEFAULT_PROGRAM = String.raw`title Write once. Watch it come alive.
 printTitle
+theme prestige
+tableSearch
 
-theme gazette
+Scroll is a language for scientists of all ages. This whole page is a Scroll document — change a word or a number on the left, and the preview updates as you type.
 
-# Refine, share and collaborate on ideas
+# Edit a number. The chart moves.
 
-## Build html files, CSV files, text files, and more.
+Scroll's own shipping history, counted from the official release notes.^releases
+ https://scroll.surf/releaseNotes.html official release notes.
 
-### Scroll is an extensible alternative to Markdown.
- https://scroll.surf Scroll
+datatable
+ barchart
+  title Scroll releases per year
+  subtitle Try changing 388 to 100.
+  caption Through version 180.2.0 (September 29, 2026).
+  x year
+  y releases
+  width 600
+  height 280
+ printTable
+ data
+  year releases
+  2021 55
+  2022 90
+  2023 94
+  2024 388
+  2025 70
+  2026 6
 
 ***
 
-// You can have multiple columns
 thinColumns 2
 
-## Links are different
-You put links _after_ the text, like this one. The code:
- https://scroll.surf one.
-aboveAsCode
+## Links come after the words
+_Edit the URL._
+You put the URL _after_ the sentence, like this.
+ https://scroll.surf this.
 
-? What's the benefit for using today?
-- A very flat plain text format
-- Keeps your thoughts and data organized
-- Build fully documented and cited CSV files
-- Ready to _grow_ with _you_.
-- Designed to last.
+## Math, when you need it
+_Edit the formula._
+katex
+ e^{i\pi} + 1 = 0
 
-# Scroll supports tables
-datatable
- printTable
- delimiter ,
- data
-  Language,Types
-  HTML,~142
-  Markdown,~192
-  Scroll,~202 + yours
+***
 
-# Images in Scroll
-// Just put the filename or URL:
-https://scroll.surf/blog/screenshot.png
- caption This is a screenshot of a blog
-  https://breckyunits.com/ blog
-aboveAsCode
+## A code block is just text
+_Edit this snippet._
+code
+ title Hello from Scroll
+ printTitle
 
-expander Click me.
-You can easily add collapsed content.
+counter 2.5 ideas per second
 
-## Scroll has footnotes^note
+expander Open me, then change anything on the left.
+That's the hook. Prose, data, charts, math, and code live in one plain-text file.
 
-^note Sometimes called endnotes
+? Why do people get hooked?
+- It stays _plain text_, so it lasts
+- Data and words live together
+- The language grows when you do
+
+# Now make it yours.
+
+Edit this page. Then copy the share link in the header — that URL is the document you just wrote, ready to send.
+
+^releases Counted from dated release headings in the Scroll release notes. 2026 is a partial year.
+
+css
+ .dt-info, .dt-buttons { display: none; }
+ [id^="plot"] svg rect { fill: #1c1917; }
 `
 
 class BrowserGlue extends AbstractParticleComponentParser {

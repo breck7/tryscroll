@@ -643,138 +643,386 @@ li.CodeMirror-hint-active {
 }
 
 
-html {
-	height: 100%;
-	width: 100%;
-	box-sizing: border-box;
-	overflow: hidden;
-}
-
-*,
-*:before,
-*:after {
-	box-sizing: inherit;
-}
-
-body {
+* {
 	box-sizing: border-box;
 	padding: 0;
 	margin: 0;
+}
+
+html,
+body {
 	height: 100%;
 	width: 100%;
-	font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	overflow: hidden;
 }
 
 :root {
-	--topBarHeight: 28px;
+	--topBarHeight: 44px;
 	--titleHeight: 20px;
-	--bottomBarHeight: 10px;
-	--chromeColor: rgb(47, 47, 51);
+	--bottomBarHeight: 0px;
+	--chromeColor: #f6f4ef;
+	--chromeText: #18181b;
+	--chromeMuted: #71717a;
+	--chromeHover: rgba(0, 0, 0, 0.06);
+	--accent: #6b4f0b;
+	--bg: #f6f4ef;
+	--text: #18181b;
+	--editorBg: #fbfaf7;
+	--handle: #d4d0c8;
+	--handleHover: #111111;
+	--shareBg: #ffffff;
+	--shareBorder: #d4d0c8;
 }
 
 .EditorApp {
 	height: 100%;
 	width: 100%;
+	background: var(--bg);
+}
+
+.Brand {
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	font-size: 15px;
+	color: var(--chromeText) !important;
+	text-decoration: none !important;
+	white-space: nowrap;
+	margin-right: 4px;
+}
+
+.Brand:hover {
+	color: var(--accent) !important;
+}
+
+.TopBarComponent {
+	background: var(--chromeColor);
+	color: var(--chromeText);
+	font-size: 13px;
+	min-height: var(--topBarHeight);
+	height: auto;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	padding: 8px 52px 8px 14px;
+	white-space: nowrap;
+	position: relative;
+	z-index: 4;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.TopBarComponent a {
+	color: var(--chromeText);
+	text-decoration: none;
+}
+
+.TopBarComponent a:hover {
+	color: var(--accent);
+	text-decoration: none;
+}
+
+.ViewToggle {
+	display: none;
+	gap: 4px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 999px;
+	padding: 3px;
+}
+
+.ViewToggle button {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	color: var(--chromeMuted);
+	font: inherit;
+	font-weight: 600;
+	padding: 8px 14px;
+	min-height: 36px;
+	border-radius: 999px;
+	cursor: pointer;
+}
+
+.ViewToggle button:hover {
+	color: var(--chromeText);
+}
+
+html.show-editor .viewEditorButton,
+html.show-preview .viewPreviewButton {
+	background: var(--chromeText);
+	color: var(--chromeColor);
+}
+
+.ShareComponent {
+	display: inline-flex;
+	align-items: center;
+	flex: 1 1 180px;
+	min-width: 120px;
+	max-width: 340px;
+}
+
+.ShareComponent input {
+	background: var(--shareBg);
+	padding: 7px 10px;
+	border-radius: 8px;
+	color: var(--chromeText);
+	border: 1px solid var(--shareBorder);
+	width: 100%;
+	min-width: 0;
+	font-size: 12px;
+}
+
+.ShareComponent input:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+
+.ExportComponent {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 2px 0;
+}
+
+.ExportComponent a {
+	padding: 6px 4px;
+}
+
+.ExportComponent a:hover {
+	text-decoration: none;
+	color: var(--accent);
+	cursor: pointer;
+}
+
+.ThemeToggle {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	color: var(--chromeText);
+	font-size: 16px;
+	line-height: 1;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border-radius: 8px;
+	cursor: pointer;
+	flex: 0 0 auto;
+}
+
+.ThemeToggle:hover {
+	background: var(--chromeHover);
+}
+
+.BottomBarComponent {
+	display: none;
+}
+
+#codeErrorsConsole {
+	font-size: 11px;
+	color: #777;
+	text-align: left;
+	padding: 2px 8px;
+	min-height: 16px;
 }
 
 .EditorHandleComponent {
-	width: 10px;
+	width: 16px;
 	position: absolute;
 	top: var(--topBarHeight);
-	bottom: var(--bottomBarHeight);
+	bottom: 0;
+	left: 50%;
 	cursor: ew-resize;
-	background-color: rgba(0, 0, 0, 0.1);
-	z-index: 1000;
+	background: transparent;
+	z-index: 20;
+	touch-action: none;
+	transform: translateX(-50%);
 }
+
+.EditorHandleComponent::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 1px;
+	background: var(--handle);
+	transform: translateX(-50%);
+}
+
+.EditorHandleComponent::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 4px;
+	height: 40px;
+	border-radius: 99px;
+	background: var(--handle);
+	transform: translate(-50%, -50%);
+}
+
+.EditorHandleComponent:hover::before,
+.EditorHandleComponent:hover::after,
+body.is-resizing .EditorHandleComponent::before,
+body.is-resizing .EditorHandleComponent::after {
+	background: var(--handleHover);
+}
+
+/* Old iframe-covering hack is no longer used; keep the class harmless. */
 .rightBorder {
-	border-right: 10000px solid rgba(0, 0, 0, 0.0001);
+	border-right: 0;
+}
+
+body.is-resizing {
+	cursor: ew-resize;
+	user-select: none;
+}
+
+body.is-resizing iframe,
+body.is-resizing .ShowcaseComponent {
+	pointer-events: none;
 }
 
 .CodeEditorComponent {
 	position: absolute;
 	top: var(--topBarHeight);
-	bottom: var(--bottomBarHeight);
-	border: 0;
-	left: 0;
-}
-
-.TopBarComponent {
-	background-color: var(--chromeColor);
-	color: white;
-	font-size: 14px;
-	line-height: var(--topBarHeight);
-	height: var(--topBarHeight);
-	white-space: nowrap;
-}
-.TopBarComponent a {
-	color: white;
-	text-decoration-color: transparent;
-}
-.TopBarComponent a:hover {
-	text-decoration-color: white;
-}
-.ShareComponent {
-	display: inline;
-}
-.ShareComponent input {
-	background: rgb(79, 79, 79);
-	padding: 3px;
-	border-radius: 5px;
-	color: white;
-	border: 0;
-	width: 230px;
-}
-
-.BottomBarComponent {
-	position: absolute;
-	line-height: var(--bottomBarHeight);
-	height: var(--bottomBarHeight);
-	padding-left: 5px;
 	bottom: 0;
+	border: 0;
 	left: 0;
-	right: 0;
-	background-color: var(--chromeColor);
-	color: white;
-	font-size: 34px;
-	text-align: center;
+	background: var(--editorBg);
+	overflow: hidden;
 }
 
-#codeErrorsConsole {
-	font-size: 10px;
-	color: #999;
-	text-align: center;
+.CodeEditorComponent .CodeMirror {
+	height: 100%;
+	width: 100% !important;
+	background: var(--editorBg);
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--text);
 }
 
-.BottomButton:hover {
-	background-color: rgba(255, 255, 255, 0.2);
-	opacity: 1;
+.CodeEditorComponent .CodeMirror-scroll {
+	overflow-x: hidden;
 }
 
-.BottomButton:active {
-	background-color: rgba(255, 255, 255, 0.3);
-	opacity: 1;
+.CodeEditorComponent .CodeMirror-gutters {
+	background: var(--editorBg);
+	border-right: 0;
 }
 
 .ShowcaseComponent {
 	position: absolute;
 	top: var(--topBarHeight);
-	right: 5px;
-	bottom: var(--bottomBarHeight);
+	right: 0;
+	bottom: 0;
+	background: #fffff8;
+	box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.06);
 }
 
 .ShowcaseComponent iframe {
 	height: 100%;
 	width: 100%;
 	border: 0;
+	background: #fffff8;
 }
 
-.ExportComponent {
-	display: inline;
+html.is-narrow .ViewToggle {
+	display: inline-flex;
 }
 
-.ExportComponent a:hover {
-	text-decoration: underline;
-	cursor: pointer;
+html.is-narrow .EditorHandleComponent {
+	display: none;
+}
+
+html.is-narrow .CodeEditorComponent,
+html.is-narrow .ShowcaseComponent {
+	left: 0 !important;
+	right: 0 !important;
+	width: 100% !important;
+}
+
+html.is-narrow .CodeEditorComponent {
+	display: none;
+}
+
+html.is-narrow.show-editor .CodeEditorComponent {
+	display: block;
+}
+
+html.is-narrow.show-editor .ShowcaseComponent {
+	display: none;
+}
+
+html.is-narrow .ShareComponent {
+	flex: 1 1 100%;
+	max-width: none;
+	order: 5;
+}
+
+html.is-narrow .ExportComponent {
+	flex: 0 1 auto;
+	order: 4;
+}
+
+html.is-narrow .ThemeToggle {
+	order: 1;
+	margin-left: auto;
+	margin-right: 32px;
+}
+
+html.is-narrow .TopBarComponent {
+	padding: 8px 12px 10px;
+}
+
+html.is-narrow .AbstractGithubTriangleComponent img {
+	height: 28px;
+}
+
+.AbstractGithubTriangleComponent {
+	z-index: 12 !important;
+}
+.AbstractGithubTriangleComponent img {
+	height: 48px;
+	filter: invert(1);
+}
+
+html.theme-dark {
+	--chromeColor: #16161a;
+	--chromeText: #f4f4f5;
+	--chromeMuted: #a1a1aa;
+	--chromeHover: rgba(255, 255, 255, 0.12);
+	--accent: #e8c547;
+	--bg: #0f0f12;
+	--text: #ededef;
+	--editorBg: #121216;
+	--handle: #3f3f46;
+	--handleHover: #e8c547;
+	--shareBg: #2a2a30;
+	--shareBorder: transparent;
+}
+
+html.theme-dark .TopBarComponent {
+	border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html.theme-dark .CodeEditorComponent .CodeMirror {
+	color: #ededef;
+}
+
+html.theme-dark .CodeEditorComponent .CodeMirror-gutters {
+	background: #121216;
+}
+
+html.theme-dark .CodeEditorComponent .CodeMirror-cursor {
+	border-left-color: #ededef;
+}
+
+html.theme-dark .AbstractGithubTriangleComponent img {
+	filter: none;
 }
 </style>
 <script  src="./dist/libs.js"></script>

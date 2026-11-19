@@ -8,27 +8,53 @@ class EditorHandleComponent extends AbstractParticleComponentParser {
   makeDraggable() {
     if (this.isNodeJs()) return
 
-    const root = this.root
     const handle = this.getStumpParticle().getShadow().element
-    jQuery(handle).draggable({
-      axis: "x",
-      drag: function (event, ui) {
-        if ("ontouchend" in document) return // do not update live on a touch device. otherwise buggy.
-        root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
-        jQuery(".EditorHandleComponent").addClass("rightBorder")
-      },
-      start: function (event, ui) {
-        jQuery(".EditorHandleComponent").addClass("rightBorder")
-      },
-      stop: function (event, ui) {
-        root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
-        window.location = window.location
-        jQuery(".EditorHandleComponent").removeClass("rightBorder")
-      },
+    if (handle.dataset.dragBound) return
+    handle.dataset.dragBound = "1"
+    handle.setAttribute("role", "separator")
+    handle.setAttribute("aria-orientation", "vertical")
+    handle.setAttribute("title", "Drag to resize. Double-click to reset.")
+
+    const root = this.root
+    let startX = 0
+    let startWidth = 0
+    let dragging = false
+
+    const onMove = (event) => {
+      if (!dragging) return
+      root.resizeEditorCommand(startWidth + (event.clientX - startX), { live: true })
+    }
+
+    const onUp = (event) => {
+      if (!dragging) return
+      dragging = false
+      document.body.classList.remove("is-resizing")
+      try {
+        handle.releasePointerCapture(event.pointerId)
+      } catch (err) {}
+      handle.removeEventListener("pointermove", onMove)
+      handle.removeEventListener("pointerup", onUp)
+      handle.removeEventListener("pointercancel", onUp)
+      root.resizeEditorCommand(root.editor.width)
+    }
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (document.documentElement.classList.contains("is-narrow")) return
+      if (event.pointerType === "mouse" && event.button !== 0) return
+      event.preventDefault()
+      dragging = true
+      startX = event.clientX
+      startWidth = root.editor.width
+      document.body.classList.add("is-resizing")
+      handle.setPointerCapture(event.pointerId)
+      handle.addEventListener("pointermove", onMove)
+      handle.addEventListener("pointerup", onUp)
+      handle.addEventListener("pointercancel", onUp)
     })
-    jQuery(this.getStumpParticle().getShadow().element).on("dblclick", () => {
-      root.resizeEditorCommand()
-      window.location = window.location
+
+    handle.addEventListener("dblclick", () => {
+      if (document.documentElement.classList.contains("is-narrow")) return
+      root.resizeEditorCommand(Math.floor(window.innerWidth / 2))
     })
   }
 

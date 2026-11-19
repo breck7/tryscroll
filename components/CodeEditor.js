@@ -121,7 +121,7 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
     )
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
-        lineWrapping: false,
+        lineWrapping: true,
         lineNumbers: false,
       })
     this.codeMirrorInstance.on("keyup", () => this._onCodeKeyUp())
@@ -137,8 +137,14 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
   }
 
   setSize() {
-    if (this.isNodeJs()) return
-    this.codeMirrorInstance.setSize(this.width, window.innerHeight - this.chromeHeight)
+    if (this.isNodeJs() || !this.codeMirrorInstance) return
+    const narrow = typeof document !== "undefined" && document.documentElement.classList.contains("is-narrow")
+    const top = document.querySelector(".TopBarComponent")
+    const chrome = top ? top.offsetHeight : this.chromeHeight
+    const width = narrow ? window.innerWidth : this.width
+    const height = Math.max(120, window.innerHeight - chrome)
+    this.codeMirrorInstance.setSize(width, height)
+    if (this.codeMirrorInstance.setOption) this.codeMirrorInstance.setOption("lineWrapping", true)
   }
 
   _updateCodeMirror() {

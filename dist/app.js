@@ -133,7 +133,7 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
     )
       .register()
       .fromTextAreaWithAutocomplete(document.getElementById("EditorTextarea"), {
-        lineWrapping: false,
+        lineWrapping: true,
         lineNumbers: false,
       })
     this.codeMirrorInstance.on("keyup", () => this._onCodeKeyUp())
@@ -149,8 +149,14 @@ ${errs.map((err, index) => `${index}. ${err}`).join("<br>")}`
   }
 
   setSize() {
-    if (this.isNodeJs()) return
-    this.codeMirrorInstance.setSize(this.width, window.innerHeight - this.chromeHeight)
+    if (this.isNodeJs() || !this.codeMirrorInstance) return
+    const narrow = typeof document !== "undefined" && document.documentElement.classList.contains("is-narrow")
+    const top = document.querySelector(".TopBarComponent")
+    const chrome = top ? top.offsetHeight : this.chromeHeight
+    const width = narrow ? window.innerWidth : this.width
+    const height = Math.max(120, window.innerHeight - chrome)
+    this.codeMirrorInstance.setSize(width, height)
+    if (this.codeMirrorInstance.setOption) this.codeMirrorInstance.setOption("lineWrapping", true)
   }
 
   _updateCodeMirror() {
@@ -162,6 +168,7 @@ window.CodeEditorComponent = CodeEditorComponent
 
 
 // prettier-ignore
+
 
 
 
@@ -306,12 +313,42 @@ class EditorApp extends AbstractParticleComponentParser {
       })
     })
 
-    this.willowBrowser.setResizeEndHandler(() => {
-      this.editor.setSize()
-    })
+    this.willowBrowser.setResizeEndHandler(() => this.syncLayout())
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", () => this.syncLayout())
+      this.syncLayout()
+      requestAnimationFrame(() => this.syncLayout())
+      setTimeout(() => this.syncLayout(), 50)
+    }
 
     await this.buildMainProgram()
+    this.applyTheme()
     // todo: rehighlight?
+  }
+
+  get theme() {
+    if (typeof localStorage === "undefined") return "light"
+    return localStorage.getItem(LocalStorageKeys.theme) === "dark" ? "dark" : "light"
+  }
+
+  applyTheme() {
+    if (this.isNodeJs() || typeof document === "undefined") return
+    const dark = this.theme === "dark"
+    document.documentElement.classList.toggle("theme-dark", dark)
+    const btn = document.querySelector(".ThemeToggle")
+    if (btn) {
+      btn.textContent = dark ? "☀" : "☾"
+      const label = dark ? "Switch to light theme" : "Switch to dark theme"
+      btn.title = label
+      btn.setAttribute("aria-label", label)
+      btn.setAttribute("aria-pressed", dark ? "true" : "false")
+    }
+  }
+
+  toggleThemeCommand() {
+    if (this.isNodeJs() || typeof localStorage === "undefined") return
+    localStorage.setItem(LocalStorageKeys.theme, this.theme === "dark" ? "light" : "dark")
+    this.applyTheme()
   }
 
   log(message) {
@@ -331,34 +368,109 @@ class EditorApp extends AbstractParticleComponentParser {
     }
   }
 
-  resizeEditorCommand(newSize = SIZES.EDITOR_WIDTH) {
-    this.editor.setAtom(1, newSize)
+  get isNarrow() {
+    return typeof window !== "undefined" && window.innerWidth < 720
+  }
 
-    if (!this.isNodeJs()) localStorage.setItem(LocalStorageKeys.editorStartWidth, newSize)
-    this.renderAndGetRenderReport()
+  get maxEditorWidth() {
+    const width = typeof window !== "undefined" ? window.innerWidth : this.windowWidth || 1000
+    return Math.max(SIZES.EDITOR_MIN_WIDTH, width - SIZES.EDITOR_MIN_WIDTH)
+  }
+
+  clampEditorWidth(size) {
+    const width = Number(size)
+    const fallback = typeof window !== "undefined" ? Math.floor(window.innerWidth / 2) : SIZES.EDITOR_WIDTH
+    const n = Number.isFinite(width) ? width : fallback
+    return Math.round(Math.min(this.maxEditorWidth, Math.max(SIZES.EDITOR_MIN_WIDTH, n)))
+  }
+
+  measureChrome() {
+    if (this.isNodeJs()) return
+    const top = document.querySelector(".TopBarComponent")
+    const topH = top ? top.offsetHeight : SIZES.TOP_BAR_HEIGHT
+    document.documentElement.style.setProperty("--topBarHeight", topH + "px")
+  }
+
+  applyEditorWidth(width) {
+    if (this.isNodeJs()) return
+    this.measureChrome()
+    const editorEl = document.querySelector(".CodeEditorComponent")
+    const handle = document.querySelector(".EditorHandleComponent")
+    const showcase = document.querySelector(".ShowcaseComponent")
+    if (editorEl) editorEl.style.width = width + "px"
+    if (handle) handle.style.left = width + "px"
+    if (showcase) showcase.style.left = width + "px"
+    this.editor.setSize()
+  }
+
+  setViewMode(mode) {
+    if (this.isNodeJs()) return
+    this.viewMode = mode === "preview" ? "preview" : "editor"
+    document.documentElement.classList.toggle("show-preview", this.viewMode === "preview")
+    document.documentElement.classList.toggle("show-editor", this.viewMode === "editor")
+    if (this.viewMode === "preview") this.refreshHtml()
+    this.editor.setSize()
+  }
+
+  syncLayout() {
+    if (this.isNodeJs()) return
+    const narrow = this.isNarrow
+    document.documentElement.classList.toggle("is-narrow", narrow)
+    document.body.classList.toggle("is-narrow", narrow)
+    this.measureChrome()
+    if (narrow) {
+      if (!this.viewMode) this.setViewMode("preview")
+      else this.setViewMode(this.viewMode)
+    } else {
+      document.documentElement.classList.remove("show-preview", "show-editor")
+      const width = this.clampEditorWidth(this.editor.width)
+      this.editor.setAtom(1, width)
+      this.applyEditorWidth(width)
+    }
+    this.measureChrome()
+    this.editor.setSize()
+  }
+
+  resizeEditorCommand(newSize = typeof window !== "undefined" ? Math.floor(window.innerWidth / 2) : SIZES.EDITOR_WIDTH, opts = {}) {
+    const width = this.clampEditorWidth(newSize)
+    this.editor.setAtom(1, width)
+    if (!this.isNodeJs()) {
+      if (!opts.live) localStorage.setItem(LocalStorageKeys.editorStartWidth, String(width))
+      this.applyEditorWidth(width)
+    } else this.renderAndGetRenderReport()
   }
 }
 
 const SIZES = {}
 
-SIZES.BOARD_MARGIN = 20
-SIZES.TOP_BAR_HEIGHT = 28
-SIZES.BOTTOM_BAR_HEIGHT = 40
-SIZES.CHROME_HEIGHT = SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT + SIZES.BOARD_MARGIN
+SIZES.BOARD_MARGIN = 0
+SIZES.TOP_BAR_HEIGHT = 44
+SIZES.BOTTOM_BAR_HEIGHT = 0
+SIZES.CHROME_HEIGHT = SIZES.TOP_BAR_HEIGHT + SIZES.BOTTOM_BAR_HEIGHT
 SIZES.TITLE_HEIGHT = 20
+SIZES.EDITOR_MIN_WIDTH = 160
 
 SIZES.EDITOR_WIDTH = Math.floor(typeof window !== "undefined" ? window.innerWidth / 2 : 400)
 SIZES.RIGHT_BAR_WIDTH = 30
 
 EditorApp.setupApp = async (bufferValue, parsersCode, windowWidth = 1000, windowHeight = 1000) => {
-  const editorStartWidth =
-    typeof localStorage !== "undefined"
-      ? (localStorage.getItem(LocalStorageKeys.editorStartWidth) ?? SIZES.EDITOR_WIDTH)
-      : SIZES.EDITOR_WIDTH
+  let editorStartWidth = SIZES.EDITOR_WIDTH
+  if (typeof localStorage !== "undefined") {
+    const saved = parseInt(localStorage.getItem(LocalStorageKeys.editorStartWidth), 10)
+    if (Number.isFinite(saved)) editorStartWidth = saved
+  }
+  if (typeof window !== "undefined") {
+    const min = SIZES.EDITOR_MIN_WIDTH
+    const max = Math.max(min, window.innerWidth - min)
+    editorStartWidth = Math.round(Math.min(max, Math.max(min, editorStartWidth)))
+  }
   const startState = new Particle(`${githubTriangleComponent.name}
 ${TopBarComponent.name}
+ ${BrandComponent.name}
+ ${ViewToggleComponent.name}
  ${ShareComponent.name}
  ${ExportComponent.name}
+ ${ThemeToggleComponent.name}
 ${BottomBarComponent.name}
 ${CodeEditorComponent.name} ${editorStartWidth} ${SIZES.CHROME_HEIGHT}
  value
@@ -386,27 +498,53 @@ class EditorHandleComponent extends AbstractParticleComponentParser {
   makeDraggable() {
     if (this.isNodeJs()) return
 
-    const root = this.root
     const handle = this.getStumpParticle().getShadow().element
-    jQuery(handle).draggable({
-      axis: "x",
-      drag: function (event, ui) {
-        if ("ontouchend" in document) return // do not update live on a touch device. otherwise buggy.
-        root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
-        jQuery(".EditorHandleComponent").addClass("rightBorder")
-      },
-      start: function (event, ui) {
-        jQuery(".EditorHandleComponent").addClass("rightBorder")
-      },
-      stop: function (event, ui) {
-        root.resizeEditorCommand(Math.max(ui.offset.left, 5) + "")
-        window.location = window.location
-        jQuery(".EditorHandleComponent").removeClass("rightBorder")
-      },
+    if (handle.dataset.dragBound) return
+    handle.dataset.dragBound = "1"
+    handle.setAttribute("role", "separator")
+    handle.setAttribute("aria-orientation", "vertical")
+    handle.setAttribute("title", "Drag to resize. Double-click to reset.")
+
+    const root = this.root
+    let startX = 0
+    let startWidth = 0
+    let dragging = false
+
+    const onMove = (event) => {
+      if (!dragging) return
+      root.resizeEditorCommand(startWidth + (event.clientX - startX), { live: true })
+    }
+
+    const onUp = (event) => {
+      if (!dragging) return
+      dragging = false
+      document.body.classList.remove("is-resizing")
+      try {
+        handle.releasePointerCapture(event.pointerId)
+      } catch (err) {}
+      handle.removeEventListener("pointermove", onMove)
+      handle.removeEventListener("pointerup", onUp)
+      handle.removeEventListener("pointercancel", onUp)
+      root.resizeEditorCommand(root.editor.width)
+    }
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (document.documentElement.classList.contains("is-narrow")) return
+      if (event.pointerType === "mouse" && event.button !== 0) return
+      event.preventDefault()
+      dragging = true
+      startX = event.clientX
+      startWidth = root.editor.width
+      document.body.classList.add("is-resizing")
+      handle.setPointerCapture(event.pointerId)
+      handle.addEventListener("pointermove", onMove)
+      handle.addEventListener("pointerup", onUp)
+      handle.addEventListener("pointercancel", onUp)
     })
-    jQuery(this.getStumpParticle().getShadow().element).on("dblclick", () => {
-      root.resizeEditorCommand()
-      window.location = window.location
+
+    handle.addEventListener("dblclick", () => {
+      if (document.documentElement.classList.contains("is-narrow")) return
+      root.resizeEditorCommand(Math.floor(window.innerWidth / 2))
     })
   }
 
@@ -654,13 +792,56 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
       content = `<pre>${content}</pre>`
     }
 
+    // Comfortable reading measure for the preview iframe, regardless of theme.
+    const frameStyle = `<style id="tryscroll-frame">
+      html { box-sizing: border-box; }
+      body {
+        padding: 32px 40px 80px !important;
+        max-width: 46rem;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box;
+      }
+      img, svg, video, table, iframe, pre, .scrollCodeBlock, .scrollTable, [id^="plot"] { max-width: 100%; }
+      [id^="plot"] { overflow-x: auto; }
+      [id^="plot"] svg { max-width: 100%; height: auto; }
+      .scrollTable { width: 100%; }
+      .dt-search, .dt-layout-row, .dt-container { max-width: 100%; overflow-x: auto; }
+      @media (max-width: 640px) {
+        body { padding: 20px 18px 64px !important; }
+      }
+    </style>`
+    if (/<body\b[^>]*>/i.test(content)) content = content.replace(/<body\b[^>]*>/i, (m) => m + frameStyle)
+    else content = frameStyle + content
+
     // Add scroll restoration script
     const scrollScript = `
       <script>
-        window.addEventListener('load', function() {
+        function notifyParent() {
+          try {
+            if (window.katex) {
+              document.querySelectorAll(".scrollKatex").forEach(function(el) {
+                if (el.dataset.katexDone || el.querySelector(".katex")) return
+                katex.render(el.innerText, el, { throwOnError: false })
+                el.dataset.katexDone = "1"
+              })
+            }
+            // Plot + d3.autoType formats years as 2,021. Restore 2021 when the tick is clearly a year.
+            document.querySelectorAll('[id^="plot"] svg text').forEach(function(node) {
+              var text = (node.textContent || "").trim()
+              var match = text.match(/^([12]),([0-9]{3})$/)
+              if (!match) return
+              var year = match[1] + match[2]
+              if (year >= 1900 && year <= 2100) node.textContent = year
+            })
+          } catch (err) {}
           window.scrollTo(${scrollLeft}, ${scrollTop});
           window.parent.postMessage('iframeReady', '*');
-        });
+        }
+        if (document.readyState === "complete") setTimeout(notifyParent, 50)
+        else window.addEventListener('load', notifyParent)
+        setTimeout(notifyParent, 600)
+        setTimeout(notifyParent, 1200)
       </script>
     `
 
@@ -695,7 +876,7 @@ class ShowcaseComponent extends AbstractParticleComponentParser {
   toStumpCode() {
     return `div
  class ${ShowcaseComponent.name}
- style left:${this.root.leftStartPosition + 10}px;
+ style left:${this.root.leftStartPosition}px;
  iframe
   id theIframe1
   style display:block;width:100%;height:100%;border:none;
@@ -715,22 +896,80 @@ window.ShowcaseComponent = ShowcaseComponent
 
 
 
+class BrandComponent extends AbstractParticleComponentParser {
+  toStumpCode() {
+    return `a Try Scroll
+ class Brand
+ href https://scroll.surf
+ target _blank
+ title Scroll`
+  }
+}
+
+class ViewToggleComponent extends AbstractParticleComponentParser {
+  toStumpCode() {
+    return `div
+ class ViewToggle
+ button Editor
+  class viewEditorButton
+  clickCommand showEditorCommand
+ button Preview
+  class viewPreviewButton
+  clickCommand showPreviewCommand`
+  }
+
+  showEditorCommand() {
+    this.root.setViewMode("editor")
+  }
+
+  showPreviewCommand() {
+    this.root.setViewMode("preview")
+  }
+}
+
+class ThemeToggleComponent extends AbstractParticleComponentParser {
+  toStumpCode() {
+    return `button ☾
+ class ThemeToggle
+ title Switch to dark theme
+ clickCommand toggleThemeCommand`
+  }
+
+  toggleThemeCommand() {
+    this.root.toggleThemeCommand()
+  }
+
+  particleComponentDidMount() {
+    if (this.root.applyTheme) this.root.applyTheme()
+  }
+}
+
 class TopBarComponent extends AbstractParticleComponentParser {
   createParserPool() {
     return new Particle.ParserPool(undefined, {
+      BrandComponent,
+      ViewToggleComponent,
       ShareComponent,
       ExportComponent,
+      ThemeToggleComponent,
     })
   }
 }
 
 window.TopBarComponent = TopBarComponent
 
+window.BrandComponent = BrandComponent
+
+window.ViewToggleComponent = ViewToggleComponent
+
+window.ThemeToggleComponent = ThemeToggleComponent
+
 
 const LocalStorageKeys = {}
 
 LocalStorageKeys.scroll = "scroll"
 LocalStorageKeys.editorStartWidth = "editorStartWidth"
+LocalStorageKeys.theme = "tryscroll-theme"
 
 const UrlKeys = {}
 
@@ -747,58 +986,78 @@ window.UrlKeys = UrlKeys
 
 
 
-const DEFAULT_PROGRAM = `title Scroll is a language for scientists of all ages
+const DEFAULT_PROGRAM = String.raw`title Write once. Watch it come alive.
 printTitle
+theme prestige
+tableSearch
 
-theme gazette
+Scroll is a language for scientists of all ages. This whole page is a Scroll document — change a word or a number on the left, and the preview updates as you type.
 
-# Refine, share and collaborate on ideas
+# Edit a number. The chart moves.
 
-## Build html files, CSV files, text files, and more.
+Scroll's own shipping history, counted from the official release notes.^releases
+ https://scroll.surf/releaseNotes.html official release notes.
 
-### Scroll is an extensible alternative to Markdown.
- https://scroll.surf Scroll
+datatable
+ barchart
+  title Scroll releases per year
+  subtitle Try changing 388 to 100.
+  caption Through version 180.2.0 (September 29, 2026).
+  x year
+  y releases
+  width 600
+  height 280
+ printTable
+ data
+  year releases
+  2021 55
+  2022 90
+  2023 94
+  2024 388
+  2025 70
+  2026 6
 
 ***
 
-// You can have multiple columns
 thinColumns 2
 
-## Links are different
-You put links _after_ the text, like this one. The code:
- https://scroll.surf one.
-aboveAsCode
+## Links come after the words
+_Edit the URL._
+You put the URL _after_ the sentence, like this.
+ https://scroll.surf this.
 
-? What's the benefit for using today?
-- A very flat plain text format
-- Keeps your thoughts and data organized
-- Build fully documented and cited CSV files
-- Ready to _grow_ with _you_.
-- Designed to last.
+## Math, when you need it
+_Edit the formula._
+katex
+ e^{i\pi} + 1 = 0
 
-# Scroll supports tables
-datatable
- printTable
- delimiter ,
- data
-  Language,Types
-  HTML,~142
-  Markdown,~192
-  Scroll,~202 + yours
+***
 
-# Images in Scroll
-// Just put the filename or URL:
-https://scroll.surf/blog/screenshot.png
- caption This is a screenshot of a blog
-  https://breckyunits.com/ blog
-aboveAsCode
+## A code block is just text
+_Edit this snippet._
+code
+ title Hello from Scroll
+ printTitle
 
-expander Click me.
-You can easily add collapsed content.
+counter 2.5 ideas per second
 
-## Scroll has footnotes^note
+expander Open me, then change anything on the left.
+That's the hook. Prose, data, charts, math, and code live in one plain-text file.
 
-^note Sometimes called endnotes
+? Why do people get hooked?
+- It stays _plain text_, so it lasts
+- Data and words live together
+- The language grows when you do
+
+# Now make it yours.
+
+Edit this page. Then copy the share link in the header — that URL is the document you just wrote, ready to send.
+
+^releases Counted from dated release headings in the Scroll release notes. 2026 is a partial year.
+
+css
+ .dt-info, .dt-buttons { display: none; }
+ [id^="plot"] svg rect { fill: #1c1917; }
 `
 
 class BrowserGlue extends AbstractParticleComponentParser {

@@ -2,6 +2,7 @@ const LocalStorageKeys = {}
 
 LocalStorageKeys.scroll = "scroll"
 LocalStorageKeys.editorStartWidth = "editorStartWidth"
+LocalStorageKeys.theme = "tryscroll-theme"
 
 const UrlKeys = {}
 
