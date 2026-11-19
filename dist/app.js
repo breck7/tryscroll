@@ -817,7 +817,18 @@ class BrowserGlue extends AbstractParticleComponentParser {
     return localStorage.getItem(LocalStorageKeys.scroll)
   }
 
+  // Convert ?scroll=code or ?url=link into the hash deep link format
+  queryToHash() {
+    const params = new URLSearchParams(window.location.search)
+    const scroll = params.get(UrlKeys.scroll)
+    const url = params.get(UrlKeys.url)
+    if (scroll === null && url === null) return
+    const particle = url !== null ? `${UrlKeys.url} ${url}` : `${UrlKeys.scroll}\n` + scroll.replace(/^/gm, " ")
+    history.replaceState("", document.title, window.location.pathname + "#" + encodeURIComponent(particle))
+  }
+
   async fetchCode() {
+    this.queryToHash()
     const hash = this.willowBrowser.getHash().substr(1)
     const deepLink = new Particle(decodeURIComponent(hash))
     const fromUrl = deepLink.get(UrlKeys.url)
